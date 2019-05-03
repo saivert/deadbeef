@@ -1140,13 +1140,6 @@ gtkui_show_log_window_internal(gboolean show) {
     show ? gtk_widget_show (logwindow) : gtk_widget_hide (logwindow);
     GtkWidget *menuitem = lookup_widget (mainwin, "view_log");
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitem), show);
-
-#if GTK_CHECK_VERSION(3,10,0)
-#if USE_GTK_APPLICATION
-    g_simple_action_set_state ( deadbeef_app_get_log_action (gapp),
-        g_variant_new_boolean (show));
-#endif
-#endif
 }
 
 void

@@ -35,7 +35,6 @@ struct _DeadbeefApp
 {
     GtkApplication parent;
 
-    GSimpleAction *logaction;
 };
 
 G_DEFINE_TYPE(DeadbeefApp, deadbeef_app, GTK_TYPE_APPLICATION);
@@ -76,13 +75,6 @@ appmenu_about_activated (GSimpleAction *action,
     gtk_menu_item_activate ( GTK_MENU_ITEM (item));
 }
 
-static GActionEntry app_entries[] = {
-    { "preferences", appmenu_preferences_activated, NULL, NULL, NULL },
-    { "log", NULL, NULL, "false", appmenu_log_change_state },
-    { "about", appmenu_about_activated, NULL, NULL, NULL },
-    { "quit", appmenu_quit_activated, NULL, NULL, NULL }
-};
-
 static void
 deadbeef_app_init (DeadbeefApp *app)
 {
@@ -99,15 +91,7 @@ static void
 deadbeef_app_startup (GApplication *application) {
     G_APPLICATION_CLASS (deadbeef_app_parent_class)->startup (application);
 
-    g_action_map_add_action_entries (G_ACTION_MAP (application), app_entries, G_N_ELEMENTS (app_entries), application);
-    DEADBEEF_APP (application)->logaction = G_SIMPLE_ACTION (g_action_map_lookup_action ( G_ACTION_MAP (application), "log"));
-
     gtkui_mainwin_init ();
-}
-
-GSimpleAction *
-deadbeef_app_get_log_action(DeadbeefApp *application) {
-    return application->logaction;
 }
 
 static void

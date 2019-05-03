@@ -41,7 +41,4 @@ static inline DeadbeefApp * DEADBEEF_APP(gpointer ptr) {
 DeadbeefApp *
 deadbeef_app_new (void);
 
-GSimpleAction *
-deadbeef_app_get_log_action(DeadbeefApp *application);
-
 #endif /*__GTKUI_DEADBEEFAPP_H*/

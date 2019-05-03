@@ -226,7 +226,6 @@ AS_IF([test "${enable_gtk3}" = "yes"], [
     ], [
        PKG_CHECK_MODULES(GTK3_DEPS, gtk+-3.0 >= 3.0 gthread-2.0 glib-2.0 gio-2.0, HAVE_GTK3=yes, HAVE_GTK3=no)
     ])
-    AC_PATH_PROG([GLIB_COMPILE_RESOURCES], [glib-compile-resources])
     ], [
     HAVE_GTK3=no
 ])
