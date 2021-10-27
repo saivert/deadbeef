@@ -1,0 +1,6 @@
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+c_std = 'c99'
+[paths]
+#libdir = 'lib/deadbeef'

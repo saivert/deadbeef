@@ -1,0 +1,8 @@
+option('plugin-alsa',
+       type : 'feature',
+       value: 'enabled',
+       description : 'ALSA plugin')
+option('plugin-gtk3',
+       type : 'feature',
+       value: 'enabled',
+       description : 'GTK3 GUI plugin')
