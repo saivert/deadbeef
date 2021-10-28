@@ -110,6 +110,14 @@ cdata.set('HAVE_POSIX_PRINTF', 1)
 configure_file(output : 'config.h',
                configuration : cdata)
 
+deadbeef_inc = include_directories(
+    'external/mp4p/include',
+    'plugins/libparser',
+    'scope',
+    'analyzer',
+    '.'
+)
+
 # Shared static libraries
 subdir('shared')
 
@@ -128,6 +136,12 @@ endif
 
 if not get_option('plugin-mp3').disabled()
   subdir('plugins/mp3')
+endif
+
+subdir('plugins/liboggedit')
+
+if not get_option('plugin-opus').disabled()
+  subdir('plugins/opus')
 endif
 
 # - GTK3
@@ -176,12 +190,6 @@ deadbeef_sources = [
     'shared/ctmap.c'
 ]
 
-include_dirs = include_directories(
-    'external/mp4p/include',
-    'plugins/libparser',
-    'scope',
-    'analyzer'
-)
 
 deadbeef_headers = [
     'deadbeef.h'
@@ -193,6 +201,6 @@ deadbeef_exec = executable('deadbeef',
   deadbeef_sources,
   install: true,
   #c_args : cc_flags,
-  include_directories : [include_dirs],
+  include_directories : [deadbeef_inc],
   dependencies : [pthread_lib, m_dep, dl_lib, dependency('blocks'), cc.find_library('dispatch')],
 )
