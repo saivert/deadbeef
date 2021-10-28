@@ -16,8 +16,8 @@ mp3_libs_list = []
 mp3_cargs = []
 mp3_deps_list = []
 
-mad_dep = cc.find_library('mad', required: false)
-mpg123_dep = cc.find_library('mpg123', required: false)
+mad_dep = dependency('mad', required: false)
+mpg123_dep = dependency('mpg123', required: false)
 
 if mad_dep.found()
   mp3_sources += mp3mad_sources
@@ -39,7 +39,7 @@ name_prefix: '',
 install : true,
 c_args: mp3_cargs,
 install_dir: plugindir,
-dependencies : [m_dep, pthread_lib, mad_dep, mpg123_dep],
+dependencies : [m_dep, mad_dep, mpg123_dep],
 )
 endif
 
