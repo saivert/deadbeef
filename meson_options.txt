@@ -2,6 +2,10 @@ option('plugin-alsa',
        type : 'feature',
        value: 'enabled',
        description : 'ALSA plugin')
+option('plugin-mp3',
+       type : 'feature',
+       value: 'enabled',
+       description : 'MP3 plugin')
 option('plugin-gtk3',
        type : 'feature',
        value: 'enabled',

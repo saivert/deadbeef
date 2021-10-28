@@ -126,6 +126,10 @@ if alsa_dep.found()
   subdir('plugins/alsa')
 endif
 
+if not get_option('plugin-mp3').disabled()
+  subdir('plugins/mp3')
+endif
+
 # - GTK3
 subdir('plugins/gtkui')
 
