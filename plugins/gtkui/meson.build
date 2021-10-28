@@ -1,5 +1,5 @@
 
-gtk3ui_sources = [
+gtk23ui_sources = [
     'actionhandlers.c',
     'actions.c',
     'callbacks.c',
@@ -55,21 +55,49 @@ gtk3ui_sources = [
 
 install_headers(['gtkui_api.h'], subdir : 'deadbeef')
 
-gnome = import('gnome')
 
-gtk3ui_resources = gnome.compile_resources(
-    'gtkui-gresources', 'gtkui.gresources.xml',
-    #source_dir: '.',
-    c_name: 'gtkui'
-)
+need_gtk3ui = get_option('plugin-gtk3').enabled()
+gtk3_dep = dependency('gtk+-3.0', version: '>=3.12.0', required: need_gtk3ui)
 
-summary({'GTK3 GUI': need_gtk3ui}, bool_yn: true, section: 'Plugins')
+if gtk3_dep.found()
 
-plugin_gtk3ui = shared_library('ddb_gui_GTK3', gtk3ui_sources + gtk3ui_resources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: ['../..'],
-  link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
-  dependencies : [m_dep, gtk3_dep, jansson_dep],
-)
+
+  gnome = import('gnome')
+
+  gtk3ui_resources = gnome.compile_resources(
+      'gtkui-gresources', 'gtkui.gresources.xml',
+      #source_dir: '.',
+      c_name: 'gtkui'
+  )
+
+  summary({'GTK3 GUI': need_gtk3ui}, bool_yn: true, section: 'Plugins')
+
+  plugin_gtk3ui = shared_library('ddb_gui_GTK3', gtk23ui_sources + gtk3ui_resources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: ['../..'],
+    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
+    dependencies : [m_dep, gtk3_dep, jansson_dep],
+  )
+
+endif
+
+
+need_gtk2ui = get_option('plugin-gtk2').enabled()
+gtk2_dep = dependency('gtk+-2.0', required: need_gtk2ui)
+
+if gtk2_dep.found()
+
+  summary({'GTK2 GUI': need_gtk3ui}, bool_yn: true, section: 'Plugins')
+
+  plugin_gtk2ui = shared_library('ddb_gui_GTK2', gtk23ui_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: ['../..'],
+    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
+    dependencies : [m_dep, gtk2_dep, jansson_dep],
+  )
+
+endif
