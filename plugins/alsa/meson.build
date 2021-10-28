@@ -13,5 +13,5 @@ plugin_alsa = shared_library('alsa', alsa_sources,
 #  include_directories : [pipewire_inc, configinc, spa_inc, includes_inc],
   install : true,
   install_dir: plugindir,
-  dependencies : [dl_lib, m_dep, pthread_lib, alsa_dep],
+  dependencies : [m_dep, pthread_lib, alsa_dep],
 )
