@@ -6,3 +6,7 @@ option('plugin-gtk3',
        type : 'feature',
        value: 'enabled',
        description : 'GTK3 GUI plugin')
+option('plugin-gtk2',
+       type : 'feature',
+       value: 'enabled',
+       description : 'GTK2 GUI plugin')

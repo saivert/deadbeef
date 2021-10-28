@@ -127,12 +127,7 @@ if alsa_dep.found()
 endif
 
 # - GTK3
-need_gtk3ui = get_option('plugin-gtk3').enabled()
-gtk3_dep = dependency('gtk+-3.0', version: '>=3.12.0', required: need_gtk3ui)
-
-if gtk3_dep.found()
-  subdir('plugins/gtkui')
-endif
+subdir('plugins/gtkui')
 
 ## Main binary
 
