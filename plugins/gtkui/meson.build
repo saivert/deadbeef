@@ -76,7 +76,7 @@ if gtk3_dep.found()
     name_prefix: '',
     install : true,
     install_dir: plugindir,
-    include_directories: ['../..'],
+    include_directories: deadbeef_inc,
     link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
     dependencies : [m_dep, gtk3_dep, jansson_dep],
   )
@@ -95,7 +95,7 @@ if gtk2_dep.found()
     name_prefix: '',
     install : true,
     install_dir: plugindir,
-    include_directories: ['../..'],
+    include_directories: deadbeef_inc,
     link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
     dependencies : [m_dep, gtk2_dep, jansson_dep],
   )
