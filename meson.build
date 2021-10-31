@@ -134,9 +134,13 @@ if alsa_dep.found()
   subdir('plugins/alsa')
 endif
 
+# - MP3
+
 if not get_option('plugin-mp3').disabled()
   subdir('plugins/mp3')
 endif
+
+# - Opus
 
 subdir('plugins/liboggedit')
 
