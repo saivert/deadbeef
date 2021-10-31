@@ -24,6 +24,12 @@ cc_flags = [
 ]
 add_project_arguments(cc.get_supported_arguments(cc_flags), language: 'c')
 
+i18n = import('i18n')
+
+gettext_package = 'deadbeef'
+add_project_arguments('-DGETTEXT_PACKAGE=' + gettext_package, language: 'c')
+
+
 cdata = configuration_data()
 prefix = get_option('prefix')
 cdata.set_quoted('PREFIX', prefix)
@@ -200,6 +206,23 @@ deadbeef_headers = [
 ]
 
 install_headers(deadbeef_headers, subdir : 'deadbeef')
+
+install_data(
+  'README', 'help.txt', 'about.txt', 'translators.txt', 'ChangeLog',
+  'COPYING.GPLv2', 'COPYING.LGPLv2.1', 'translation/help.ru.txt',
+  install_dir: join_paths(get_option('datadir'), 'doc', meson.project_name()),
+)
+
+subdir('po')
+
+i18n.merge_file(
+  input: 'deadbeef.desktop.in',
+  output: 'deadbeef.desktop',
+  type: 'desktop',
+  po_dir: 'po',
+  install: true,
+  install_dir: get_option('datadir') / 'applications'
+)
 
 deadbeef_exec = executable('deadbeef',
   deadbeef_sources,
