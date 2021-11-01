@@ -133,12 +133,7 @@ plugindir = 'lib/deadbeef'
 jansson_dep = cc.find_library('jansson')
 
 # - Alsa
-need_alsa = get_option('plugin-alsa').enabled()
-alsa_dep = dependency('alsa', version : '>=1.1.7', required: need_alsa)
-
-if alsa_dep.found()
-  subdir('plugins/alsa')
-endif
+subdir('plugins/alsa')
 
 # - MP3
 
