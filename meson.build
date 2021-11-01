@@ -146,6 +146,8 @@ subdir('plugins/liboggedit')
 
 subdir('plugins/opus')
 
+subdir('plugins/vorbis')
+
 # - GTK3
 subdir('plugins/gtkui')
 

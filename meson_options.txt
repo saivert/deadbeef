@@ -10,6 +10,10 @@ option('plugin-opus',
        type : 'feature',
        value: 'enabled',
        description : 'OPUS plugin')
+option('plugin-vorbis',
+       type : 'feature',
+       value: 'enabled',
+       description : 'Vorbis plugin')
 option('plugin-gtk3',
        type : 'feature',
        value: 'enabled',
