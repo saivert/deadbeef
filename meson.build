@@ -142,9 +142,7 @@ endif
 
 # - MP3
 
-if not get_option('plugin-mp3').disabled()
-  subdir('plugins/mp3')
-endif
+subdir('plugins/mp3')
 
 # - Opus
 
