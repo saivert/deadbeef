@@ -1,6 +1,6 @@
 
 alsa_sources = [
-    'alsa.c'
+  'alsa.c'
 ]
 
 summary({'ALSA': need_alsa}, bool_yn: true, section: 'Plugins')

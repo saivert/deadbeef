@@ -1,15 +1,15 @@
 
 mp3mad_sources = [
-    'mp3_mad.c'
+  'mp3_mad.c'
 ]
 
 mp3_mpg123_sources = [
-    'mp3_mpg123.c'
+  'mp3_mpg123.c'
 ]
 
 mp3_sources = [
-    'mp3.c',
-    'mp3parser.c'
+  'mp3.c',
+  'mp3parser.c'
 ]
 
 mp3_libs_list = []
@@ -38,14 +38,14 @@ endif
 mp3_summary = {'MP3': has_mp3}
 
 if has_mp3
-plugin_mp3 = shared_library('mp3', mp3_sources,
-name_prefix: '',
-install : true,
-c_args: mp3_cargs,
-install_dir: plugindir,
-dependencies : [m_dep, mad_dep, mpg123_dep],
-)
-mp3_summary += {'MP3 libraries': mp3_libs_list}
+  plugin_mp3 = shared_library('mp3', mp3_sources,
+  name_prefix: '',
+  install : true,
+  c_args: mp3_cargs,
+  install_dir: plugindir,
+  dependencies : [m_dep, mad_dep, mpg123_dep],
+  )
+  mp3_summary += {'MP3 libraries': mp3_libs_list}
 endif
 
 summary(mp3_summary, bool_yn: true, section: 'Plugins')

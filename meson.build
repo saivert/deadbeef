@@ -89,14 +89,14 @@ dl_lib = cc.find_library('dl', required : false)
 m_dep = cc.find_library('m', required : false)
 
 if cc.has_function('log2', dependencies: [m_dep])
-    cdata.set('HAVE_LOG2', 1)
+  cdata.set('HAVE_LOG2', 1)
 endif
 
 if host_machine.cpu() == 'x86_64' and host_machine.system() == 'linux'
-    cdata.set('ARCH_X86_64', '1')
-    YASM_FLAGS='-f elf -D ARCH_X86_64 -m amd64'
+  cdata.set('ARCH_X86_64', '1')
+  YASM_FLAGS='-f elf -D ARCH_X86_64 -m amd64'
 else
-    error('Unsupported platform!')
+  error('Unsupported platform!')
 endif
 
 if cc.has_header_symbol('string.h', 'strndupa', args : [ '-D_GNU_SOURCE' ])
@@ -117,11 +117,11 @@ configure_file(output : 'config.h',
                configuration : cdata)
 
 deadbeef_inc = include_directories(
-    'external/mp4p/include',
-    'plugins/libparser',
-    'scope',
-    'analyzer',
-    '.'
+  'external/mp4p/include',
+  'plugins/libparser',
+  'scope',
+  'analyzer',
+  '.'
 )
 
 # Shared static libraries
@@ -156,44 +156,44 @@ subdir('plugins/gtkui')
 ## Main binary
 
 deadbeef_sources = [
-    'main.c',
-    'plugins.c',
-    'cueutil.c',
-    'playlist.c',
-    'plmeta.c',
-    'pltmeta.c',
-    'streamer.c',
-    'dsp.c',
-    'streamreader.c',
-    'premix.c',
-    'messagepump.c',
-    'conf.c',
-    'threading_pthread.c',
-    'volume.c',
-    'junklib.c',
-    'utf8.c',
-    'vfs.c',
-    'vfs_stdio.c',
-    'md5/md5.c',
-    'metacache.c',
-    'ringbuf.c',
-    'dsppreset.c',
-    'replaygain.c',
-    'fft.c',
-    'handler.c',
-    'escape.c',
-    'tf.c',
-    'playqueue.c',
-    'sort.c',
-    'logger.c',
-    'external/wcwidth/wcwidth.c',
-    'playmodes.c',
-    'viz.c',
-    'decodedblock.c',
-    'scope/scope.c',
-    'analyzer/analyzer.c',
-    'plugins/libparser/parser.c',
-    'shared/ctmap.c'
+  'main.c',
+  'plugins.c',
+  'cueutil.c',
+  'playlist.c',
+  'plmeta.c',
+  'pltmeta.c',
+  'streamer.c',
+  'dsp.c',
+  'streamreader.c',
+  'premix.c',
+  'messagepump.c',
+  'conf.c',
+  'threading_pthread.c',
+  'volume.c',
+  'junklib.c',
+  'utf8.c',
+  'vfs.c',
+  'vfs_stdio.c',
+  'md5/md5.c',
+  'metacache.c',
+  'ringbuf.c',
+  'dsppreset.c',
+  'replaygain.c',
+  'fft.c',
+  'handler.c',
+  'escape.c',
+  'tf.c',
+  'playqueue.c',
+  'sort.c',
+  'logger.c',
+  'external/wcwidth/wcwidth.c',
+  'playmodes.c',
+  'viz.c',
+  'decodedblock.c',
+  'scope/scope.c',
+  'analyzer/analyzer.c',
+  'plugins/libparser/parser.c',
+  'shared/ctmap.c'
 ]
 
 

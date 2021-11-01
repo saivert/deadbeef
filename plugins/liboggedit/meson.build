@@ -1,10 +1,10 @@
 liboggedit_sources = [
-	'oggedit_internal.c',
-    'oggedit_utils.c',
-    'oggedit_art.c',
-    'oggedit_opus.c',
-    'oggedit_vorbis.c',
-    'oggedit_flac.c'
+  'oggedit_internal.c',
+  'oggedit_utils.c',
+  'oggedit_art.c',
+  'oggedit_opus.c',
+  'oggedit_vorbis.c',
+  'oggedit_flac.c'
 ]
 
 liboggedit_cflags = []
