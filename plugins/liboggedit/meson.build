@@ -11,6 +11,11 @@ liboggedit_cflags = []
 
 ogg_dep = dependency('ogg', required: false)
 
+if not ogg_dep.found()
+  liboggedit_dep = dependency('', required: false)
+  subdir_done()
+endif
+
 if cc.has_function('ogg_stream_flush_fill', dependencies: [ogg_dep])
   liboggedit_cflags += '-DHAVE_OGG_STREAM_FLUSH_FILL'
 endif
