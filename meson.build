@@ -141,6 +141,9 @@ subdir('plugins/pulse')
 
 subdir('plugins/mp3')
 
+subdir('external')
+subdir('plugins/aac')
+
 # - Opus
 
 subdir('plugins/liboggedit')

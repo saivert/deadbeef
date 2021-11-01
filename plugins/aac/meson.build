@@ -1,0 +1,21 @@
+aac_sources = [
+  'aac.c',
+  'aac_decoder_faad2.c',
+  'aac_decoder_wrap.c',
+  'aac_parser.c',
+]
+
+faad2_dep = dependency('faad2', required: get_option('plugin-aac'))
+
+has_aac = faad2_dep.found()
+
+if has_aac
+  plugin_aac = shared_library('aac', aac_sources,
+  name_prefix: '',
+  install : true,
+  install_dir: plugindir,
+  dependencies : [m_dep, faad2_dep, libmp4tagutil_dep, libmp4p_dep],
+  )
+endif
+
+summary({'AAC': has_aac}, bool_yn: true, section: 'Plugins')
