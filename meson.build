@@ -209,6 +209,7 @@ install_data(
 )
 
 subdir('po')
+subdir('pixmaps')
 
 i18n.merge_file(
   input: 'deadbeef.desktop.in',
