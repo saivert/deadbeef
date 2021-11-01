@@ -135,6 +135,7 @@ jansson_dep = cc.find_library('jansson')
 
 # - Alsa
 subdir('plugins/alsa')
+subdir('plugins/pulse')
 
 # - MP3
 
