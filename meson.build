@@ -35,7 +35,7 @@ prefix = get_option('prefix')
 cdata.set_quoted('PREFIX', prefix)
 cdata.set_quoted('LOCALEDIR', join_paths(prefix, get_option('localedir')))
 cdata.set_quoted('LIBDIR', join_paths(prefix, get_option('libdir')))
-cdata.set_quoted('DOCDIR', join_paths(prefix, 'share/doc/deadbeef'))
+cdata.set_quoted('DOCDIR', join_paths(prefix, get_option('datadir'), 'doc', 'deadbeef'))
 cdata.set_quoted('PACKAGE_BUGREPORT', '')
 cdata.set_quoted('PACKAGE_NAME', 'deadbeef')
 cdata.set_quoted('PACKAGE_STRING', 'deadbeef devel')
@@ -49,6 +49,7 @@ summary({
   'libdir': get_option('libdir'),
   'localedir': get_option('localedir'),
   'bindir': get_option('bindir'),
+  'docdir': join_paths(get_option('datadir'), 'doc', 'deadbeef'),
   }, section: 'Directories')
 
 check_headers = [['dlfcn.h','HAVE_DLFCN_H'],
