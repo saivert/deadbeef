@@ -3,8 +3,8 @@ opus_sources = [
     'opus.c'
 ]
 
-opus_dep = dependency('opus', required: false)
-opusfile_dep = dependency('opusfile', required: false)
+opus_dep = dependency('opus', required: get_option('plugin-opus'))
+opusfile_dep = dependency('opusfile', required: get_option('plugin-opus'))
 
 has_opus = opus_dep.found() and opusfile_dep.found() and liboggedit_dep.found()
 

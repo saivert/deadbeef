@@ -150,9 +150,7 @@ endif
 
 subdir('plugins/liboggedit')
 
-if not get_option('plugin-opus').disabled()
-  subdir('plugins/opus')
-endif
+subdir('plugins/opus')
 
 # - GTK3
 subdir('plugins/gtkui')
