@@ -10,6 +10,10 @@ option('plugin-adplug',
        type : 'feature',
        value: 'enabled',
        description : 'Adplug plugin')
+option('plugin-flac',
+       type : 'feature',
+       value: 'enabled',
+       description : 'FLAC plugin')
 option('plugin-mp3',
        type : 'feature',
        value: 'enabled',
