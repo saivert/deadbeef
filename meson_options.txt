@@ -6,6 +6,10 @@ option('plugin-pulse',
        type : 'feature',
        value: 'enabled',
        description : 'PulseAudio plugin')
+option('plugin-adplug',
+       type : 'feature',
+       value: 'enabled',
+       description : 'Adplug plugin')
 option('plugin-mp3',
        type : 'feature',
        value: 'enabled',

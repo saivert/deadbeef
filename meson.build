@@ -143,6 +143,7 @@ subdir('plugins/pulse')
 subdir('plugins/soundtouch')
 
 # Input plugins
+subdir('plugins/adplug')
 subdir('plugins/mp3')
 subdir('external')
 subdir('plugins/aac')
