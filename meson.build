@@ -135,26 +135,19 @@ plugindir = 'lib/deadbeef'
 
 jansson_dep = cc.find_library('jansson')
 
-# - Alsa
+# Output plugins
 subdir('plugins/alsa')
 subdir('plugins/pulse')
 
-# - MP3
-
+# Input plugins
 subdir('plugins/mp3')
-
 subdir('external')
 subdir('plugins/aac')
-
-# - Opus
-
 subdir('plugins/liboggedit')
-
 subdir('plugins/opus')
-
 subdir('plugins/vorbis')
 
-# - GTK3
+# GUI plugins
 subdir('plugins/gtkui')
 
 ## Main binary
