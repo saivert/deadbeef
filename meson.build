@@ -43,6 +43,8 @@ cdata.set_quoted('PACKAGE_TARNAME', 'deadbeef')
 cdata.set_quoted('PACKAGE_URL', '')
 cdata.set_quoted('PACKAGE_VERSION', deadbeef_version)
 cdata.set_quoted('VERSION', deadbeef_version)
+cdata.set_quoted('PACKAGE', gettext_package)
+cdata.set('ENABLE_NLS', 1)
 
 summary({
   'prefix': get_option('prefix'),
