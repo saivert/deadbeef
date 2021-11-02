@@ -146,7 +146,7 @@ subdir('plugins/aac')
 subdir('plugins/liboggedit')
 subdir('plugins/opus')
 subdir('plugins/vorbis')
-
+subdir('plugins/sndfile')
 # GUI plugins
 subdir('plugins/gtkui')
 

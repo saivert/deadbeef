@@ -14,6 +14,10 @@ option('plugin-aac',
        type : 'feature',
        value: 'enabled',
        description : 'AAC plugin (using FAAD2)')
+option('plugin-sndfile',
+       type : 'feature',
+       value: 'enabled',
+       description : 'sndfile plugin')
 option('plugin-opus',
        type : 'feature',
        value: 'enabled',
