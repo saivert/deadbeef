@@ -18,6 +18,10 @@ option('plugin-sndfile',
        type : 'feature',
        value: 'enabled',
        description : 'sndfile plugin')
+option('plugin-soundtouch',
+       type : 'feature',
+       value: 'enabled',
+       description : 'soundtouch plugin')
 option('plugin-opus',
        type : 'feature',
        value: 'enabled',

@@ -1,4 +1,4 @@
-project('deadbeef', ['c' ],
+project('deadbeef', ['c', 'cpp'],
   version : 'devel',
   license : [ 'GPL-2.0-only' ],
   meson_version : '>= 0.54.0',
@@ -138,6 +138,9 @@ jansson_dep = cc.find_library('jansson')
 # Output plugins
 subdir('plugins/alsa')
 subdir('plugins/pulse')
+
+# DSP plugins
+subdir('plugins/soundtouch')
 
 # Input plugins
 subdir('plugins/mp3')
