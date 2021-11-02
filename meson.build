@@ -145,6 +145,7 @@ subdir('plugins/soundtouch')
 # Input plugins
 subdir('plugins/adplug')
 subdir('plugins/mp3')
+subdir('plugins/dca')
 subdir('external')
 subdir('plugins/aac')
 subdir('plugins/alac')

@@ -18,6 +18,10 @@ option('plugin-alac',
        type : 'feature',
        value: 'enabled',
        description : 'ALAC plugin')
+option('plugin-dca',
+       type : 'feature',
+       value: 'enabled',
+       description : 'libdca (DTS Audio) plugin')
 option('plugin-mp3',
        type : 'feature',
        value: 'enabled',
