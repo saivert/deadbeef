@@ -79,6 +79,7 @@ check_headers = [['dlfcn.h','HAVE_DLFCN_H'],
   ['pwd.h', 'HAVE_PWD_H'],
   ['ucontext.h', 'HAVE_UCONTEXT_H'],
   ['unistd.h', 'HAVE_UNISTD_H'],
+  ['alloca.h', 'HAVE_ALLOCA_H'],
 ]
 
 foreach h : check_headers
