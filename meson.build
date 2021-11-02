@@ -114,7 +114,6 @@ if cc.has_function('pselect', prefix : '#include<sys/select.h>')
 endif
 cdata.set('HAVE_MMAP', 1)
 
-cdata.set('HAVE_ALLOCA_H', 1)
 cdata.set('HAVE_POSIX_PRINTF', 1)
 
 configure_file(output : 'config.h',
