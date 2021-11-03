@@ -163,6 +163,9 @@ subdir('plugins/dumb')
 # GUI plugins
 subdir('plugins/gtkui')
 
+# Misc plugins
+subdir('plugins/rg_scanner')
+
 ## Main binary
 
 deadbeef_sources = [

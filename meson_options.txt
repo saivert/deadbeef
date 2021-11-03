@@ -62,3 +62,7 @@ option('plugin-gtk2',
        type : 'feature',
        value: 'enabled',
        description : 'GTK2 GUI plugin')
+option('plugin-rg_scanner',
+       type : 'feature',
+       value: 'enabled',
+       description : 'Plugin for ReplayGain scanner support')
