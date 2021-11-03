@@ -114,6 +114,12 @@ if cc.has_function('pselect', prefix : '#include<sys/select.h>')
 endif
 cdata.set('HAVE_MMAP', 1)
 
+have_iconv = cc.has_function('iconv', prefix : '#include <iconv.h>')
+cdata.set10('HAVE_ICONV', have_iconv)
+if not have_iconv
+  error('iconv() not available')
+endif
+
 cdata.set('HAVE_POSIX_PRINTF', 1)
 
 configure_file(output : 'config.h',
