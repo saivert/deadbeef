@@ -36,7 +36,7 @@ soundtouch_sources = [
 has_soundtouch = not get_option('plugin-soundtouch').disabled()
 
 if has_soundtouch
-  plugin_soundtouch = shared_library('soundtouch', soundtouch_sources,
+  plugin_soundtouch = shared_library('ddb_soundtouch', soundtouch_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,
