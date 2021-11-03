@@ -127,6 +127,10 @@ deadbeef_inc = include_directories(
   '.'
 )
 
+sse2_args = '-msse2'
+have_sse2 = cc.has_argument(sse2_args)
+
+
 # Shared static libraries
 subdir('shared')
 
@@ -155,6 +159,7 @@ subdir('plugins/flac')
 subdir('plugins/opus')
 subdir('plugins/vorbis')
 subdir('plugins/sndfile')
+subdir('plugins/dumb')
 # GUI plugins
 subdir('plugins/gtkui')
 

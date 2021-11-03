@@ -30,6 +30,10 @@ option('plugin-mp3',
        type : 'feature',
        value: 'enabled',
        description : 'MP3 plugin')
+option('plugin-dumb',
+       type : 'feature',
+       value: 'enabled',
+       description : 'DUMB module plugin, for MOD, S3M, etc')
 option('plugin-aac',
        type : 'feature',
        value: 'enabled',
