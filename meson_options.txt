@@ -70,3 +70,7 @@ option('plugin-ffap',
        type : 'feature',
        value: 'enabled',
        description : 'Monkey\'s audio (APE) decoder')
+option('plugin-ffmpeg',
+       type : 'feature',
+       value: 'enabled',
+       description : 'ffmpeg codecs')

@@ -167,6 +167,7 @@ subdir('plugins/vorbis')
 subdir('plugins/sndfile')
 subdir('plugins/dumb')
 subdir('plugins/ffap')
+subdir('plugins/ffmpeg')
 # GUI plugins
 subdir('plugins/gtkui')
 
