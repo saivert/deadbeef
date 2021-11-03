@@ -98,7 +98,7 @@ endif
 
 if host_machine.cpu() == 'x86_64' and host_machine.system() == 'linux'
   cdata.set('ARCH_X86_64', '1')
-  YASM_FLAGS='-f elf -D ARCH_X86_64 -m amd64'
+  YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_64', '-m', 'amd64']
 else
   error('Unsupported platform!')
 endif
@@ -160,6 +160,7 @@ subdir('plugins/opus')
 subdir('plugins/vorbis')
 subdir('plugins/sndfile')
 subdir('plugins/dumb')
+subdir('plugins/ffap')
 # GUI plugins
 subdir('plugins/gtkui')
 

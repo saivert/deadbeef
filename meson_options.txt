@@ -66,3 +66,7 @@ option('plugin-rg_scanner',
        type : 'feature',
        value: 'enabled',
        description : 'Plugin for ReplayGain scanner support')
+option('plugin-ffap',
+       type : 'feature',
+       value: 'enabled',
+       description : 'Monkey\'s audio (APE) decoder')
