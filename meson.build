@@ -141,6 +141,7 @@ subdir('plugins/pulse')
 
 # DSP plugins
 subdir('plugins/soundtouch')
+subdir('plugins/dsp_libsrc')
 
 # Input plugins
 subdir('plugins/adplug')
