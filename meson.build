@@ -176,6 +176,7 @@ subdir('plugins/sndfile')
 subdir('plugins/dumb')
 subdir('plugins/ffap')
 subdir('plugins/ffmpeg')
+subdir('plugins/gme')
 # GUI plugins
 subdir('plugins/gtkui')
 
