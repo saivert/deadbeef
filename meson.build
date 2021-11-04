@@ -154,6 +154,8 @@ plugindir = 'lib/deadbeef'
 
 jansson_dep = cc.find_library('jansson')
 
+curl_dep = dependency('libcurl', required: false)
+
 # Output plugins
 subdir('plugins/alsa')
 subdir('plugins/pulse')
