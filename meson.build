@@ -147,6 +147,7 @@ have_sse2 = cc.has_argument(sse2_args)
 
 # Shared static libraries
 subdir('shared')
+subdir('plugins/libparser')
 
 # Plugins
 plugindir = 'lib/deadbeef'
