@@ -82,3 +82,7 @@ option('plugin-hotkeys',
        type : 'feature',
        value: 'enabled',
        description : 'Local and global hotkeys support')
+option('plugin-lastfm',
+       type : 'feature',
+       value: 'enabled',
+       description : 'last.fm scrobbler')
