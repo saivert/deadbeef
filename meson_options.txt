@@ -78,3 +78,7 @@ option('plugin-gme',
        type : 'feature',
        value: 'enabled',
        description : 'chiptune music player based on GME')
+option('plugin-hotkeys',
+       type : 'feature',
+       value: 'enabled',
+       description : 'Local and global hotkeys support')
