@@ -12,6 +12,7 @@ plugin_pulse = shared_library('pulse', pulse_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,
+  include_directories: deadbeef_inc,
   dependencies : [pthread_lib, pulse_dep],
 )
 endif

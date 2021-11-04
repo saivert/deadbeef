@@ -14,6 +14,7 @@ if has_aac
   name_prefix: '',
   install : true,
   install_dir: plugindir,
+  include_directories: deadbeef_inc,
   dependencies : [m_dep, faad2_dep, libmp4tagutil_dep, libmp4p_dep],
   )
 endif

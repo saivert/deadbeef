@@ -12,6 +12,7 @@ plugin_alsa = shared_library('alsa', alsa_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,
+  include_directories: deadbeef_inc,
   dependencies : [m_dep, pthread_lib, alsa_dep],
 )
 endif
