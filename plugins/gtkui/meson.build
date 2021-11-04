@@ -48,7 +48,6 @@ gtk23ui_sources = [
   '../../utf8.c',
   'medialib/medialibwidget.c',
   'medialib/medialibmanager.c',
-  '../libparser/parser.c',
   '../../analyzer/analyzer.c',
   '../../scope/scope.c'
 ]
@@ -76,7 +75,7 @@ if gtk3_dep.found()
     install_dir: plugindir,
     include_directories: deadbeef_inc,
     link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
-    dependencies : [m_dep, gtk3_dep, jansson_dep],
+    dependencies : [m_dep, gtk3_dep, libparser_dep, jansson_dep],
   )
 
 endif
@@ -94,7 +93,7 @@ if gtk2_dep.found()
     install_dir: plugindir,
     include_directories: deadbeef_inc,
     link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset],
-    dependencies : [m_dep, gtk2_dep, jansson_dep],
+    dependencies : [m_dep, gtk2_dep, libparser_dep, jansson_dep],
   )
 
 endif
