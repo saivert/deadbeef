@@ -11,6 +11,7 @@ project('deadbeef', ['c', 'cpp'],
 deadbeef_version = meson.project_version()
 
 cc = meson.get_compiler('c')
+cpp = meson.get_compiler('cpp')
 
 if cc.get_id() != 'clang'
     error('This project requires the clang compiler! Hint: use --native=native-clang.txt')
@@ -23,6 +24,13 @@ cc_flags = [
   '-DHAVE_CONFIG_H=1'
 ]
 add_project_arguments(cc.get_supported_arguments(cc_flags), language: 'c')
+
+cpp_flags = [
+  '-D_GNU_SOURCE',
+  '-DDDB_WARN_DEPRECATED=1',
+  '-DHAVE_CONFIG_H=1'
+]
+add_project_arguments(cc.get_supported_arguments(cc_flags), language: 'cpp')
 
 i18n = import('i18n')
 
