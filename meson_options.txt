@@ -98,3 +98,7 @@ option('plugin-mono2stereo',
        type : 'feature',
        value: 'enabled',
        description : 'mono2stereo DSP plugin')
+option('plugin-musepack',
+       type : 'feature',
+       value: 'enabled',
+       description : 'musepack player plugin')

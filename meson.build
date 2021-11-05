@@ -181,6 +181,7 @@ subdir('plugins/dumb')
 subdir('plugins/ffap')
 subdir('plugins/ffmpeg')
 subdir('plugins/gme')
+subdir('plugins/musepack')
 
 # VFS plugins
 subdir('plugins/mms')
