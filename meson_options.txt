@@ -122,3 +122,7 @@ option('plugin-psf',
        type : 'feature',
        value: 'enabled',
        description : 'PSF player, using Audio Overload SDK')
+option('plugin-sc68',
+       type : 'feature',
+       value: 'enabled',
+       description : 'sc68 Atari ST And Amiga player')
