@@ -126,3 +126,11 @@ option('plugin-sc68',
        type : 'feature',
        value: 'enabled',
        description : 'sc68 Atari ST And Amiga player')
+option('plugin-shellexec',
+       type : 'feature',
+       value: 'enabled',
+       description : 'shell commands plugin')
+option('plugin-shellexecui',
+       type : 'feature',
+       value: 'enabled',
+       description : 'GTK user interface for setting up shellexec plugin')

@@ -200,6 +200,8 @@ subdir('plugins/lastfm')
 subdir('plugins/m3u')
 subdir('plugins/notify')
 subdir('plugins/pltbrowser')
+subdir('plugins/shellexec')
+subdir('plugins/shellexecui')
 
 ## Main binary
 
