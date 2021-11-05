@@ -86,3 +86,7 @@ option('plugin-lastfm',
        type : 'feature',
        value: 'enabled',
        description : 'last.fm scrobbler')
+option('plugin-m3u',
+       type : 'feature',
+       value: 'enabled',
+       description : 'M3U and PLS playlist support')

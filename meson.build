@@ -187,6 +187,7 @@ subdir('plugins/gtkui')
 subdir('plugins/rg_scanner')
 subdir('plugins/hotkeys')
 subdir('plugins/lastfm')
+subdir('plugins/m3u')
 
 ## Main binary
 
