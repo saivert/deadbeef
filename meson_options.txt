@@ -138,3 +138,7 @@ option('plugin-shn',
        type : 'feature',
        value: 'enabled',
        description : 'SHN plugin based on xmms-shn')
+option('plugin-sid',
+       type : 'feature',
+       value: 'enabled',
+       description : 'SID player based on libsidplay2')
