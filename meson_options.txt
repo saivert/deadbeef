@@ -150,3 +150,7 @@ option('plugin-tta',
        type : 'feature',
        value: 'enabled',
        description : 'TTA player plugin')
+option('plugin-vfs-curl',
+       type : 'feature',
+       value: 'enabled',
+       description : 'HTTP streaming vfs plugin')

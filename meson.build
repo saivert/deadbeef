@@ -193,6 +193,7 @@ subdir('plugins/tta')
 
 # VFS plugins
 subdir('plugins/mms')
+subdir('plugins/vfs_curl')
 
 # GUI plugins
 subdir('plugins/gtkui')
