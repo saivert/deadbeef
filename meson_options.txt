@@ -90,3 +90,7 @@ option('plugin-m3u',
        type : 'feature',
        value: 'enabled',
        description : 'M3U and PLS playlist support')
+option('plugin-mms',
+       type : 'feature',
+       value: 'enabled',
+       description : 'mms streaming support')
