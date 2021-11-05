@@ -134,3 +134,7 @@ option('plugin-shellexecui',
        type : 'feature',
        value: 'enabled',
        description : 'GTK user interface for setting up shellexec plugin')
+option('plugin-shn',
+       type : 'feature',
+       value: 'enabled',
+       description : 'SHN plugin based on xmms-shn')

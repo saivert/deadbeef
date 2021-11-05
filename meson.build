@@ -186,6 +186,7 @@ subdir('plugins/gme')
 subdir('plugins/musepack')
 subdir('plugins/psf')
 subdir('plugins/sc68')
+subdir('plugins/shn')
 
 # VFS plugins
 subdir('plugins/mms')
