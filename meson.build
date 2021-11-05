@@ -163,6 +163,7 @@ subdir('plugins/pulse')
 # DSP plugins
 subdir('plugins/soundtouch')
 subdir('plugins/dsp_libsrc')
+subdir('plugins/mono2stereo')
 
 # Input plugins
 subdir('plugins/adplug')

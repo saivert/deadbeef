@@ -94,3 +94,7 @@ option('plugin-mms',
        type : 'feature',
        value: 'enabled',
        description : 'mms streaming support')
+option('plugin-mono2stereo',
+       type : 'feature',
+       value: 'enabled',
+       description : 'mono2stereo DSP plugin')
