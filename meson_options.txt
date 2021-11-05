@@ -102,3 +102,7 @@ option('plugin-musepack',
        type : 'feature',
        value: 'enabled',
        description : 'musepack player plugin')
+option('plugin-notify',
+       type : 'feature',
+       value: 'enabled',
+       description : 'notification-daemon support plugin')

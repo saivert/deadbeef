@@ -194,6 +194,7 @@ subdir('plugins/rg_scanner')
 subdir('plugins/hotkeys')
 subdir('plugins/lastfm')
 subdir('plugins/m3u')
+subdir('plugins/notify')
 
 ## Main binary
 
