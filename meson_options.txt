@@ -118,3 +118,7 @@ option('plugin-pltbrowser',
        type : 'feature',
        value: 'enabled',
        description : 'playlist browser gui plugin')
+option('plugin-psf',
+       type : 'feature',
+       value: 'enabled',
+       description : 'PSF player, using Audio Overload SDK')
