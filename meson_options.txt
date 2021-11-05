@@ -106,3 +106,7 @@ option('plugin-notify',
        type : 'feature',
        value: 'enabled',
        description : 'notification-daemon support plugin')
+option('plugin-nullout',
+       type : 'feature',
+       value: 'enabled',
+       description : 'NULL output')

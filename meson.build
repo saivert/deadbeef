@@ -159,6 +159,7 @@ curl_dep = dependency('libcurl', required: false)
 # Output plugins
 subdir('plugins/alsa')
 subdir('plugins/pulse')
+subdir('plugins/nullout')
 
 # DSP plugins
 subdir('plugins/soundtouch')
