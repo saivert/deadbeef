@@ -197,6 +197,7 @@ subdir('plugins/hotkeys')
 subdir('plugins/lastfm')
 subdir('plugins/m3u')
 subdir('plugins/notify')
+subdir('plugins/pltbrowser')
 
 ## Main binary
 

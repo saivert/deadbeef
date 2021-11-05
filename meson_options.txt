@@ -114,3 +114,7 @@ option('plugin-oss',
        type : 'feature',
        value: 'enabled',
        description : 'oss output plugin')
+option('plugin-pltbrowser',
+       type : 'feature',
+       value: 'enabled',
+       description : 'playlist browser gui plugin')
