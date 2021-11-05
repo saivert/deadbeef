@@ -154,3 +154,7 @@ option('plugin-vfs-curl',
        type : 'feature',
        value: 'enabled',
        description : 'HTTP streaming vfs plugin')
+option('plugin-vfs-zip',
+       type : 'feature',
+       value: 'enabled',
+       description : 'zip archive support')
