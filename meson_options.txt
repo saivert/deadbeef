@@ -110,3 +110,7 @@ option('plugin-nullout',
        type : 'feature',
        value: 'enabled',
        description : 'NULL output')
+option('plugin-oss',
+       type : 'feature',
+       value: 'enabled',
+       description : 'oss output plugin')
