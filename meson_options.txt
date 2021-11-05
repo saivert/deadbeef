@@ -142,3 +142,7 @@ option('plugin-sid',
        type : 'feature',
        value: 'enabled',
        description : 'SID player based on libsidplay2')
+option('plugin-supereq',
+       type : 'feature',
+       value: 'enabled',
+       description : 'Equalizer based on Super EQ library by Naoki Shibata')

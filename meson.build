@@ -166,6 +166,7 @@ subdir('plugins/oss')
 subdir('plugins/soundtouch')
 subdir('plugins/dsp_libsrc')
 subdir('plugins/mono2stereo')
+subdir('plugins/supereq')
 
 # Input plugins
 subdir('plugins/adplug')
