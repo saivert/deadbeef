@@ -170,3 +170,7 @@ option('plugin-wildmidi',
        type : 'feature',
        value: 'enabled',
        description : 'WildMidi player plugin')
+option('plugin-wma',
+       type : 'feature',
+       value: 'enabled',
+       description : 'WMA plugin')

@@ -193,6 +193,7 @@ subdir('plugins/tta')
 subdir('plugins/vtx')
 subdir('plugins/wavpack')
 subdir('plugins/wildmidi')
+subdir('plugins/wma')
 
 # VFS plugins
 subdir('plugins/mms')
