@@ -190,6 +190,7 @@ subdir('plugins/sc68')
 subdir('plugins/shn')
 subdir('plugins/sid')
 subdir('plugins/tta')
+subdir('plugins/vtx')
 
 # VFS plugins
 subdir('plugins/mms')
