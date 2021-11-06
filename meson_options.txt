@@ -182,3 +182,7 @@ option('plugin-artwork-imlib2',
        type : 'feature',
        value: 'enabled',
        description : 'use imlib2 in artwork plugin')
+option('plugin-converter',
+       type : 'feature',
+       value: 'enabled',
+       description : 'plugin for converting files to any formats')

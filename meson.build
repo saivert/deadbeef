@@ -213,6 +213,7 @@ subdir('plugins/pltbrowser')
 subdir('plugins/shellexec')
 subdir('plugins/shellexecui')
 subdir('plugins/artwork-legacy')
+subdir('plugins/converter')
 
 ## Main binary
 
