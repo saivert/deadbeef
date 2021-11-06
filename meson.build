@@ -212,6 +212,7 @@ subdir('plugins/notify')
 subdir('plugins/pltbrowser')
 subdir('plugins/shellexec')
 subdir('plugins/shellexecui')
+subdir('plugins/artwork-legacy')
 
 ## Main binary
 

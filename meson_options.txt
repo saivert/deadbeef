@@ -174,3 +174,11 @@ option('plugin-wma',
        type : 'feature',
        value: 'enabled',
        description : 'WMA plugin')
+option('plugin-artwork',
+       type : 'feature',
+       value: 'enabled',
+       description : 'album art loader plugin')
+option('plugin-artwork-imlib2',
+       type : 'feature',
+       value: 'enabled',
+       description : 'use imlib2 in artwork plugin')
