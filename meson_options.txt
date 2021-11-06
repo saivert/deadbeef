@@ -166,3 +166,7 @@ option('plugin-wavpack',
        type : 'feature',
        value: 'enabled',
        description : 'wavpack player')
+option('plugin-wildmidi',
+       type : 'feature',
+       value: 'enabled',
+       description : 'WildMidi player plugin')
