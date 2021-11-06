@@ -162,3 +162,7 @@ option('plugin-vtx',
        type : 'feature',
        value: 'enabled',
        description : 'vtx file player (ay8910/12 emulation)')
+option('plugin-wavpack',
+       type : 'feature',
+       value: 'enabled',
+       description : 'wavpack player')

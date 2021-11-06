@@ -191,6 +191,7 @@ subdir('plugins/shn')
 subdir('plugins/sid')
 subdir('plugins/tta')
 subdir('plugins/vtx')
+subdir('plugins/wavpack')
 
 # VFS plugins
 subdir('plugins/mms')
