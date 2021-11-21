@@ -507,6 +507,8 @@ enum {
     DB_EV_FOCUS_SELECTION = 24, 
 #endif
 
+    DB_EV_ACTION_INVOKED = 25,
+
     // -----------------
     // structured events
 
@@ -780,6 +782,29 @@ typedef enum {
 
 // forward decl for plugin struct
 struct DB_plugin_s;
+struct DB_plugin_action_s;
+
+// action contexts
+// since 1.5
+#if (DDB_API_LEVEL >= 5)
+#if (DDB_API_LEVEL >= 11)
+typedef enum ddb_action_context_e {
+#else
+enum {
+#endif
+    DDB_ACTION_CTX_MAIN,
+    DDB_ACTION_CTX_SELECTION,
+    // NOTE: starting with API 1.8, plugins should be using the
+    // action_get_playlist function for getting the playlist pointer.
+    DDB_ACTION_CTX_PLAYLIST,
+    DDB_ACTION_CTX_NOWPLAYING,
+    DDB_ACTION_CTX_COUNT
+#if (DDB_API_LEVEL >= 11)
+} ddb_action_context_t;
+#else
+};
+#endif
+#endif
 
 // player api definition
 typedef struct {
@@ -1639,6 +1664,9 @@ typedef struct {
         void *user_data
     );
 #endif
+    void (*invoke_action_by_name) (const char *name, ddb_action_context_t ctx);
+    void (*invoke_action) (struct DB_plugin_action_s *action, ddb_action_context_t ctx);
+
 } DB_functions_t;
 
 // NOTE: an item placement must be selected like this
@@ -1684,33 +1712,21 @@ enum {
 
 #if (DDB_API_LEVEL >= 10)
     // Don't allow running this action in playlist context, even if it supports multiple selection
-    DB_ACTION_EXCLUDE_FROM_CTX_PLAYLIST = 1 << 7
+    DB_ACTION_EXCLUDE_FROM_CTX_PLAYLIST = 1 << 7,
 #endif
+    DB_ACTION_STATEFUL = 1 << 8,
+    DB_ACTION_CHECKED = 1 << 9
 };
 
-// action contexts
-// since 1.5
-#if (DDB_API_LEVEL >= 5)
-#if (DDB_API_LEVEL >= 11)
-typedef enum ddb_action_context_e {
-#else
-enum {
-#endif
-    DDB_ACTION_CTX_MAIN,
-    DDB_ACTION_CTX_SELECTION,
-    // NOTE: starting with API 1.8, plugins should be using the
-    // action_get_playlist function for getting the playlist pointer.
-    DDB_ACTION_CTX_PLAYLIST,
-    DDB_ACTION_CTX_NOWPLAYING,
-    DDB_ACTION_CTX_COUNT
-#if (DDB_API_LEVEL >= 11)
-} ddb_action_context_t;
-#else
-};
-#endif
-#endif
 
-struct DB_plugin_action_s;
+
+#define DDB_ACTION_TOGGLE_CHECKED(action) { \
+    if (action->flags & DB_ACTION_CHECKED) { \
+        action->flags &= (~DB_ACTION_CHECKED); \
+    } else { \
+        action->flags |= DB_ACTION_CHECKED; \
+    } \
+    }
 
 typedef int (*DB_plugin_action_callback_t) (struct DB_plugin_action_s *action, void *userdata);
 

@@ -1343,6 +1343,23 @@ gtkui_mainwin_init(void) {
 
     mainwin = create_mainwin ();
 
+
+    // In order to test how this works with existing menu items.
+#if GTK_CHECK_VERSION(3,10,0)
+    {
+        GSignalMatchType mask = (GSignalMatchType)(G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DATA);
+        GtkWidget *follows_playback_menuitem = lookup_widget(mainwin, "cursor_follows_playback");
+
+        // Disable the normal event handler
+        g_signal_handlers_disconnect_matched(follows_playback_menuitem, mask,
+            g_signal_lookup("activate", G_OBJECT_TYPE(follows_playback_menuitem)), 0, NULL, NULL, NULL);
+
+        // Bind it to an action instead
+        gtk_actionable_set_action_name(GTK_ACTIONABLE(follows_playback_menuitem), "db.toggle_cursor_follows_playback");
+    }
+#endif
+
+
 #if GTK_CHECK_VERSION(3,10,0) && USE_GTK_APPLICATION
      // This must be called before window is shown
      gtk_application_add_window ( GTK_APPLICATION (gapp), GTK_WINDOW (mainwin));
@@ -1884,7 +1901,7 @@ static DB_plugin_action_t action_playback_order_linear = {
 static DB_plugin_action_t action_cursor_follows_playback = {
     .title = "Playback/Toggle Cursor Follows Playback",
     .name = "toggle_cursor_follows_playback",
-    .flags = DB_ACTION_COMMON,
+    .flags = DB_ACTION_COMMON|DB_ACTION_STATEFUL,
     .callback2 = action_cursor_follows_playback_handler,
     .next = &action_playback_order_linear
 };
@@ -1893,7 +1910,7 @@ static DB_plugin_action_t action_cursor_follows_playback = {
 static DB_plugin_action_t action_scroll_follows_playback = {
     .title = "Playback/Toggle Scroll Follows Playback",
     .name = "toggle_scroll_follows_playback",
-    .flags = DB_ACTION_COMMON,
+    .flags = DB_ACTION_COMMON|DB_ACTION_STATEFUL,
     .callback2 = action_scroll_follows_playback_handler,
     .next = &action_cursor_follows_playback
 };

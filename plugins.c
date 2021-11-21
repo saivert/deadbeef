@@ -529,7 +529,43 @@ static DB_functions_t deadbeef_api = {
 
     .plug_get_path_for_plugin_ptr = (const char* (*) (DB_plugin_t *plugin_ptr))plug_get_path_for_plugin_ptr,
     .plt_insert_dir3 = (ddb_playItem_t *(*) (int visibility, ddb_playlist_t *plt, ddb_playItem_t *after, const char *dirname, int *pabort, int (*callback)(ddb_insert_file_result_t result, const char *fname, void *user_data), void *user_data))plt_insert_dir3,
+    .invoke_action_by_name = invoke_action_by_name,
+    .invoke_action = invoke_action
 };
+
+void invoke_action_by_name(const char *name, ddb_action_context_t ctx)
+{
+    // add new
+    DB_plugin_t **plugins = deadbeef->plug_get_list();
+    int i;
+
+    for (i = 0; plugins[i]; i++)
+    {
+        if (!plugins[i]->get_actions)
+            continue;
+
+        DB_plugin_action_t *dbactions = plugins[i]->get_actions (NULL);
+        DB_plugin_action_t *dbaction;
+
+        for (dbaction = dbactions; dbaction; dbaction = dbaction->next)
+        {
+            char *tmp = NULL;
+
+            if (dbaction->callback2 && (!strcmp(dbaction->name, name))   /*  && dbaction->flags & DB_ACTION_COMMON */) {
+                dbaction->callback2(dbaction, ctx);
+                messagepump_push (DB_EV_ACTION_INVOKED, (uintptr_t) dbaction, 0, 0);
+                break;
+            }
+        }
+    }
+}
+
+
+void invoke_action(struct DB_plugin_action_s *action, ddb_action_context_t ctx)
+{
+    action->callback2(action, ctx);
+    messagepump_push (DB_EV_ACTION_INVOKED, (uintptr_t) action, 0, 0);
+}
 
 DB_functions_t *deadbeef = &deadbeef_api;
 

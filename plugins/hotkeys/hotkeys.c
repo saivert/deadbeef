@@ -193,7 +193,7 @@ cmd_invoke_plugin_command (DB_plugin_action_t *action, ddb_action_context_t ctx)
         }
     }
     else {
-        action->callback2 (action, ctx);
+        deadbeef->invoke_action (action, ctx);
     }
 }
 #endif

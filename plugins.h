@@ -178,4 +178,8 @@ plug_init_plugin (DB_plugin_t* (*loadfunc)(DB_functions_t *), void *handle);
 const char *
 plug_get_path_for_plugin_ptr (DB_plugin_t *plugin_ptr);
 
+void invoke_action_by_name(const char *name, ddb_action_context_t ctx);
+
+void invoke_action(struct DB_plugin_action_s *action, ddb_action_context_t ctx);
+
 #endif // __PLUGINS_H

@@ -44,7 +44,7 @@ menu_action_cb (void *ctx) {
         gtkui_exec_action_14 (action, -1);
     }
     else if (action->callback2) {
-        action->callback2 (action, DDB_ACTION_CTX_MAIN);
+        deadbeef->invoke_action (action,  DDB_ACTION_CTX_MAIN);
     }
     return FALSE;
 }

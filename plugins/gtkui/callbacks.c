@@ -222,7 +222,7 @@ on_mainwin_key_press_event             (GtkWidget       *widget,
         DB_plugin_action_t *act = ((DB_hotkeys_plugin_t *)hkplug)->get_action_for_keycombo (accel_key, accel_mods, 0, &ctx);
         if (act && act->callback2) {
             trace ("executing action %s in ctx %d\n", act->name, ctx);
-            act->callback2 (act, ctx);
+            deadbeef->invoke_action (act, ctx);
             return TRUE;
         }
         else if (act && act->callback) {
@@ -494,6 +494,7 @@ on_stop_after_album_activate           (GtkMenuItem     *menuitem,
     deadbeef->sendmessage (DB_EV_CONFIGCHANGED, 0, 0, 0);
 }
 
+// This callback function is no longer called
 void
 on_cursor_follows_playback_activate    (GtkMenuItem     *menuitem,
                                         gpointer         user_data)

@@ -464,10 +464,14 @@ action_scroll_follows_playback_handler_cb (void *data) {
 
 int
 action_scroll_follows_playback_handler (DB_plugin_action_t *act, ddb_action_context_t ctx) {
+    DDB_ACTION_TOGGLE_CHECKED(act);
+
     g_idle_add (action_scroll_follows_playback_handler_cb, NULL);
     return 0;
 }
 
+// This is no longer used
+#if 0
 gboolean
 action_cursor_follows_playback_handler_cb (void *data) {
     int val = 1 - deadbeef->conf_get_int ("playlist.scroll.cursorfollowplayback", 1);
@@ -475,10 +479,26 @@ action_cursor_follows_playback_handler_cb (void *data) {
     gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM (lookup_widget (mainwin, "cursor_follows_playback")), val);
     return FALSE;
 }
+#endif
 
 int
 action_cursor_follows_playback_handler (DB_plugin_action_t *act, ddb_action_context_t ctx) {
-    g_idle_add (action_cursor_follows_playback_handler_cb, NULL);
+    // For simple things we can just toggle state
+    // DDB_ACTION_TOGGLE_CHECKED(act);
+
+    // This action however needs to persist the state
+    // This is logic that previously existed both here (indirectly via g_idle_add callback) and
+    // in the menu item click handler. Now it only exists here.
+    int val = 1 - deadbeef->conf_get_int ("playlist.scroll.cursorfollowplayback", 1);
+    deadbeef->conf_set_int ("playlist.scroll.cursorfollowplayback", val);
+
+    if (val) {
+        act->flags |= DB_ACTION_CHECKED;
+    } else {
+        act->flags &= ~DB_ACTION_CHECKED;
+    }
+
+    // g_idle_add (action_cursor_follows_playback_handler_cb, NULL);
     return 0;
 }
 
