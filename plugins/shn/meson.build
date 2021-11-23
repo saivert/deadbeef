@@ -16,7 +16,7 @@ shn_sources = [
 
 has_shn = not get_option('plugin-shn').disabled()
 if has_shn
-  plugin_shn = shared_library('shn', shn_sources,
+  plugin_shn = shared_library('ddb_shn', shn_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,
