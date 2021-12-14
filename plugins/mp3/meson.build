@@ -17,7 +17,13 @@ mp3_cargs = []
 mp3_deps_list = []
 
 mad_dep = dependency('mad', required: false)
-mpg123_dep = dependency('mpg123', required: false)
+if not mad_dep.found()
+  mad_dep = cc.find_library('mad')
+endif
+mpg123_dep = dependency('libmpg123', required: false)
+if not mpg123_dep.found()
+  mpg123_dep = cc.find_library('libmpg123')
+endif
 
 has_mp3 = false
 
@@ -29,7 +35,7 @@ if mad_dep.found() and not get_option('plugin-mp3').disabled()
 endif
 
 if mpg123_dep.found() and not get_option('plugin-mp3').disabled()
-  mp3_sources += mpg123_sources
+  mp3_sources += mp3_mpg123_sources
   mp3_libs_list += 'libmpg123'
   mp3_cargs += '-DUSE_LIBMPG123=1'
   has_mp3 = true
