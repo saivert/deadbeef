@@ -1,188 +1,188 @@
 option('plugin-alsa',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'ALSA plugin')
 option('plugin-pulse',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'PulseAudio plugin')
 option('plugin-adplug',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'Adplug plugin')
 option('plugin-flac',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'FLAC plugin')
 option('plugin-alac',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'ALAC plugin')
 option('plugin-dca',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'libdca (DTS Audio) plugin')
 option('plugin-dsp_libsrc',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'dsp_libsrc (libsamplerate) plugin')
 option('plugin-mp3',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'MP3 plugin')
 option('plugin-dumb',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'DUMB module plugin, for MOD, S3M, etc')
 option('plugin-aac',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'AAC plugin (using FAAD2)')
 option('plugin-sndfile',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'sndfile plugin')
 option('plugin-soundtouch',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'soundtouch plugin')
 option('plugin-opus',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'OPUS plugin')
 option('plugin-vorbis',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'Vorbis plugin')
 option('plugin-gtk3',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'GTK3 GUI plugin')
 option('plugin-gtk2',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'GTK2 GUI plugin')
 option('plugin-rg_scanner',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'Plugin for ReplayGain scanner support')
 option('plugin-ffap',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'Monkey\'s audio (APE) decoder')
 option('plugin-ffmpeg',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'ffmpeg codecs')
 option('plugin-gme',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'chiptune music player based on GME')
 option('plugin-hotkeys',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'Local and global hotkeys support')
 option('plugin-lastfm',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'last.fm scrobbler')
 option('plugin-m3u',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'M3U and PLS playlist support')
 option('plugin-mms',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'mms streaming support')
 option('plugin-mono2stereo',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'mono2stereo DSP plugin')
 option('plugin-musepack',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'musepack player plugin')
 option('plugin-notify',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'notification-daemon support plugin')
 option('plugin-nullout',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'NULL output')
 option('plugin-oss',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'oss output plugin')
 option('plugin-pltbrowser',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'playlist browser gui plugin')
 option('plugin-psf',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'PSF player, using Audio Overload SDK')
 option('plugin-sc68',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'sc68 Atari ST And Amiga player')
 option('plugin-shellexec',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'shell commands plugin')
 option('plugin-shellexecui',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'GTK user interface for setting up shellexec plugin')
 option('plugin-shn',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'SHN plugin based on xmms-shn')
 option('plugin-sid',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'SID player based on libsidplay2')
 option('plugin-supereq',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'Equalizer based on Super EQ library by Naoki Shibata')
 option('plugin-tta',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'TTA player plugin')
 option('plugin-vfs-curl',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'HTTP streaming vfs plugin')
 option('plugin-vfs-zip',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'zip archive support')
 option('plugin-vtx',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'vtx file player (ay8910/12 emulation)')
 option('plugin-wavpack',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'wavpack player')
 option('plugin-wildmidi',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'WildMidi player plugin')
 option('plugin-wma',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'WMA plugin')
 option('plugin-artwork',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'album art loader plugin')
 option('plugin-artwork-imlib2',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'use imlib2 in artwork plugin')
 option('plugin-converter',
        type : 'feature',
-       value: 'enabled',
+       value: 'auto',
        description : 'plugin for converting files to any formats')
