@@ -49,13 +49,13 @@ gtk23ui_sources = [
   'medialib/medialibwidget.c',
   'medialib/medialibmanager.c',
   '../../analyzer/analyzer.c',
-  '../../scope/scope.c'
+  '../../scope/scope.c',
+  'plmenu.c',
 ]
 
 install_headers(['gtkui_api.h'], subdir : 'deadbeef')
 
-need_gtk3ui = get_option('plugin-gtk3').enabled()
-gtk3_dep = dependency('gtk+-3.0', version: '>=3.12.0', required: need_gtk3ui)
+gtk3_dep = dependency('gtk+-3.0', version: '>=3.12.0', required: get_option('plugin-gtk3'))
 
 if gtk3_dep.found()
 
@@ -67,7 +67,7 @@ if gtk3_dep.found()
     c_name: 'gtkui'
   )
 
-  summary({'GTK3 GUI': need_gtk3ui}, bool_yn: true, section: 'Plugins')
+  summary({'GTK3 GUI': gtk3_dep.found()}, bool_yn: true, section: 'Plugins')
 
   plugin_gtk3ui = shared_library('ddb_gui_GTK3', gtk23ui_sources + gtk3ui_resources,
     name_prefix: '',
@@ -80,12 +80,11 @@ if gtk3_dep.found()
 
 endif
 
-need_gtk2ui = get_option('plugin-gtk2').enabled()
-gtk2_dep = dependency('gtk+-2.0', required: need_gtk2ui)
+gtk2_dep = dependency('gtk+-2.0', required: get_option('plugin-gtk2'))
 
 if gtk2_dep.found()
 
-  summary({'GTK2 GUI': need_gtk3ui}, bool_yn: true, section: 'Plugins')
+  summary({'GTK2 GUI': gtk2_dep.found()}, bool_yn: true, section: 'Plugins')
 
   plugin_gtk2ui = shared_library('ddb_gui_GTK2', gtk23ui_sources,
     name_prefix: '',
