@@ -116,6 +116,11 @@ dumb_cppargs = [
   '-fno-unwind-tables'
 ]
 
+if cc.has_header('alloca.h')
+  dumb_cargs += '-DHAVE_ALLOCA_H'
+  dumb_cppargs += '-DHAVE_ALLOCA_H'
+endif
+
 if have_sse2
   dumb_cppargs += ['-DHAVE_SSE2', sse2_args]
   dumb_cargs += ['-DHAVE_SSE2', sse2_args]
