@@ -1,7 +1,7 @@
 project('deadbeef', ['c', 'cpp'],
   version : 'devel',
   license : [ 'GPL-2.0-only' ],
-  meson_version : '>= 0.54.0',
+  meson_version : '>= 0.53.0',
   default_options : [ 'warning_level=0',
                       'c_std=c99',
                       'b_pie=true',
