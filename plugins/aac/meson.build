@@ -7,7 +7,7 @@ aac_sources = [
 
 faad2_dep = dependency('faad2', required: get_option('plugin-aac'))
 if not faad2_dep.found()
-  faad2_dep = cc.find_library('faad2', required: get_option('plugin-aac'))
+  faad2_dep = cc.find_library('faad', required: get_option('plugin-aac'))
 endif
 
 has_aac = faad2_dep.found()
