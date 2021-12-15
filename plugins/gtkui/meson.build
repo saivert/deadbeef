@@ -67,8 +67,6 @@ if gtk3_dep.found()
     c_name: 'gtkui'
   )
 
-  summary({'GTK3 GUI': gtk3_dep.found()}, bool_yn: true, section: 'Plugins')
-
   plugin_gtk3ui = shared_library('ddb_gui_GTK3', gtk23ui_sources + gtk3ui_resources,
     name_prefix: '',
     install : true,
@@ -80,11 +78,11 @@ if gtk3_dep.found()
 
 endif
 
+summary({'GTK3 GUI': gtk3_dep.found()}, bool_yn: true, section: 'Plugins')
+
 gtk2_dep = dependency('gtk+-2.0', required: get_option('plugin-gtk2'))
 
 if gtk2_dep.found()
-
-  summary({'GTK2 GUI': gtk2_dep.found()}, bool_yn: true, section: 'Plugins')
 
   plugin_gtk2ui = shared_library('ddb_gui_GTK2', gtk23ui_sources,
     name_prefix: '',
@@ -96,3 +94,5 @@ if gtk2_dep.found()
   )
 
 endif
+
+summary({'GTK2 GUI': gtk2_dep.found()}, bool_yn: true, section: 'Plugins')
