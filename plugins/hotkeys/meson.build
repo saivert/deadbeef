@@ -7,7 +7,7 @@ hotkeys_sources = [
 
 
 if host_machine.system() != 'windows'
-  xlib_dep = dependency('X11', required: get_option('plugin-hotkeys'))
+  xlib_dep = dependency('x11', required: get_option('plugin-hotkeys'))
   has_hotkeys = xlib_dep.found()
 else
   xlib_dep = []
