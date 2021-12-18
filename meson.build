@@ -104,9 +104,12 @@ if cc.has_function('log2', dependencies: [m_dep])
   cdata.set('HAVE_LOG2', 1)
 endif
 
+APE_USE_YASM=false
+
 if host_machine.cpu() == 'x86_64' and host_machine.system() == 'linux'
   cdata.set('ARCH_X86_64', '1')
   YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_64', '-m', 'amd64']
+  APE_USE_YASM=true
 else
   error('Unsupported platform!')
 endif

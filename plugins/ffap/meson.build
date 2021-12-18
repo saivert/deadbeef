@@ -6,7 +6,7 @@ ffap_cargs = []
 
 yasm = find_program('yasm', required: false)
 
-if yasm.found()
+if yasm.found() and APE_USE_YASM
 
   gen = generator(yasm,
     output  : '@BASENAME@.o',
@@ -15,12 +15,9 @@ if yasm.found()
   yasmobjs = gen.process(['dsputil_yasm.asm'])
 
   ffap_sources = [yasmobjs] + ffap_sources
-  ffap_cargs += '-DAPE_USE_YASM'
-endif
-
-if have_sse2
   ffap_cargs += ['-DHAVE_SSE2']
 endif
+
 
 has_ffap = not get_option('plugin-ffap').disabled()
 
