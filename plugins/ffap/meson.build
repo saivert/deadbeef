@@ -2,7 +2,9 @@ ffap_sources = [
   'ffap.c'
 ]
 
-yasm = find_program('yasm')
+ffap_cargs = []
+
+yasm = find_program('yasm', required: false)
 
 if yasm.found()
 
@@ -13,6 +15,11 @@ if yasm.found()
   yasmobjs = gen.process(['dsputil_yasm.asm'])
 
   ffap_sources = [yasmobjs] + ffap_sources
+  ffap_cargs += '-DAPE_USE_YASM'
+endif
+
+if have_sse2
+  ffap_cargs += ['-DHAVE_SSE2']
 endif
 
 has_ffap = not get_option('plugin-ffap').disabled()
@@ -22,7 +29,7 @@ if has_ffap
   name_prefix: '',
   install : true,
   install_dir: plugindir,
-  c_args: ['-DHAVE_SSE2'],
+  c_args: ffap_cargs,
   include_directories: deadbeef_inc,
   dependencies : [m_dep],
   )
