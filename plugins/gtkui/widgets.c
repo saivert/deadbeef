@@ -4562,7 +4562,7 @@ ddb_gtkui_widget_t *
 w_volumebar_create (void) {
     w_volumebar_t *w = malloc (sizeof (w_volumebar_t));
     memset (w, 0, sizeof (w_volumebar_t));
-    w->base.widget = gtk_event_box_new ();
+    w->base.widget = gtk_hbox_new(FALSE, 0);
     w->base.message = w_volumebar_message;
     w->base.initmenu = w_volumebar_initmenu;
     w->exapi._size = sizeof (ddb_gtkui_widget_extended_api_t);
@@ -4571,13 +4571,10 @@ w_volumebar_create (void) {
     w->exapi.free_serialized_keyvalues = w_volumebar_free_serialized_keyvalues;
 
     w->volumebar = ddb_volumebar_new ();
-#if GTK_CHECK_VERSION(3,0,0)
-    gtk_widget_set_events (GTK_WIDGET (w->base.widget), gtk_widget_get_events (GTK_WIDGET (w->base.widget)) | GDK_SCROLL_MASK);
-#endif
-    ddb_volumebar_init_signals (DDB_VOLUMEBAR (w->volumebar), w->base.widget);
-    g_signal_connect ((gpointer) w->base.widget, "button_press_event", G_CALLBACK (on_volumebar_evbox_button_press_event), w);
+    g_signal_connect_after ((gpointer) w->volumebar, "button_press_event", G_CALLBACK (on_volumebar_evbox_button_press_event), w);
     gtk_widget_show (w->volumebar);
-    gtk_widget_set_size_request (w->base.widget, 70, -1);
+    gtk_widget_show (w->base.widget);
+    gtk_widget_set_size_request (w->volumebar, 70, -1);
     gtk_container_add (GTK_CONTAINER (w->base.widget), w->volumebar);
     w_override_signals (w->base.widget, w);
     return (ddb_gtkui_widget_t*)w;

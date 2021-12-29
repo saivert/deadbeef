@@ -36,7 +36,7 @@ struct _DdbVolumeBarPrivate
     DdbVolumeBarScale scale;
 };
 
-G_DEFINE_TYPE (DdbVolumeBar, ddb_volumebar, GTK_TYPE_WIDGET);
+G_DEFINE_TYPE (DdbVolumeBar, ddb_volumebar, GTK_TYPE_EVENT_BOX);
 
 #define DDB_VOLUMEBAR_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE ((obj), \
             DDB_TYPE_VOLUMEBAR, DdbVolumeBarPrivate))
@@ -47,47 +47,6 @@ enum
     PROP_0,
     PROP_SCALE_MODE,
 };
-
-static void
-ddb_volumebar_send_configure (DdbVolumeBar *darea)
-{
-  GtkWidget *widget;
-  GdkEvent *event = gdk_event_new (GDK_CONFIGURE);
-
-  widget = GTK_WIDGET (darea);
-
-  event->configure.window = g_object_ref (gtk_widget_get_window(widget));
-  event->configure.send_event = TRUE;
-  GtkAllocation a;
-  gtk_widget_get_allocation (widget, &a);
-  event->configure.x = a.x;
-  event->configure.y = a.y;
-  event->configure.width = a.width;
-  event->configure.height = a.height;
-  
-  gtk_widget_event (widget, event);
-  gdk_event_free (event);
-}
-
-static void
-ddb_volumebar_size_allocate (GtkWidget     *widget,
-				GtkAllocation *allocation)
-{
-  g_return_if_fail (DDB_IS_VOLUMEBAR (widget));
-  g_return_if_fail (allocation != NULL);
-
-  gtk_widget_set_allocation (widget, allocation);
-
-  if (gtk_widget_get_realized (widget))
-    {
-      if (gtk_widget_get_has_window (widget))
-        gdk_window_move_resize (gtk_widget_get_window(widget),
-                                allocation->x, allocation->y,
-                                allocation->width, allocation->height);
-
-      ddb_volumebar_send_configure (DDB_VOLUMEBAR (widget));
-    }
-}
 
 gboolean
 on_volumebar_draw (GtkWidget    *widget, cairo_t *cr);
@@ -179,7 +138,6 @@ ddb_volumebar_class_init(DdbVolumeBarClass *class)
 {
   GObjectClass *gobject_class;
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
-  widget_class->size_allocate = ddb_volumebar_size_allocate;
 #if GTK_CHECK_VERSION(3,0,0)
   widget_class->draw = on_volumebar_draw;
 #else
@@ -220,6 +178,8 @@ ddb_volumebar_init(DdbVolumeBar *volumebar)
     snprintf (s, sizeof (s), "%s%ddB", db < 0 ? "" : "+", db);
     gtk_widget_set_tooltip_text (GTK_WIDGET (volumebar), s);
     gtk_widget_set_has_window (GTK_WIDGET (volumebar), FALSE);
+    gtk_widget_add_events (GTK_WIDGET (volumebar), GDK_SCROLL_MASK);
+    
     volumebar->priv = DDB_VOLUMEBAR_GET_PRIVATE (volumebar);
     volumebar->priv->scale = DDB_VOLUMEBAR_SCALE_DB;
 }
@@ -333,7 +293,7 @@ on_volumebar_motion_notify_event       (GtkWidget       *widget,
 
         if (scale == DDB_VOLUMEBAR_SCALE_DB) {
             float range = -deadbeef->volume_get_min_db ();
-            float volume = (event->x - a.x) / a.width * range - range;
+            float volume = (event->x) / a.width * range - range;
             if (volume > 0) {
                 volume = 0;
             }
@@ -342,7 +302,7 @@ on_volumebar_motion_notify_event       (GtkWidget       *widget,
             }
             deadbeef->volume_set_db (volume);
         } else {
-            float volume = (event->x - a.x) / a.width;
+            float volume = (event->x) / a.width;
             if (scale == DDB_VOLUMEBAR_SCALE_CUBIC) {
                 volume = volume * volume * volume;
             }
@@ -364,7 +324,7 @@ on_volumebar_button_press_event        (GtkWidget       *widget,
 
         if (scale == DDB_VOLUMEBAR_SCALE_DB) {
             float range = -deadbeef->volume_get_min_db ();
-            float volume = (event->x - a.x) / a.width * range - range;
+            float volume = (event->x) / a.width * range - range;
             if (volume > 0) {
                 volume = 0;
             }
@@ -373,7 +333,7 @@ on_volumebar_button_press_event        (GtkWidget       *widget,
             }
             deadbeef->volume_set_db (volume);
         } else {
-            float volume = (event->x - a.x) / a.width;
+            float volume = (event->x) / a.width;
             if (scale == DDB_VOLUMEBAR_SCALE_CUBIC) {
                 volume = volume * volume * volume;
             }
@@ -451,53 +411,6 @@ gboolean
 on_volumebar_configure_event (GtkWidget *widget, GdkEventConfigure *event) {
     gtkui_init_theme_colors ();
     return FALSE;
-}
-
-static gboolean
-on_evbox_button_press_event          (GtkWidget       *widget,
-                                        GdkEventButton  *event,
-                                        gpointer         user_data)
-{
-    return gtk_widget_event (GTK_WIDGET (user_data), (GdkEvent *)event);
-}
-
-static gboolean
-on_evbox_button_release_event        (GtkWidget       *widget,
-                                        GdkEventButton  *event,
-                                        gpointer         user_data)
-{
-    return gtk_widget_event (GTK_WIDGET (user_data), (GdkEvent *)event);
-}
-
-static gboolean
-on_evbox_motion_notify_event         (GtkWidget       *widget,
-                                        GdkEventMotion  *event,
-                                        gpointer         user_data)
-{
-    return gtk_widget_event (GTK_WIDGET (user_data), (GdkEvent *)event);
-}
-
-static gboolean
-on_evbox_scroll_event                (GtkWidget       *widget,
-                                        GdkEvent        *event,
-                                        gpointer         user_data) {
-    return gtk_widget_event (GTK_WIDGET (user_data), (GdkEvent *)event);
-}
-
-void
-ddb_volumebar_init_signals (DdbVolumeBar *vb, GtkWidget *evbox) {
-  g_signal_connect ((gpointer) evbox, "button_press_event",
-                    G_CALLBACK (on_evbox_button_press_event),
-                    vb);
-  g_signal_connect ((gpointer) evbox, "button_release_event",
-                    G_CALLBACK (on_evbox_button_release_event),
-                    vb);
-  g_signal_connect ((gpointer) evbox, "scroll_event",
-                    G_CALLBACK (on_evbox_scroll_event),
-                    vb);
-  g_signal_connect ((gpointer) evbox, "motion_notify_event",
-                    G_CALLBACK (on_evbox_motion_notify_event),
-                    vb);
 }
 
 DdbVolumeBarScale

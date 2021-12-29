@@ -50,13 +50,13 @@ typedef enum {
 } DdbVolumeBarScale;
 
 struct _DdbVolumeBar {
-    GtkWidget parent;
+    GtkEventBox parent;
     int show_dbs;
     DdbVolumeBarPrivate *priv;
 };
 
 struct _DdbVolumeBarClass {
-  GtkWidgetClass parent_class;
+  GtkEventBoxClass parent_class;
 };
 
 GType ddb_volumebar_get_type(void) G_GNUC_CONST;
