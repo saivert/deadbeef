@@ -39,11 +39,9 @@ G_BEGIN_DECLS
 
 typedef struct _DdbSeekbar DdbSeekbar;
 typedef struct _DdbSeekbarClass DdbSeekbarClass;
-typedef struct _DdbSeekbarPrivate DdbSeekbarPrivate;
 
 struct _DdbSeekbar {
-	GtkWidget parent_instance;
-	DdbSeekbarPrivate * priv;
+	GtkEventBox parent_instance;
     int seekbar_moving;
     float seekbar_moved;
     float seektime_alpha;
@@ -53,7 +51,7 @@ struct _DdbSeekbar {
 };
 
 struct _DdbSeekbarClass {
-	GtkWidgetClass parent_class;
+	GtkEventBoxClass parent_class;
 };
 
 

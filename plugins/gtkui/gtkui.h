@@ -104,17 +104,6 @@ gtkui_copy_playlist (ddb_playlist_t *plt);
 void
 seekbar_draw (GtkWidget *widget, cairo_t *cr);
 
-gboolean
-on_seekbar_button_press_event          (GtkWidget       *widget,
-                                        GdkEventButton  *event);
-
-gboolean
-on_seekbar_button_release_event        (GtkWidget       *widget,
-                                        GdkEventButton  *event);
-
-gboolean
-on_seekbar_motion_notify_event         (GtkWidget       *widget,
-                                        GdkEventMotion  *event);
 
 void
 gtkui_set_titlebar (DB_playItem_t *it);

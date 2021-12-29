@@ -4292,17 +4292,13 @@ ddb_gtkui_widget_t *
 w_seekbar_create (void) {
     w_seekbar_t *w = malloc (sizeof (w_seekbar_t));
     memset (w, 0, sizeof (w_seekbar_t));
-    w->base.widget = gtk_event_box_new ();
-#if GTK_CHECK_VERSION(3,0,0)
-    gtk_widget_add_events (GTK_WIDGET (w->base.widget), GDK_SCROLL_MASK);
-#endif
+    w->base.widget = gtk_hbox_new(FALSE, 0);
     w->base.message = w_seekbar_message;
     w->base.destroy = w_seekbar_destroy;
     w->base.init = w_seekbar_init;
     w->seekbar = ddb_seekbar_new ();
-    gtk_widget_set_size_request (w->base.widget, 20, 16);
+    gtk_widget_set_size_request (w->seekbar, 20, 16);
     w->last_songpos = -1;
-    ddb_seekbar_init_signals (DDB_SEEKBAR (w->seekbar), w->base.widget);
     gtk_widget_show (w->seekbar);
     gtk_container_add (GTK_CONTAINER (w->base.widget), w->seekbar);
     w_override_signals (w->base.widget, w);
