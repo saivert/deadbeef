@@ -1716,6 +1716,14 @@ gtkui_show_info_window (const char *fname, const char *title, GtkWidget **pwindo
     if (*pwindow) {
         return;
     }
+
+    #if GTK_CHECK_VERSION(3, 10, 0) && USE_GTK_APPLICATION
+    GNotification *not = g_notification_new("DeadBeef");
+    g_notification_set_body (not, "This is a test");
+    g_application_send_notification (G_APPLICATION (gapp), "lol", not);
+    #endif
+
+
     GtkWidget *widget = *pwindow = create_helpwindow ();
     g_object_set_data (G_OBJECT (widget), "pointer", pwindow);
     g_signal_connect (widget, "delete_event", G_CALLBACK (on_gtkui_info_window_delete), pwindow);
