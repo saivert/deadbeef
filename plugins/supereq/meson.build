@@ -1,14 +1,14 @@
 supereq_sources = [
   'supereq.c',
-  'Equ.cpp',
-  'Equ.h',
-  'Fftsg_fl.c',
-  'paramlist.hpp'
+  'libsupereq/Equ.cpp',
+  'libsupereq/Equ.h',
+  'libsupereq/Fftsg_fl.c',
+  'libsupereq/paramlist.hpp'
 ]
 
 has_supereq = not get_option('plugin-supereq').disabled()
 if has_supereq
-  plugin_supereq = shared_library('supereq', supereq_sources,
+  shared_library('supereq', supereq_sources,
   name_prefix: '',
   install : true,
   c_args: ['-DUSE_OOURA'],
