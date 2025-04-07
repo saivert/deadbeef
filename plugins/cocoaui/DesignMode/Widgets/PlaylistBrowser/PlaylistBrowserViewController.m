@@ -2,11 +2,11 @@
 //  PlaylistBrowserViewController.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 21/11/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 21/11/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #import "NSMenu+ActionItems.h"
 #import "PlaylistBrowserViewController.h"
 #import "PlaylistContextMenu.h"
@@ -59,7 +59,7 @@ extern DB_functions_t *deadbeef;
 
 - (void)updateSelectedRow {
     int curr = deadbeef->plt_get_curr_idx();
-    [self.tableView selectRow:curr byExtendingSelection:NO];
+    [self.tableView selectRowIndexes:[[NSIndexSet alloc] initWithIndex:curr] byExtendingSelection:NO];
 }
 
 - (void)reloadData {
@@ -157,14 +157,8 @@ extern DB_functions_t *deadbeef;
 #pragma mark -
 
 - (IBAction)tableViewAction:(id)sender {
-    ddb_playlist_t *plt = deadbeef->plt_get_curr ();
-    int cur = deadbeef->plt_get_cursor (plt, PL_MAIN);
-    deadbeef->plt_unref (plt);
-
-    if (cur == -1) {
-        cur = 0;
-    }
-    deadbeef->sendmessage (DB_EV_PLAY_NUM, 0, cur, 0);
+    deadbeef->sendmessage (DB_EV_STOP, 0, 0, 0);
+    deadbeef->sendmessage (DB_EV_NEXT, 0, 0, 0);
 }
 
 - (void)menuNeedsUpdate:(NSMenu *)menu {
@@ -253,13 +247,13 @@ extern DB_functions_t *deadbeef;
         else {
             snprintf (title, sizeof (title), "%s", title_temp);
         }
-        view.textField.stringValue = [NSString stringWithUTF8String:title];
+        view.textField.stringValue = @(title);
     }
     else if ([tableColumn.identifier isEqualToString:@"Items"]) {
         char num_items_str[100];
         int num_items = deadbeef->plt_get_item_count (plt, PL_MAIN);
         snprintf (num_items_str, sizeof (num_items_str), "%d", num_items);
-        view.textField.stringValue = [NSString stringWithUTF8String:num_items_str];
+        view.textField.stringValue = @(num_items_str);
     }
     else if ([tableColumn.identifier isEqualToString:@"Duration"]) {
         float pl_totaltime = deadbeef->plt_get_totaltime (plt);
@@ -275,7 +269,7 @@ extern DB_functions_t *deadbeef;
         else {
             snprintf (totaltime_str, sizeof (totaltime_str), "%dd %d:%02d:%02d", daystotal, hourtotal, mintotal, sectotal);
         }
-        view.textField.stringValue = [NSString stringWithUTF8String:totaltime_str];
+        view.textField.stringValue = @(totaltime_str);
     }
     else {
         view.textField.stringValue = @"";
@@ -339,7 +333,7 @@ extern DB_functions_t *deadbeef;
     if (plt == NULL) {
         return;
     }
-    deadbeef->plt_set_title (plt, [name UTF8String]);
+    deadbeef->plt_set_title (plt, name.UTF8String);
     deadbeef->plt_save_config (plt);
     deadbeef->plt_unref (plt);
 }
@@ -347,8 +341,10 @@ extern DB_functions_t *deadbeef;
 #pragma mark - DeletePlaylistConfirmationControllerDelegate
 
 - (void)deletePlaylistDone:(DeletePlaylistConfirmationController *)controller {
-    deadbeef->plt_remove ((int)self.clickedRowIndex);
-    self.clickedRowIndex = -1;
+    if (self.clickedRowIndex != -1) {
+        deadbeef->plt_remove ((int)self.clickedRowIndex);
+        self.clickedRowIndex = -1;
+    }
 }
 
 #pragma mark - TrackContextMenuDelegate

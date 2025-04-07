@@ -7,7 +7,8 @@
 aclocal.m4
 configure
 plugins/*/Makefile
-intl/Makefile
+intl
+intltool-*
 icons/Makefile
 pixmaps/Makefile
 Makefile.in
@@ -64,7 +65,7 @@ po/quot.sed
 po/remove-potcdate.sin
 po/deadbeef.pot
 compile
-deadbeef
+src/deadbeef
 valgrind.out
 *.diff
 portable
@@ -93,3 +94,7 @@ Makefile
 docker-artifacts
 compile_commands.json
 plugins/gtkui/gtkui-gresources.c
+build/
+dist/
+testbuild/
+.DS_Store

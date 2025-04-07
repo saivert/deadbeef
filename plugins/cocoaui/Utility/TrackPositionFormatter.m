@@ -2,12 +2,12 @@
 //  TrackPositionFormatter.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 11/07/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 11/07/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "TrackPositionFormatter.h"
-#import "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -15,7 +15,7 @@ extern DB_functions_t *deadbeef;
 
 - (NSString *)stringForObjectValue:(NSControl *)obj {
 
-    DB_playItem_t *track = deadbeef->streamer_get_playing_track ();
+    DB_playItem_t *track = deadbeef->streamer_get_playing_track_safe ();
     if (!track) {
         return @"--:--:--";
     }

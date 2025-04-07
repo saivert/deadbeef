@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 #ifndef __SEARCH_H
 #define __SEARCH_H
 
-#include "ddblistview.h"
+#include "playlist/ddblistview.h"
 
 void
 search_start (void);
@@ -37,5 +37,8 @@ search_message (uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2);
 
 void
 search_playlist_init (GtkWidget *widget);
+
+void
+search_submit_refresh (void);
 
 #endif // __SEARCH_H

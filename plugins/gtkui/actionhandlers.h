@@ -1,6 +1,6 @@
 /*
     gtkui hotkey handlers
-    Copyright (C) 2009-2013 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2013 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -217,5 +217,11 @@ action_playback_loop_cycle_handler(DB_plugin_action_t *act, ddb_action_context_t
 
 int
 action_toggle_logwindow_handler(DB_plugin_action_t *act, ddb_action_context_t ctx);
+
+int
+action_undo(DB_plugin_action_t *act, ddb_action_context_t ctx);
+
+int
+action_redo(DB_plugin_action_t *act, ddb_action_context_t ctx);
 
 #endif

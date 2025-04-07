@@ -2,8 +2,8 @@
 //  LyricsWidget.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 21/11/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 21/11/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "LyricsViewController.h"
@@ -29,8 +29,7 @@ extern DB_functions_t *deadbeef;
         return nil;
     }
 
-    self.viewController = [[LyricsViewController alloc] initWithNibName:@"LyricsViewController" bundle:nil];
-
+    self.viewController = [LyricsViewController new]; 
     NSView *view = self.viewController.view;
 
     [self.topLevelView addSubview:view];

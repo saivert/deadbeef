@@ -2,8 +2,8 @@
 //  PlaylistWithTabsWidget.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 20/11/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 20/11/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "PlaylistWithTabsWidget.h"
@@ -29,14 +29,12 @@
         return nil;
     }
 
-    self.tabStripViewViewController = [[DdbTabStripViewController alloc] initWithNibName:@"DdbTabStripViewController" bundle:nil];
+    self.tabStripViewViewController = [DdbTabStripViewController new];
 
     NSView *tabStripView = self.tabStripViewViewController.view;
 
     self.viewController = [PlaylistViewController new];
-    PlaylistView *playlistView = [PlaylistView new];
-    self.viewController.view = playlistView;
-    [self.viewController awakeFromNib];
+    PlaylistView *playlistView = (PlaylistView *)self.viewController.view;
 
     [self.topLevelView addSubview:self.tabStripViewViewController.view];
     [self.topLevelView addSubview:playlistView];

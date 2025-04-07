@@ -1,6 +1,6 @@
 /*
  DeaDBeeF -- the music player
- Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+ Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
  This software is provided 'as-is', without any express or implied
  warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,7 @@
 #ifndef ____trkproperties_shared__
 #define ____trkproperties_shared__
 
-#include "../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern const char *trkproperties_types[];
 extern const char *trkproperties_hc_props[];

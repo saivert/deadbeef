@@ -1,6 +1,6 @@
 /*
  DeaDBeeF -- the music player
- Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+ Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
  This software is provided 'as-is', without any express or implied
  warranty.  In no event will the authors be held liable for any damages
@@ -25,8 +25,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include "trkproperties_shared.h"
-#include "../deadbeef.h"
-#include "../utf8.h"
+#include <deadbeef/deadbeef.h>
+#include "../src/utf8.h"
 
 extern DB_functions_t *deadbeef;
 
@@ -117,6 +117,11 @@ trkproperties_free_track_list (DB_playItem_t ***_tracks, int *_numtracks) {
 
 void
 trkproperties_build_track_list_for_ctx (ddb_playlist_t *plt, int ctx, DB_playItem_t ***_tracks, int *_numtracks) {
+    DB_playItem_t *playing_track = NULL;
+    if (ctx == DDB_ACTION_CTX_NOWPLAYING) {
+        playing_track = deadbeef->streamer_get_playing_track_safe ();
+    }
+
     deadbeef->pl_lock ();
 
     int num = 0;
@@ -131,6 +136,9 @@ trkproperties_build_track_list_for_ctx (ddb_playlist_t *plt, int ctx, DB_playIte
     }
     if (num <= 0) {
         deadbeef->pl_unlock ();
+        if (playing_track) {
+            deadbeef->pl_item_unref (playing_track);
+        }
         return;
     }
 
@@ -138,18 +146,21 @@ trkproperties_build_track_list_for_ctx (ddb_playlist_t *plt, int ctx, DB_playIte
     if (!tracks) {
         fprintf (stderr, "trkproperties: failed to alloc %d bytes to store selected tracks\n", (int)(num * sizeof (void *)));
         deadbeef->pl_unlock ();
+        if (playing_track) {
+            deadbeef->pl_item_unref (playing_track);
+        }
         return;
     }
 
     if (ctx == DDB_ACTION_CTX_NOWPLAYING) {
-        DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
-        if (!it) {
+        if (!playing_track) {
             free (tracks);
             tracks = NULL;
             deadbeef->pl_unlock ();
             return;
         }
-        tracks[0] = it;
+        deadbeef->pl_item_ref (playing_track);
+        tracks[0] = playing_track;
     }
     else {
         int n = 0;
@@ -169,6 +180,10 @@ trkproperties_build_track_list_for_ctx (ddb_playlist_t *plt, int ctx, DB_playIte
     *_tracks = tracks;
 
     deadbeef->pl_unlock ();
+
+    if (playing_track) {
+        deadbeef->pl_item_unref (playing_track);
+    }
 }
 
 void

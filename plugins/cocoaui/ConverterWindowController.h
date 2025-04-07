@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,7 @@
 */
 
 #import <Cocoa/Cocoa.h>
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 @interface ConverterWindowController : NSWindowController<NSWindowDelegate>
 

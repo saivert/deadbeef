@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -21,13 +21,14 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #import "DdbShared.h"
 #import "DdbTabStrip.h"
 #import "DeletePlaylistConfirmationController.h"
 #import "PlaylistContextMenu.h"
 #import "RenamePlaylistViewController.h"
 #import "TrackPropertiesWindowController.h"
+#import "Weakify.h"
 
 extern DB_functions_t *deadbeef;
 
@@ -77,6 +78,8 @@ static const int close_btn_left_offs = 8;
 @property (nonatomic,readonly) int fullWidth;
 
 @property (nonatomic) TrackPropertiesWindowController *trkProperties;
+
+@property (nonatomic) NSTimer *pickDragTimer;
 
 @end
 
@@ -158,6 +161,9 @@ static const int close_btn_left_offs = 8;
 }
 
 - (NSColor *)tabBackgroundColor {
+    if (@available(macOS 13.0, *)) {
+        return NSColor.selectedTextBackgroundColor;
+    }
     NSString *osxMode = [NSUserDefaults.standardUserDefaults stringForKey:@"AppleInterfaceStyle"];
     BOOL isKey = self.window.isKeyWindow;
     if ([osxMode isEqualToString:@"Dark"]) {
@@ -198,20 +204,22 @@ static const int close_btn_left_offs = 8;
 
     [self scrollToTabInt:deadbeef->plt_get_curr_idx() redraw:NO];
 
-    [self registerForDraggedTypes:[NSArray arrayWithObjects:ddbPlaylistItemsUTIType, NSFilenamesPboardType, nil]];
+    [self registerForDraggedTypes:@[ddbPlaylistItemsUTIType, NSFilenamesPboardType]];
 
     [NSNotificationCenter.defaultCenter addObserver:self
                                            selector:@selector(windowDidBecomeKey:)
                                                name:NSWindowDidBecomeKeyNotification
-                                             object:self.window];
+                                             object:nil];
     [NSNotificationCenter.defaultCenter addObserver:self
                                            selector:@selector(windowDidBecomeKey:)
                                                name:NSWindowDidResignKeyNotification
-                                             object:self.window];
+                                             object:nil];
 }
 
-- (void)windowDidBecomeKey:(id)sender {
-    self.needsDisplay = YES;
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+    if (notification.object == self.window) {
+        self.needsDisplay = YES;
+    }
 }
 
 - (int)tabWidthForIndex:(int)tab {
@@ -246,7 +254,7 @@ static const int close_btn_left_offs = 8;
         self.needScroll = YES;
     }
     if (origValue != self.needScroll) {
-        [self needsDisplay];
+        self.needsDisplay = YES;
     }
 }
 
@@ -327,7 +335,7 @@ static const int close_btn_left_offs = 8;
 
 
     // tab divider
-    NSColor *clr = [_hiddenVertLine borderColor];
+    NSColor *clr = _hiddenVertLine.borderColor;
     [[clr colorWithAlphaComponent:0.5] set];
     NSBezierPath *line = [NSBezierPath bezierPath];
     [line moveToPoint:NSMakePoint(tabRect.origin.x + tabRect.size.width-0.5, tabRect.origin.y+5)];
@@ -395,17 +403,6 @@ static const int close_btn_left_offs = 8;
         return;
     }
 
-    int tab_playing = -1;
-    DB_playItem_t *playing = deadbeef->streamer_get_playing_track ();
-    if (playing) {
-        ddb_playlist_t *plt = deadbeef->pl_get_playlist (playing);
-        if (plt) {
-            tab_playing = deadbeef->plt_get_idx (plt);
-            deadbeef->plt_unref (plt);
-        }
-        deadbeef->pl_item_unref (playing);
-    }
-
     int need_draw_moving = 0;
     int idx;
     int widths[cnt];
@@ -414,6 +411,7 @@ static const int close_btn_left_offs = 8;
     }
 
     [NSGraphicsContext.currentContext saveGraphicsState];
+    [NSBezierPath clipRect:self.frame];
 
     // draw selected
     // calc position for drawin selected tab
@@ -605,7 +603,7 @@ static const int close_btn_left_offs = 8;
 }
 
 - (void)mouseDown:(NSEvent *)event {
-    NSPoint coord = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSPoint coord = [self convertPoint:event.locationInWindow fromView:nil];
     _lastMouseCoord = coord;
     _clickedTabIndex = [self tabUnderCursor:coord.x];
     if (event.type == NSEventTypeLeftMouseDown) {
@@ -672,7 +670,7 @@ static const int close_btn_left_offs = 8;
 }
 
 - (NSMenu *)menuForEvent:(NSEvent *)theEvent {
-    NSPoint coord = [self convertPoint:[theEvent locationInWindow] fromView:nil];
+    NSPoint coord = [self convertPoint:theEvent.locationInWindow fromView:nil];
     _clickedTabIndex = [self tabUnderCursor:coord.x];
     if ((theEvent.type == NSEventTypeRightMouseDown || theEvent.type == NSEventTypeLeftMouseDown)
         && (theEvent.buttonNumber == 1
@@ -682,6 +680,7 @@ static const int close_btn_left_offs = 8;
         menu.clickPoint = coord;
         menu.delegate = self;
         menu.renamePlaylistDelegate = self;
+        menu.deletePlaylistDelegate = self;
         menu.autoenablesItems = YES;
 
         ddb_playlist_t *plt = deadbeef->plt_get_for_idx ((int)_clickedTabIndex);
@@ -700,7 +699,7 @@ static const int close_btn_left_offs = 8;
         return;
     }
 
-    NSPoint coord = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSPoint coord = [self convertPoint:event.locationInWindow fromView:nil];
     _clickedTabIndex = [self tabUnderCursor:coord.x];
     if (event.type == NSEventTypeOtherMouseDown) {
         if (_clickedTabIndex == -1) {
@@ -756,7 +755,7 @@ static const int close_btn_left_offs = 8;
 }
 
 - (void)setFrame:(NSRect)frame {
-    [super setFrame:frame];
+    super.frame = frame;
     [self frameDidChange];
 }
 
@@ -767,7 +766,7 @@ static const int close_btn_left_offs = 8;
 }
 
 - (void)mouseDragged:(NSEvent *)event {
-    NSPoint coord = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSPoint coord = [self convertPoint:event.locationInWindow fromView:nil];
     _lastMouseCoord = coord;
 
     if (_closeTabCapture) {
@@ -842,7 +841,7 @@ static const int close_btn_left_offs = 8;
 }
 
 -(void)mouseMoved:(NSEvent *)event {
-    _lastMouseCoord = [self convertPoint:[event locationInWindow] fromView:nil];
+    _lastMouseCoord = [self convertPoint:event.locationInWindow fromView:nil];
     [self mouseMovedHandler];
 }
 
@@ -852,7 +851,6 @@ static const int close_btn_left_offs = 8;
         [self updatePointedTab:-1];
         self.needsDisplay = YES;
     }
-
 }
 
 - (BOOL)wantsPeriodicDraggingUpdates {
@@ -861,14 +859,29 @@ static const int close_btn_left_offs = 8;
 }
 
 - (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
+    [self.pickDragTimer invalidate];
 
-    NSPoint coord = [sender draggingLocation];
-    int tabUnderCursor = [self tabUnderCursor: coord.x];
-    if (tabUnderCursor != -1) {
-        deadbeef->plt_set_curr_idx (tabUnderCursor);
-    }
+    NSPoint coord = sender.draggingLocation;
+    coord = [self convertPoint:coord fromView:nil];
+    weakify(self);
+    self.pickDragTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:NO block:^(NSTimer * _Nonnull timer) {
+        strongify(self);
+        if (self == nil) {
+            return;
+        }
+        int tabUnderCursor = [self tabUnderCursor: coord.x];
+        if (tabUnderCursor != -1) {
+            deadbeef->plt_set_curr_idx (tabUnderCursor);
+        }
+        self.pickDragTimer = nil;
+    }];
 
     return NSDragOperationNone;
+}
+
+- (void)draggingExited:(id<NSDraggingInfo>)sender {
+    [self.pickDragTimer invalidate];
+    self.pickDragTimer = nil;
 }
 
 - (int)widgetMessage:(uint32_t)_id ctx:(uintptr_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2 {
@@ -901,7 +914,7 @@ static const int close_btn_left_offs = 8;
     if (plt == NULL) {
         return;
     }
-    deadbeef->plt_set_title (plt, [name UTF8String]);
+    deadbeef->plt_set_title (plt, name.UTF8String);
     deadbeef->plt_save_config (plt);
     deadbeef->plt_unref (plt);
     [self scrollToTab:_clickedTabIndex];

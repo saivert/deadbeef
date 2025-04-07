@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -25,6 +25,10 @@
 #define __WIDGETS_H
 
 #include "gtkui_api.h"
+
+#define DDB_GTKUI_CONF_LAYOUT "gtkui.layout.1.9.0"
+
+struct json_t;
 
 void
 w_init (void);
@@ -59,8 +63,11 @@ w_is_registered (const char *type);
 ddb_gtkui_widget_t *
 w_create (const char *type);
 
-const char *
-w_create_from_string (const char *s, ddb_gtkui_widget_t **parent);
+uint32_t
+w_get_type_flags(const char *type);
+
+int
+w_create_from_json (struct json_t *json, ddb_gtkui_widget_t **parent);
 
 void
 w_destroy (ddb_gtkui_widget_t *w);
@@ -105,12 +112,6 @@ w_placeholder_create (void);
 
 ddb_gtkui_widget_t *
 w_tabs_create (void);
-
-ddb_gtkui_widget_t *
-w_selproperties_create (void);
-
-ddb_gtkui_widget_t *
-w_coverart_create (void);
 
 ddb_gtkui_widget_t *
 w_scope_create (void);

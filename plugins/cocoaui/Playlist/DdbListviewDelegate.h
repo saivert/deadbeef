@@ -2,8 +2,8 @@
 //  DdbListviewDelegate.h
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 2/28/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/28/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
@@ -33,7 +33,7 @@ typedef intptr_t DdbListviewCol_t;
 
 - (void)moveColumn:(DdbListviewCol_t)col to:(DdbListviewCol_t)to;
 
-- (void)columnsChanged;
+- (void)columnsDidChange;
 
 - (NSMenu *)contextMenuForColumn:(DdbListviewCol_t)col withEvent:(NSEvent*)theEvent forView:(NSView *)view;
 
@@ -46,7 +46,7 @@ typedef intptr_t DdbListviewCol_t;
 - (NSMenu *)contextMenuForEvent:(NSEvent *)event forView:(NSView *)view;
 - (void)sortColumn:(DdbListviewCol_t)column;
 - (void)dropItems:(int)from_playlist before:(DdbListviewRow_t)before indices:(uint32_t *)indices count:(int)count copy:(BOOL)copy;
-- (void)externalDropItems:(NSArray *)paths after:(DdbListviewRow_t)after;
+- (void)externalDropItems:(NSArray *)paths after:(DdbListviewRow_t)after completionBlock:(void (^) (void))completionBlock;
 - (void)dropPlayItems:(DdbListviewRow_t *)items before:(DdbListviewRow_t)before count:(int)count;
 - (void)scrollChanged:(CGFloat)scrollpos;
 
@@ -54,5 +54,4 @@ typedef intptr_t DdbListviewCol_t;
 - (enum ddb_sort_order_t)columnSortOrderAtIndex:(NSUInteger)index;
 
 - (NSString *)rowGroupStr:(DdbListviewRow_t)row;
-
 @end

@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2021 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -21,9 +21,11 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 
+#include <Block.h>
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
+#include <dispatch/dispatch.h>
 #include <gtk/gtk.h>
 #include "../gtkui.h"
 #include "../support.h"
@@ -33,7 +35,8 @@
 #include "prefwinmedialib.h"
 
 static GtkWidget *prefwin;
-static ddb_medialib_plugin_t *medialib_plugin;
+static DB_mediasource_t *medialib_plugin;
+static ddb_medialib_plugin_api_t *medialib_api;
 static GtkTreeView *treeview;
 static int _listener_id;
 
@@ -44,10 +47,10 @@ _reload_data (void) {
 
     gtk_list_store_clear(store);
 
-    int count = medialib_plugin->folder_count (source);
+    int count = medialib_api->folder_count (source);
     for (int i = 0; i < count; i++) {
         char path[PATH_MAX];
-        medialib_plugin->folder_at_index (source, i, path, sizeof (path));
+        medialib_api->folder_at_index (source, i, path, sizeof (path));
         GtkTreeIter iter;
         gtk_list_store_append (store, &iter);
         gtk_list_store_set (store, &iter, 0, path, -1);
@@ -58,8 +61,8 @@ static void
 _enable_did_toggle (GtkToggleButton *togglebutton, gpointer user_data) {
     gboolean active = gtk_toggle_button_get_active (togglebutton);
     ddb_mediasource_source_t *source = gtkui_medialib_get_source ();
-    medialib_plugin->plugin.set_source_enabled (source, active);
-    medialib_plugin->plugin.refresh (source);
+    medialib_plugin->set_source_enabled (source, active);
+    medialib_plugin->refresh (source);
 }
 
 static void
@@ -79,18 +82,18 @@ _add_did_activate (GtkButton* self, gpointer user_data) {
     GSList *curr = folders;
 
     for (int i = 0; i < count; i++) {
-        medialib_plugin->append_folder(source, curr->data);
+        medialib_api->append_folder(source, curr->data);
         curr = curr->next;
     }
     g_slist_free(folders);
     folders = NULL;
-    medialib_plugin->plugin.refresh (source);
+    medialib_plugin->refresh (source);
 }
 
 static void
 _remove_did_activate (GtkButton* self, gpointer user_data) {
     ddb_mediasource_source_t *source = gtkui_medialib_get_source ();
-    int count = medialib_plugin->folder_count (source);
+    int count = medialib_api->folder_count (source);
     if (count == 0) {
         return;
     }
@@ -108,50 +111,69 @@ _remove_did_activate (GtkButton* self, gpointer user_data) {
         return;
     }
 
-    medialib_plugin->remove_folder_at_index(source, indices[0]);
-    medialib_plugin->plugin.refresh (source);
+    medialib_api->remove_folder_at_index(source, indices[0]);
+    medialib_plugin->refresh (source);
+}
+
+static gboolean
+_dispatch_on_main_wrapper (void *context) {
+    void (^block)(void) = context;
+    block ();
+    Block_release(block);
+    return FALSE;
+}
+
+static void
+_dispatch_on_main(void (^block)(void)) {
+    dispatch_block_t copy_block = Block_copy(block);
+    g_idle_add(_dispatch_on_main_wrapper, copy_block);
 }
 
 static void
 _listener (ddb_mediasource_event_type_t _event, void *user_data) {
-    ddb_mediasource_source_t *source = gtkui_medialib_get_source();
-    if (_event < 1000) {
-        switch (_event) {
-        case DDB_MEDIASOURCE_EVENT_ENABLED_DID_CHANGE:
-            {
-                GtkWidget *enable_button = lookup_widget(prefwin, "toggle_medialib_on");
-                gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_button), medialib_plugin->plugin.get_source_enabled(source));
+    _dispatch_on_main(^{
+        ddb_mediasource_source_t *source = gtkui_medialib_get_source();
+        if ((int)_event < 1000) {
+            switch (_event) {
+            case DDB_MEDIASOURCE_EVENT_ENABLED_DID_CHANGE:
+                {
+                    GtkWidget *enable_button = lookup_widget(prefwin, "toggle_medialib_on");
+                    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable_button), medialib_plugin->is_source_enabled(source));
+                }
+                break;
+            default:
+                break;
             }
-            break;
-        default:
+            return;
+        }
+
+        ddb_medialib_mediasource_event_type_t event = (ddb_medialib_mediasource_event_type_t)_event;
+        switch (event) {
+        case DDB_MEDIALIB_MEDIASOURCE_EVENT_FOLDERS_DID_CHANGE:
+            _reload_data();
             break;
         }
-        return;
-    }
-
-    ddb_medialib_mediasource_event_type_t event = (ddb_medialib_mediasource_event_type_t)_event;
-    switch (event) {
-    case DDB_MEDIALIB_MEDIASOURCE_EVENT_FOLDERS_DID_CHANGE:
-        _reload_data();
-        break;
-    }
+    });
 }
 
 void
 prefwin_init_medialib (GtkWidget *_prefwin) {
     prefwin = _prefwin;
-    medialib_plugin = (ddb_medialib_plugin_t *)deadbeef->plug_get_for_id ("medialib");
+    medialib_plugin = (DB_mediasource_t *)deadbeef->plug_get_for_id ("medialib");
     if (medialib_plugin == NULL) {
         return;
     }
+
+    medialib_api = (ddb_medialib_plugin_api_t *)medialib_plugin->get_extended_api();
+
     ddb_mediasource_source_t *source = gtkui_medialib_get_source();
     if (source == NULL) {
         return;
     }
 
-    _listener_id = medialib_plugin->plugin.add_listener(source, _listener, prefwin);
+    _listener_id = medialib_plugin->add_listener(source, _listener, prefwin);
 
-    int enabled = medialib_plugin->plugin.get_source_enabled(source);
+    int enabled = medialib_plugin->is_source_enabled(source);
     GtkWidget *enable_button = lookup_widget(prefwin, "toggle_medialib_on");
     prefwin_set_toggle_button("toggle_medialib_on", enabled);
 
@@ -184,6 +206,6 @@ prefwin_free_medialib (void) {
         return;
     }
 
-    medialib_plugin->plugin.remove_listener (source, _listener_id);
+    medialib_plugin->remove_listener (source, _listener_id);
     _listener_id = 0;
 }

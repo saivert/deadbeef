@@ -1,6 +1,6 @@
 /*
     DeaDBeeF CoreAudio output plugin
-    Copyright (C) 2009-2017 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2017 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,8 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
+#include "coreaudio.h"
 #include <AudioUnit/AudioUnit.h>
 #include <AudioToolbox/AudioToolbox.h>
 #include <IOKit/pwr_mgt/IOPMLib.h>
@@ -48,13 +49,19 @@ ca_fmtchanged (AudioObjectID inObjectID, UInt32 inNumberAddresses, const AudioOb
 static OSStatus
 ca_buffer_callback(AudioDeviceID inDevice, const AudioTimeStamp * inNow, const AudioBufferList * inInputData, const AudioTimeStamp * inInputTime, AudioBufferList * outOutputData, const AudioTimeStamp * inOutputTime, void * inClientData);
 
+static ddb_playback_state_t
+ca_state (void);
+
+static void
+ca_set_state(ddb_playback_state_t st);
+
 static int ca_free (void);
 static int ca_init (void);
 static int ca_play (void);
 static int ca_pause (void);
 
 static UInt32
-GetNumberAvailableNominalSampleRateRanges()
+GetNumberAvailableNominalSampleRateRanges(void)
 {
     UInt32 theAnswer = 0;
     AudioObjectPropertyAddress theAddress = {
@@ -140,6 +147,12 @@ ca_apply_format (void) {
 
         // NOTE: for unsupported formats, this call may cause bogus messages to appear in console / debug output.
         err = AudioObjectSetPropertyData(device_id, &theAddress, 0, NULL, sz, &req_format);
+        if (err != noErr && req_format.mChannelsPerFrame == 1) {
+            req_format.mChannelsPerFrame = 2;
+            req_format.mBytesPerFrame *= 2;
+            req_format.mBytesPerPacket *= 2;
+            err = AudioObjectSetPropertyData(device_id, &theAddress, 0, NULL, sz, &req_format);
+        }
         if (err != noErr) {
             err = AudioObjectSetPropertyData(device_id, &theAddress, 0, NULL, sz, &default_format);
             // ignore the result of this operation -- it may fail even when attempting to change to the same format that's current right now
@@ -154,7 +167,7 @@ error:
     return res;
 }
 
-OSStatus callbackFunction(AudioObjectID inObjectID,
+OSStatus propertiesChanged(AudioObjectID inObjectID,
                           UInt32 inNumberAddresses,
                           const AudioObjectPropertyAddress inAddresses[],
                           void *inClientData) {
@@ -308,7 +321,26 @@ ca_init (void) {
     };
     AudioObjectAddPropertyListener(kAudioObjectSystemObject,
                                    &outputDeviceAddress,
-                                   &callbackFunction, nil);
+                                   &propertiesChanged, nil);
+
+    UInt32 transportType = 0;
+    sz = sizeof (transportType);
+    theAddress.mScope = kAudioDevicePropertyScopeOutput;
+    theAddress.mElement = kAudioObjectPropertyElementMaster;
+    theAddress.mSelector = kAudioDevicePropertyTransportType;
+    err = AudioObjectGetPropertyData(device_id, &theAddress, 0, NULL, &sz, &transportType);
+    if (err != noErr) {
+        trace ("AudioObjectGetPropertyData kAudioDevicePropertyTransportType: %x\n", err);
+        return -1;
+    }
+
+
+    if (transportType == kAudioDeviceTransportTypeAirPlay) {
+        plugin.plugin.flags |= DDB_COREAUDIO_FLAG_AIRPLAY;
+    }
+    else {
+        plugin.plugin.flags &= ~DDB_COREAUDIO_FLAG_AIRPLAY;
+    }
 
     state = DDB_PLAYBACK_STATE_STOPPED;
 
@@ -377,10 +409,6 @@ ca_setformat (ddb_waveformat_t *fmt) {
         req_format.mFormatFlags = kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked | kAudioFormatFlagsNativeEndian;
     }
 
-    if (fmt->is_bigendian) {
-        req_format.mFormatFlags |= kLinearPCMFormatFlagIsBigEndian;
-    }
-
     req_format.mBytesPerPacket = bps / 8 * fmt->channels;
     req_format.mFramesPerPacket = 1;
     req_format.mBytesPerFrame = bps / 8 * fmt->channels;
@@ -432,18 +460,17 @@ ca_play (void) {
         }
     }
 
-    deadbeef->mutex_lock (mutex);
-    if (state != DDB_PLAYBACK_STATE_PLAYING) {
+    ddb_playback_state_t current_state = ca_state();
+
+    if (current_state != DDB_PLAYBACK_STATE_PLAYING) {
         err = AudioDeviceStart (device_id, ca_buffer_callback);
         if (err != noErr) {
             trace ("AudioDeviceStart: %x\n", err);
-            state = DDB_PLAYBACK_STATE_STOPPED;
-            deadbeef->mutex_unlock (mutex);
+            ca_set_state(DDB_PLAYBACK_STATE_STOPPED);
             return -1;
         }
-        state = DDB_PLAYBACK_STATE_PLAYING;
+        ca_set_state(DDB_PLAYBACK_STATE_PLAYING);
     }
-    deadbeef->mutex_unlock (mutex);
 
     ca_prevent_sleep ();
 
@@ -459,17 +486,16 @@ ca_stop (void) {
         return 0;
     }
 
-    deadbeef->mutex_lock (mutex);
-    if (state != DDB_PLAYBACK_STATE_STOPPED) {
+    ddb_playback_state_t curr_state = ca_state();
+
+    if (curr_state != DDB_PLAYBACK_STATE_STOPPED) {
         err = AudioDeviceStop (device_id, ca_buffer_callback);
-        state = DDB_PLAYBACK_STATE_STOPPED;
+        ca_set_state(DDB_PLAYBACK_STATE_STOPPED);
         if (err != noErr) {
             trace ("AudioDeviceStop: %x\n", err);
-            deadbeef->mutex_unlock (mutex);
             return -1;
         }
     }
-    deadbeef->mutex_unlock (mutex);
 
     return 0;
 }
@@ -483,20 +509,17 @@ ca_pause (void) {
         }
     }
 
-    deadbeef->mutex_lock (mutex);
+    ddb_playback_state_t curr_state = ca_state();
 
-    if (state != DDB_PLAYBACK_STATE_PAUSED) {
-        state = DDB_PLAYBACK_STATE_PAUSED;
+    if (curr_state != DDB_PLAYBACK_STATE_PAUSED) {
+        ca_set_state(DDB_PLAYBACK_STATE_PAUSED);
         err = AudioDeviceStop (device_id, ca_buffer_callback);
         if (err != noErr) {
             trace ("AudioDeviceStop: %x\n", err);
-            state = DDB_PLAYBACK_STATE_STOPPED;
-            deadbeef->mutex_unlock (mutex);
+            ca_set_state(DDB_PLAYBACK_STATE_STOPPED);
             return -1;
         }
     }
-
-    deadbeef->mutex_unlock (mutex);
     return 0;
 }
 
@@ -541,7 +564,11 @@ ca_buffer_callback(AudioDeviceID inDevice, const AudioTimeStamp * inNow, const A
     char *buffer = outOutputData->mBuffers[0].mData;
     sz = outOutputData->mBuffers[0].mDataByteSize;
 
-    if (state == DDB_PLAYBACK_STATE_PLAYING && deadbeef->streamer_ok_to_read (-1)) {
+    deadbeef->mutex_lock (mutex);
+    int st = state;
+    deadbeef->mutex_unlock (mutex);
+
+    if (st == DDB_PLAYBACK_STATE_PLAYING && deadbeef->streamer_ok_to_read (-1)) {
         int br = deadbeef->streamer_read (buffer, sz);
         if (br < 0) {
             br = 0;
@@ -564,7 +591,17 @@ ca_unpause (void) {
 
 static ddb_playback_state_t
 ca_state (void) {
-    return state;
+    deadbeef->mutex_lock (mutex);
+    int ret = state;
+    deadbeef->mutex_unlock (mutex);
+    return ret;
+}
+
+static void
+ca_set_state(ddb_playback_state_t st) {
+    deadbeef->mutex_lock (mutex);
+    state = st;
+    deadbeef->mutex_unlock (mutex);
 }
 
 static void ca_enum_soundcards (void (*callback)(const char *name, const char *desc, void*), void *userdata) {
@@ -666,7 +703,7 @@ static DB_output_t plugin = {
     .plugin.descr = "CoreAudio output plugin",
     .plugin.copyright =
         "DeaDBeeF CoreAudio output plugin\n"
-        "Copyright (C) 2009-2017 Alexey Yakovenko and other contributors\n"
+        "Copyright (C) 2009-2017 Oleksiy Yakovenko and other contributors\n"
         "Copyright (C) 2016 Christopher Snowhill\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"

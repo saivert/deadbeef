@@ -2,11 +2,11 @@
 //  NSMenu+ActionItems.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/23/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/23/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #import <AppKit/AppKit.h>
 #import "DdbShared.h"
 #import "NSMenu+ActionItems.h"
@@ -39,6 +39,10 @@ extern DB_functions_t *deadbeef;
         int count = 0;
         for (action = actions; action; action = action->next)
         {
+            if (!strstr(action->title, "Duplicate")) {
+                __unused int n = 0;
+            }
+
             if (action->name && !strcmp (action->name, "delete_from_disk") && hide_remove_from_disk) {
                 continue;
             }
@@ -117,7 +121,7 @@ extern DB_functions_t *deadbeef;
 
                 // find menu item with the name
                 for (NSMenuItem *item in lastMenu.itemArray) {
-                    if ([item.title isEqualToString:[NSString stringWithUTF8String:name]]) {
+                    if ([item.title isEqualToString:@(name)]) {
                         if (item.menu == nil) {
                             item.submenu = [NSMenu new];
                         }
@@ -128,7 +132,7 @@ extern DB_functions_t *deadbeef;
 
                 // create
                 if (!newMenu) {
-                    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:[NSString stringWithUTF8String:name] action:@selector(pluginAction:) keyEquivalent:@""];
+                    NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:@(name) action:@selector(pluginAction:) keyEquivalent:@""];
                     newMenu = [NSMenu new];
                     item.submenu = newMenu;
                     [lastMenu addItem:item];
@@ -161,7 +165,7 @@ extern DB_functions_t *deadbeef;
             }
             *t = 0;
 
-            PluginActionMenuItem *actionitem = [[PluginActionMenuItem alloc] initWithTitle:[NSString stringWithUTF8String:title] action:@selector(pluginAction:) keyEquivalent:@""];
+            PluginActionMenuItem *actionitem = [[PluginActionMenuItem alloc] initWithTitle:@(title) action:@selector(pluginAction:) keyEquivalent:@""];
             actionitem.target = self;
             actionitem.pluginAction = action;
             actionitem.pluginActionContext = actionContext;
@@ -180,9 +184,13 @@ extern DB_functions_t *deadbeef;
             else {
                 [self addItem:actionitem];
             }
-            if ((selectedCount > 1 && !(action->flags & DB_ACTION_MULTIPLE_TRACKS)) ||
-                (action->flags & DB_ACTION_DISABLED)) {
-                actionitem.enabled = NO;
+            int isPlaylistAction = (action->flags & DB_ACTION_PLAYLIST) && actionContext == DDB_ACTION_CTX_PLAYLIST;
+
+            if (!isPlaylistAction) {
+                if ((selectedCount > 1 && !(action->flags & DB_ACTION_MULTIPLE_TRACKS)) ||
+                    (action->flags & DB_ACTION_DISABLED)) {
+                    actionitem.enabled = NO;
+                }
             }
         }
         if (count > 0 && deadbeef->conf_get_int ("cocoaui.action_separators", 0)) { // FIXME: UI

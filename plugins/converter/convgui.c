@@ -1,6 +1,6 @@
 /*
     Converter UI for DeaDBeeF Player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,8 @@
 #include <assert.h>
 #include <dirent.h>
 #include <unistd.h>
-#include "converter.h"
+#include <deadbeef/deadbeef.h>
+#include "../converter/converter.h"
 #include "support.h"
 #include "interface.h"
 #include "../gtkui/gtkui_api.h"
@@ -85,9 +86,9 @@ fill_presets (GtkListStore *mdl, ddb_preset_t *head, int type) {
     while (p) {
         GtkTreeIter iter;
         gtk_list_store_append (mdl, &iter);
+        char stock[1000];
         const char *s = p->title;
         if (type == PRESET_TYPE_ENCODER && ((ddb_encoder_preset_t *)p)->readonly) {
-            char stock[1000];
             snprintf (stock, sizeof (stock), _("[Built-in] %s"), p->title);
             s = stock;
         }
@@ -477,6 +478,11 @@ converter_show_cb (void *data) {
     current_ctx = conv;
     memset (conv, 0, sizeof (converter_ctx_t));
 
+    ddb_playItem_t *playing_track = NULL;
+    if (ctx == DDB_ACTION_CTX_NOWPLAYING) {
+        playing_track = deadbeef->streamer_get_playing_track_safe ();
+    }
+
     deadbeef->pl_lock ();
     switch (ctx) {
     case DDB_ACTION_CTX_MAIN:
@@ -530,19 +536,24 @@ converter_show_cb (void *data) {
         }
     case DDB_ACTION_CTX_NOWPLAYING:
         {
-            DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
-            if (it) {
-                conv->convert_playlist = deadbeef->pl_get_playlist (it);
+            if (playing_track) {
+                conv->convert_playlist = deadbeef->pl_get_playlist (playing_track);
                 conv->convert_items_count = 1;
                 conv->convert_items = malloc (sizeof (DB_playItem_t *) * conv->convert_items_count);
                 if (conv->convert_items) {
-                    conv->convert_items[0] = it;
+                    conv->convert_items[0] = playing_track;
+                    deadbeef->pl_item_ref(playing_track);
                 }
             }
         }
         break;
     }
     deadbeef->pl_unlock ();
+
+    if (playing_track != NULL) {
+        deadbeef->pl_item_unref (playing_track);
+        playing_track = NULL;
+    }
 
     conv->converter = create_converterdlg ();
     GtkWidget *mainwin = gtkui_plugin->get_mainwin ();
@@ -968,7 +979,7 @@ edit_encoder_preset (char *title, GtkWidget *toplevel) {
         }
         break;
     }
-    
+
     gtk_widget_destroy (dlg);
     return r;
 }
@@ -1588,7 +1599,7 @@ on_dsp_preset_add                     (GtkButton       *button,
 {
 
     current_ctx->current_dsp_preset = converter_plugin->dsp_preset_alloc ();
-    
+
     GtkWidget *toplevel = gtk_widget_get_toplevel (GTK_WIDGET (button));
 
     if (GTK_RESPONSE_OK == edit_dsp_preset (_("New DSP Preset"), toplevel, NULL)) {
@@ -1859,9 +1870,9 @@ DB_misc_t plugin = {
         "· select some tracks in playlist\n"
         "· right click\n"
         "· select «Convert»\n",
-    .plugin.copyright = 
+    .plugin.copyright =
         "Converter UI for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2015 Alexey Yakovenko and other contributors\n"
+        "Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"

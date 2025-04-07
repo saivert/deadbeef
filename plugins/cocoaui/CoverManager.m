@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -22,8 +22,10 @@
 */
 
 #import "CoverManager.h"
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "../../plugins/artwork/artwork.h"
+
+#define DEBUG_COUNTER 0
 
 extern DB_functions_t *deadbeef;
 
@@ -42,6 +44,8 @@ static CoverManager *g_DefaultCoverManager = nil;
 
 @interface CoverManager()
 
+@property (nonnull, nonatomic) NSHashTable<id<CoverManagerListener>> *listeners;
+
 /// A background serial queue for creating NSImages.
 /// It has to be serial, to load the images in the same order they were requested.
 @property (nonatomic) dispatch_queue_t loaderQueue;
@@ -51,10 +55,26 @@ static CoverManager *g_DefaultCoverManager = nil;
 @property (nonatomic) NSString *defaultCoverPath;
 @property (nonatomic,readwrite) NSImage *defaultCover;
 @property (nonatomic) char *name_tf;
+@property (nonatomic) int imageSize;
+
+#if DEBUG_COUNTER
+@property (atomic) int counter;
+#endif
 
 @end
 
 @implementation CoverManager
+
++ (CoverManager *)shared {
+    if (!g_DefaultCoverManager) {
+        g_DefaultCoverManager = [CoverManager new];
+    }
+    return g_DefaultCoverManager;
+}
+
++ (void)freeSharedInstance {
+    g_DefaultCoverManager = nil;
+}
 
 - (void)dealloc {
     if (_artwork_plugin) {
@@ -62,13 +82,6 @@ static CoverManager *g_DefaultCoverManager = nil;
     }
     deadbeef->tf_free (_name_tf);
     _name_tf = NULL;
-}
-
-+ (CoverManager *)defaultCoverManager {
-    if (!g_DefaultCoverManager) {
-        g_DefaultCoverManager = [CoverManager new];
-    }
-    return g_DefaultCoverManager;
 }
 
 static void
@@ -88,6 +101,10 @@ _artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t 
     if (_artwork_plugin == NULL) {
         return self;
     }
+
+    _listeners = [NSHashTable weakObjectsHashTable];
+
+    self.imageSize = deadbeef->conf_get_int("artwork.image_size", 256);
     [self updateDefaultCover];
 
     _cachedCovers = [NSCache new];
@@ -105,8 +122,17 @@ _artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t 
     return self;
 }
 
+- (void)addListener:(id<CoverManagerListener>)observer {
+    [self.listeners addObject:observer];
+}
+
+- (void)removeListener:(id<CoverManagerListener>) observer {
+    [self.listeners removeObject:observer];
+}
+
 - (void)settingsDidChangeForTrack:(ddb_playItem_t *)track {
     if (track == NULL) {
+        self.imageSize = deadbeef->conf_get_int("artwork.image_size", 256);
         [self updateDefaultCover];
         [self resetCache];
     }
@@ -123,7 +149,7 @@ _artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t 
     char path[PATH_MAX];
     _artwork_plugin->default_image_path(path, sizeof(path));
 
-    NSString *defaultCoverPath = [NSString stringWithUTF8String:path];
+    NSString *defaultCoverPath = @(path);
 
     if (![self.defaultCoverPath isEqualToString:defaultCoverPath]) {
         self.defaultCoverPath = defaultCoverPath;
@@ -138,7 +164,7 @@ _artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t 
     }
 }
 
-- (NSString *)hashForTrack:(DB_playItem_t *)track  {
+- (NSString *)hashForTrack:(ddb_playItem_t *)track  {
     ddb_tf_context_t ctx = {
         ._size = sizeof (ddb_tf_context_t),
         .flags = DDB_TF_CONTEXT_NO_DYNAMIC,
@@ -147,52 +173,92 @@ _artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t 
 
     char buffer[PATH_MAX];
     deadbeef->tf_eval (&ctx, self.name_tf, buffer, sizeof (buffer));
-    return [NSString stringWithUTF8String:buffer];
+    return @(buffer);
 }
 
 - (nullable NSImage *)loadImageFromCover:(nonnull ddb_cover_info_t *)cover {
     NSImage *img;
 
-    if (!img && cover && cover->blob) {
-        NSData *data = [NSData dataWithBytesNoCopy:cover->blob + cover->blob_image_offset
-                                            length:cover->blob_image_size
-                                      freeWhenDone:NO];
-        img = [[NSImage alloc] initWithData:data];
-        data = nil;
+    if (cover && cover->image_filename) {
+        img = [[NSImage alloc] initWithContentsOfFile:@(cover->image_filename)];
     }
-    if (!img && cover && cover->image_filename) {
-        img = [[NSImage alloc] initWithContentsOfFile:[NSString stringWithUTF8String:cover->image_filename]];
+
+    if (img != nil) {
+        const int max_image_size = self.imageSize;
+
+        CGSize size = img.size;
+        if (size.width > max_image_size
+            || size.height > max_image_size) {
+            CGSize newSize = CGSizeMake(max_image_size, max_image_size);
+            newSize = [self desiredSizeForImageSize:size availableSize:newSize];
+
+            img = [self createScaledImage:img newSize:newSize];
+        }
     }
-    if (!img) {
+
+    if (img == nil) {
         img = self.defaultCover;
     }
     return img;
 }
 
+- (void)cleanupQuery:(ddb_cover_query_t *)query {
+    // just clean the completion blocks and queries -- the artwork plugin will take care of the covers
+    __unused void (^completionBlock)(NSImage *) = (void (^)(NSImage *__strong))CFBridgingRelease(query->user_data);
+    deadbeef->pl_item_unref (query->track);
+    free (query);
+#if DEBUG_COUNTER
+    self.counter -= 1;
+    NSLog (@"*** counter: %d\n", self.counter);
+#endif
+}
+
 static void
 cover_loaded_callback (int error, ddb_cover_query_t *query, ddb_cover_info_t *cover) {
+    CoverManager *self = CoverManager.shared;
+
+    if (self.isTerminating) {
+        [self cleanupQuery:query];
+        return;
+    }
+
     // Load the image on background queue
-    CoverManager *cm = CoverManager.defaultCoverManager;
-    dispatch_async(cm.loaderQueue, ^{
-        NSImage *img = [cm loadImageFromCover:cover];
+    dispatch_async(self.loaderQueue, ^{
+        if (self.isTerminating) {
+            [self cleanupQuery:query];
+            return;
+        }
+        NSImage *img;
+
+        if (!(query->flags & DDB_ARTWORK_FLAG_CANCELLED)) {
+            img = [self loadImageFromCover:cover];
+        }
 
         // Update the UI on main queue
         dispatch_async(dispatch_get_main_queue(), ^{
-            // FIXME: if the img is nil -- CoverManager should still be updated
-            if (img != nil) {
-                [cm addCoverForTrack:query->track withImage:img];
-                void (^completionBlock)(NSImage *) = (void (^)(NSImage *__strong))CFBridgingRelease(query->user_data);
-                completionBlock(img);
+            if (self.isTerminating) {
+                [self cleanupQuery:query];
+                return;
             }
+            if (!(query->flags & DDB_ARTWORK_FLAG_CANCELLED)) {
+                [self addCoverForTrack:query->track withImage:img];
+            }
+            void (^completionBlock)(NSImage *) = (void (^)(NSImage *__strong))CFBridgingRelease(query->user_data);
+            completionBlock(img);
 
             // Free the query -- it's fast, so it's OK to free it on main queue
             deadbeef->pl_item_unref (query->track);
             free (query);
 
+#if DEBUG_COUNTER
+            self.counter -= 1;
+            NSLog (@"*** counter: %d\n", self.counter);
+#endif
+
             // Release the cover on background queue
             if (cover != NULL) {
                 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                    cm->_artwork_plugin->cover_info_release (cover);
+                    self->_artwork_plugin->cover_info_release (cover);
                 });
             }
         });
@@ -208,8 +274,13 @@ cover_loaded_callback (int error, ddb_cover_query_t *query, ddb_cover_info_t *co
     [self.cachedCovers setObject:cover forKey:hash];
 }
 
-- (nullable NSImage *)coverForTrack:(nonnull DB_playItem_t *)track completionBlock:(nonnull void (^) (NSImage * img))completionBlock {
+- (nullable NSImage *)coverForTrack:(nonnull ddb_playItem_t *)track sourceId:(int64_t)sourceId completionBlock:(nonnull void (^) (NSImage * img))completionBlock {
     if (!self.artwork_plugin) {
+        completionBlock(nil);
+        return nil;
+    }
+
+    if (self.isTerminating) {
         completionBlock(nil);
         return nil;
     }
@@ -226,46 +297,55 @@ cover_loaded_callback (int error, ddb_cover_query_t *query, ddb_cover_info_t *co
         return cover.image;
     }
 
-    ddb_cover_query_t *query = calloc (sizeof (ddb_cover_query_t), 1);
+    ddb_cover_query_t *query = calloc (1, sizeof (ddb_cover_query_t));
     query->_size = sizeof (ddb_cover_query_t);
     query->track = track;
     deadbeef->pl_item_ref (track);
+    query->source_id = sourceId;
 
     query->user_data = (void *)CFBridgingRetain(completionBlock);
+
+#if DEBUG_COUNTER
+    self.counter += 1;
+    NSLog (@"*** counter: %d\n", self.counter);
+#endif
 
     self.artwork_plugin->cover_get (query, cover_loaded_callback);
 
     return nil;
 }
 
-- (void)resetCache {
-    [self.cachedCovers removeAllObjects];
+- (nullable NSImage *)coverForTrack:(nonnull ddb_playItem_t *)track completionBlock:(nonnull void (^) (NSImage * img))completionBlock {
+    return [self coverForTrack:track sourceId:0 completionBlock:completionBlock];
 }
 
-- (NSImage *)createCachedImage:(NSImage *)image size:(NSSize)size {
-    NSSize originalSize = image.size;
-    if (originalSize.width <= size.width && originalSize.height <= size.height) {
+- (void)resetCache {
+    [self.cachedCovers removeAllObjects];
+    for (id<CoverManagerListener> listener in self.listeners) {
+        if (listener != nil) {
+            [listener coverManagerDidReset];
+        }
+    }
+}
+
+- (NSImage *)createScaledImage:(NSImage *)image newSize:(CGSize)newSize {
+    CGSize originalSize = image.size;
+    if (originalSize.width <= newSize.width && originalSize.height <= newSize.height) {
         return image;
     }
-    NSImage *cachedImage = [[NSImage alloc] initWithSize:size];
+    NSImage *cachedImage = [[NSImage alloc] initWithSize:newSize];
     [cachedImage lockFocus];
-    cachedImage.size = size;
+    cachedImage.size = newSize;
     NSGraphicsContext.currentContext.imageInterpolation = NSImageInterpolationHigh;
-    [image drawInRect:NSMakeRect(0, 0, size.width, size.height) fromRect:CGRectMake(0, 0, originalSize.width, originalSize.height) operation:NSCompositingOperationCopy fraction:1.0];
+    [image drawInRect:NSMakeRect(0, 0, newSize.width, newSize.height) fromRect:CGRectMake(0, 0, originalSize.width, originalSize.height) operation:NSCompositingOperationCopy fraction:1.0];
     [cachedImage unlockFocus];
     return cachedImage;
 }
 
-- (NSSize)artworkDesiredSizeForImageSize:(NSSize)imageSize albumArtSpaceWidth:(CGFloat)albumArtSpaceWidth {
-    if (imageSize.width >= imageSize.height) {
-        CGFloat h = imageSize.height / (imageSize.width / albumArtSpaceWidth);
-        return NSMakeSize(albumArtSpaceWidth, h);
-    }
-    else {
-        CGFloat h = albumArtSpaceWidth;
-        CGFloat w = imageSize.width / (imageSize.height / h);
-        return NSMakeSize(w, h);
-    }
+- (CGSize)desiredSizeForImageSize:(CGSize)imageSize availableSize:(CGSize)availableSize {
+    CGFloat scale = MIN(availableSize.width/imageSize.width, availableSize.height/imageSize.height);
+
+    return CGSizeMake(imageSize.width * scale, imageSize.height * scale);
 }
 
 @end

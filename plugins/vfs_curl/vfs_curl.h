@@ -2,15 +2,19 @@
 //  vfs_curl.h
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 11/10/19.
-//  Copyright © 2019 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 11/10/19.
+//  Copyright © 2019 Oleksiy Yakovenko. All rights reserved.
 //
 
 #ifndef vfs_curl_h
 #define vfs_curl_h
 
 #include <curl/curl.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define BUFFER_SIZE (0x10000)
 #define BUFFER_MASK 0xffff
@@ -67,9 +71,13 @@ typedef struct {
 } HTTP_FILE;
 
 size_t
-vfs_curl_handle_icy_headers (size_t avail, HTTP_FILE *fp, char *ptr);
+vfs_curl_handle_icy_headers (size_t avail, HTTP_FILE *fp, const char *ptr);
 
 void
 vfs_curl_free_file (HTTP_FILE *fp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* vfs_curl_h */

@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2018 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2018 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -25,7 +25,11 @@
 #define mp3parser_h
 
 #include <stdint.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum {
     MP3_PARSE_FULLSCAN = 1,
@@ -113,5 +117,9 @@ typedef struct {
 // the caller is supposed to start decoding from info->packet_offs, and skip info->skipsamples samples
 int
 mp3_parse_file (mp3info_t *info, uint32_t flags, DB_FILE *fp, int64_t fsize, int startoffs, int endoffs, int64_t seek_to_sample);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* mp3parser_h */

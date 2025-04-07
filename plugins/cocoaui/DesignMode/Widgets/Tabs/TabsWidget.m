@@ -2,8 +2,8 @@
 //  TabsWidget.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 18/11/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 18/11/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "TabsWidget.h"
@@ -77,6 +77,7 @@
 }
 
 - (void)segmentedTabViewAction:(SegmentedTabView *)sender {
+    [self configure];
     [self.deps.state layoutDidChange];
 }
 
@@ -102,6 +103,16 @@
         return NO;
     }
 
+    NSInteger index = [self.segmentedTabView indexOfTabViewItem:self.clickedItem];
+
+    if (menuItem.action == @selector(moveTabLeft:) && index < 1) {
+        return NO;
+    }
+
+    if (menuItem.action == @selector(moveTabRight:) && index >= self.segmentedTabView.numberOfTabViewItems-1) {
+        return NO;
+    }
+
     return YES;
 }
 
@@ -114,7 +125,7 @@
     self.renameTabPopover = [NSPopover new];
     self.renameTabPopover.behavior = NSPopoverBehaviorTransient;
 
-    RenameTabViewController *viewController = [[RenameTabViewController alloc] initWithNibName:@"RenameTabViewController" bundle:nil];
+    RenameTabViewController *viewController = [RenameTabViewController new];
     viewController.name = self.clickedItem.label;
     viewController.popover = self.renameTabPopover;
     viewController.delegate = self;
@@ -192,15 +203,23 @@
         return;
     }
 
+    BOOL wasSelected = [self.segmentedTabView tabViewItemAtIndex:index] == self.segmentedTabView.selectedTabViewItem;
+
     NSString *label = self.labels[index];
     id<WidgetProtocol> childWidget = self.childWidgets[index];
     [self removeTabItemForChild:self.childWidgets[index]];
 
-    [self.labels insertObject:label atIndex:index-1];
-    [self insertChild:childWidget atIndex:index-1];
+    index -= 1;
 
-    self.clickedItem = [self.segmentedTabView tabViewItemAtIndex:index-1];
-    [self.segmentedTabView setLabel:self.clickedItem.label forSegment:index-1];
+    [self.labels insertObject:label atIndex:index];
+    [self insertChild:childWidget atIndex:index];
+
+    self.clickedItem = [self.segmentedTabView tabViewItemAtIndex:index];
+    [self.segmentedTabView setLabel:self.clickedItem.label forSegment:index];
+
+    if (wasSelected) {
+        [self.segmentedTabView selectTabViewItemAtIndex:index];
+    }
 
     [self.deps.state layoutDidChange];
 }
@@ -215,15 +234,23 @@
         return;
     }
 
+    BOOL wasSelected = [self.segmentedTabView tabViewItemAtIndex:index] == self.segmentedTabView.selectedTabViewItem;
+
     NSString *label = self.labels[index];
     id<WidgetProtocol> childWidget = self.childWidgets[index];
     [self removeTabItemForChild:self.childWidgets[index]];
 
-    [self.labels insertObject:label atIndex:index+1];
-    [self insertChild:childWidget atIndex:index+1];
+    index += 1;
 
-    self.clickedItem = [self.segmentedTabView tabViewItemAtIndex:index+1];
-    [self.segmentedTabView setLabel:self.clickedItem.label forSegment:index+1];
+    [self.labels insertObject:label atIndex:index];
+    [self insertChild:childWidget atIndex:index];
+
+    self.clickedItem = [self.segmentedTabView tabViewItemAtIndex:index];
+    [self.segmentedTabView setLabel:self.clickedItem.label forSegment:index];
+
+    if (wasSelected) {
+        [self.segmentedTabView selectTabViewItemAtIndex:index];
+    }
 
     [self.deps.state layoutDidChange];
 }
@@ -276,6 +303,9 @@
 
     child.parentWidget = nil;
     newChild.parentWidget = self;
+    [item.view layoutSubtreeIfNeeded];
+
+    [newChild configure];
 }
 
 - (void)insertChild:(id<WidgetProtocol>)child atIndex:(NSInteger)index {

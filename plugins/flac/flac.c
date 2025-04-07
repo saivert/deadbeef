@@ -1,6 +1,6 @@
 /*
     DeaDBeeF - The Ultimate Music Player
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -41,9 +41,9 @@
 #include <FLAC/stream_decoder.h>
 #include <FLAC/metadata.h>
 #include <limits.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "../liboggedit/oggedit.h"
-#include "../../strdupa.h"
+#include <deadbeef/strdupa.h>
 
 static ddb_decoder2_t plugin;
 static DB_functions_t *deadbeef;
@@ -583,7 +583,7 @@ cflac_seek_sample (DB_fileinfo_t *_info, int sample) {
 
 static int
 cflac_seek (DB_fileinfo_t *_info, float time) {
-    return cflac_seek_sample64 (_info, time * _info->fmt.samplerate);
+    return cflac_seek_sample64 (_info, (int64_t)((double)time * (int64_t)_info->fmt.samplerate));
 }
 
 static FLAC__StreamDecoderWriteStatus
@@ -924,7 +924,7 @@ cflac_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     deadbeef->pl_add_meta (it, ":FILETYPE", isogg ? "OggFLAC" : "FLAC");
 
     char s[100];
-    snprintf (s, sizeof (s), "%lld", fsize);
+    snprintf (s, sizeof (s), "%lld", (long long)fsize);
     deadbeef->pl_add_meta (it, ":FILE_SIZE", s);
     snprintf (s, sizeof (s), "%d", info.info.fmt.channels);
     deadbeef->pl_add_meta (it, ":CHANNELS", s);
@@ -1314,7 +1314,7 @@ static ddb_decoder2_t plugin = {
     .decoder.plugin.name = "FLAC decoder",
     .decoder.plugin.descr = "FLAC decoder using libFLAC",
     .decoder.plugin.copyright =
-        "Copyright (C) 2009-2013 Alexey Yakovenko et al.\n"
+        "Copyright (C) 2009-2013 Oleksiy Yakovenko et al.\n"
         "Uses libFLAC (C) Copyright (C) 2000,2001,2002,2003,2004,2005,2006,2007  Josh Coalson\n"
         "Uses libogg Copyright (c) 2002, Xiph.org Foundation\n"
         "\n"

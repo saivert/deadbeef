@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2014 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2014 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -26,13 +26,13 @@
 #import "MediaLibraryManager.h"
 #import "SearchWindowController.h"
 #import "PreferencesWindowController.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 #define MAX_COLUMNS 20
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>
 
-+ (int)ddb_message:(int)_id ctx:(uint64_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2;
+- (int)ddb_message:(int)_id ctx:(uint64_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2;
 
 @property (nonatomic) MainWindowController *mainWindow;
 
@@ -130,5 +130,3 @@
 - (IBAction)showLogWindowAction:(id)sender;
 
 @end
-
-extern AppDelegate *g_appDelegate;

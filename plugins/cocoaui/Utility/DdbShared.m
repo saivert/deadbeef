@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -23,10 +23,10 @@
 
 #import <Foundation/Foundation.h>
 #import "DdbShared.h"
-#import "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 NSString * const ddbPlaylistItemsUTIType = @"org.deadbeef.playlistItems";
-NSString * const ddbMedialibItemUTIType = @"org.deadbeef.medialibItem";
+NSString * const ddbPlaylistDataUTIType = @"org.deadbeef.playlistData";
 
 extern DB_functions_t *deadbeef;
 
@@ -68,7 +68,7 @@ NSString *
 conf_get_nsstr (const char *key, const char *def) {
     char value[4096];
     deadbeef->conf_get_str (key, def, value, sizeof (value));
-    return [NSString stringWithUTF8String:value];
+    return @(value);
 }
 
 void
@@ -86,6 +86,6 @@ plt_get_title_wrapper (int plt) {
     char buffer[1000];
     deadbeef->plt_get_title (p, buffer, sizeof (buffer));
     deadbeef->plt_unref (p);
-    return [NSString stringWithUTF8String:buffer];
+    return @(buffer);
 }
 

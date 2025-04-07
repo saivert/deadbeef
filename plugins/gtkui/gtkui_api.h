@@ -2,7 +2,7 @@
   gtkui_api.h -- API of the DeaDBeeF GTK UI plugin
   http://deadbeef.sourceforge.net
 
-  Copyright (C) 2009-2021 Alexey Yakovenko
+  Copyright (C) 2009-2021 Oleksiy Yakovenko
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -50,7 +50,7 @@ typedef void GtkWidget;
 #endif
 
 #define DDB_GTKUI_API_VERSION_MAJOR 2
-#define DDB_GTKUI_API_VERSION_MINOR 3
+#define DDB_GTKUI_API_VERSION_MINOR 5
 
 #define DDB_GTKUI_DEPRECATED(x)
 
@@ -71,7 +71,7 @@ typedef void GtkWidget;
 #endif
 
 #ifndef DDB_GTKUI_API_LEVEL
-#define DDB_GTKUI_API_LEVEL (DDB_GTKUI_API_VERSION_MAJOR * 100 + DB_API_VERSION_MINOR)
+#define DDB_GTKUI_API_LEVEL (DDB_GTKUI_API_VERSION_MAJOR * 100 + DDB_GTKUI_API_VERSION_MINOR)
 #endif
 
 #if (DDB_WARN_DEPRECATED && DDB_GTKUI_API_LEVEL >= 202)
@@ -80,13 +80,22 @@ typedef void GtkWidget;
 #define DEPRECATED_202
 #endif
 
-#if (DDB_GTKUI_API_LEVEL >= 201)
-// added in API 2.1 (deadbeef-0.6.2)
-#define DDB_GTKUI_CONF_LAYOUT "gtkui.layout.0.6.2"
+#if (DDB_WARN_DEPRECATED && DDB_GTKUI_API_LEVEL >= 204)
+#define DEPRECATED_204 DDB_GTKUI_DEPRECATED("since GTKUI API 2.4")
+#else
+#define DEPRECATED_204
+#endif
+
+#if (DDB_WARN_DEPRECATED && DDB_GTKUI_API_LEVEL >= 205)
+#define DEPRECATED_205 DDB_GTKUI_DEPRECATED("since GTKUI API 2.5")
+#else
+#define DEPRECATED_205
 #endif
 
 // this flag tells that the widget should be added to h/vboxes with expand=FALSE
-#define DDB_GTKUI_WIDGET_FLAG_NON_EXPANDABLE 0x00000001
+enum {
+    DDB_GTKUI_WIDGET_FLAG_NON_EXPANDABLE = 1<<0,
+};
 
 // widget config string must look like that:
 // type key1=value1 key2=value2... { child widgets }
@@ -117,17 +126,17 @@ typedef struct ddb_gtkui_widget_s {
 
     // save your custom parameters in the string using strncat
     // for example, if you need to write width and height:
-    // strncat (s, "100 200", sz);
-    void (*save) (struct ddb_gtkui_widget_s *w, char *s, int sz);
+    // strncat (s, "x=100 y=200", sz);
+    void (*save) (struct ddb_gtkui_widget_s *w, char *s, int sz) DEPRECATED_205;
 
     // this is to read custom widget parameters, e.g. width and height;
-    // you will be passed a string looking like "100 200 {"
+    // you will be passed a string looking like "x=100 y=200 {"
     // you will need to read params, and return the new pointer, normally it
     // should be pointing to the "{"
     //
     // type string is necessary for backwards compatibility, so that load
     // function knows which type it's loading
-    const char *(*load) (struct ddb_gtkui_widget_s *w, const char *type, const char *s);
+    const char *(*load) (struct ddb_gtkui_widget_s *w, const char *type, const char *s) DEPRECATED_205;
 
     // custom destructor code
     void (*destroy) (struct ddb_gtkui_widget_s *w);
@@ -169,11 +178,29 @@ typedef struct ddb_gtkui_widget_s {
     struct ddb_gtkui_widget_s *next; // points to next widget in the same container
 } ddb_gtkui_widget_t;
 
+typedef struct {
+    /// Size must be set to the size of this struct
+    size_t _size;
+
+    /// Load settings from a NULL-terminated list of interleaved key and value strings
+    void (*deserialize_from_keyvalues)(ddb_gtkui_widget_t *widget, const char **keyvalues);
+
+    /// Save settings to a NULL-terminated list of interleaved key and value strings.
+    char const **(*serialize_to_keyvalues)(ddb_gtkui_widget_t *widget);
+
+    /// Free the keyvalues list returned by @c serialize_to_keyvalues
+    void (*free_serialized_keyvalues)(ddb_gtkui_widget_t *widget, char const **keyvalues);
+} ddb_gtkui_widget_extended_api_t;
 
 // flags for passing to w_reg_widget
 
-// tell the widget manager, that this widget can only have single instance
-#define DDB_WF_SINGLE_INSTANCE 0x00000001
+enum {
+    /// The widget can only have single instance
+    DDB_WF_SINGLE_INSTANCE = 1<<0,
+    /// This allows to use the ddb_gtkui_widget_extended_api_t API added in GTKUI 2.5.
+    /// Such widget must provide the @c ddb_gtkui_widget_extended_api_t struct immediately after the @c ddb_gtkui_widget_t struct
+    DDB_WF_SUPPORTS_EXTENDED_API = 1<<1,
+};
 
 typedef struct {
     DB_gui_t gui;
@@ -181,12 +208,16 @@ typedef struct {
     // returns main window ptr
     GtkWidget * (*get_mainwin) (void);
 
-    // register new widget type;
-    // type strings are passed at the end of argument list terminated with NULL
-    // for example:
-    // w_reg_widget("My Visualization", 0, my_viz_create, "my_viz_ng", "my_viz", NULL);
-    // this call will register new type "my_viz_ng", with support for another
-    // "my_viz" type string
+    /// Register new widget type.
+    /// @param title Display name of the widget, that will show up in the UI
+    /// @param flags should be a combination of the DDB_WF_* values.
+    /// @param create_func will be called to create the widget.
+    ///
+    /// The remaining arguments are a NULL-terminated list of strings, which determine the valid type names. At list one type name is required. This is the value that will be used for serialization.
+    /// Example:
+    /// w_reg_widget("My Visualization", 0, my_viz_create, "my_viz_ng", "my_viz", NULL);
+    /// this call will register new type "my_viz_ng", with support for another
+    /// "my_viz" type string
     void (*w_reg_widget) (const char *title, uint32_t flags, ddb_gtkui_widget_t *(*create_func) (void), ...);
 
     // unregister existing widget type
@@ -231,23 +262,18 @@ typedef struct {
     // appears when right-clicked on playlist tab)
     GtkWidget* (*create_pltmenu) (int plt_idx);
 
-    // return a cover art pixbuf, if available.
-    // if not available, the requested cover will be loaded asyncronously.
-    // the callback will be called when the requested cover is available,
-    // in which case you will need to call the get_cover_art_pixbuf again from
-    // the callback.
-    // get_cover_art_pixbuf is deprecated in API 2.2.
-    // in new code, use get_cover_art_primary to get the large single cover art image,
-    // and get_cover_art_thumb to get one of many smaller cover art images.
-    GdkPixbuf *(*get_cover_art_pixbuf) (const char *uri, const char *artist, const char *album, int size, void (*callback)(void *user_data), void *user_data) DEPRECATED_202;
-
-    // get_default_cover_pixbuf returns the default cover art image
+    /// Obsolete: returns NULL
+    GdkPixbuf *(*get_cover_art_pixbuf) (const char *uri, const char *artist, const char *album, int size, void (*callback)(void *user_data), void *user_data);
+    /// Obsolete: returns NULL
     GdkPixbuf *(*cover_get_default_pixbuf) (void);
 
 #if (DDB_GTKUI_API_LEVEL >= 202)
-    // added in API 2.2 (deadbeef-0.7)
+    /// Obsolete: returns NULL
     GdkPixbuf *(*get_cover_art_primary) (const char *uri, const char *artist, const char *album, int size, void (*callback)(void *user_data), void *user_data);
+
+    /// Obsolete: returns NULL
     GdkPixbuf *(*get_cover_art_thumb) (const char *uri, const char *artist, const char *album, int size, void (*callback)(void *user_data), void *user_data);
+
     // adds a hook to be called before the main loop starts running, but after
     // the window was created.
     void (*add_window_init_hook) (void (*callback) (void *userdata), void *userdata);
@@ -269,6 +295,10 @@ typedef struct {
     void (*copy_selection) (ddb_playlist_t *plt, int ctx);
     void (*cut_selection) (ddb_playlist_t *plt, int ctx);
     void (*paste_selection) (ddb_playlist_t *plt, int ctx);
+#endif
+#if (DDB_GTKUI_API_LEVEL >= 205)
+    /// Get flags passed to @c w_reg_widget for this type.
+    uint32_t (*w_get_type_flags) (const char *type);
 #endif
 } ddb_gtkui_t;
 

@@ -28,9 +28,10 @@ newoption {
 
 if _OPTIONS["standard"] ~= nil then
   plugins_to_disable = {"plugin-converter", "plugin-converter_gtk2",
-                        "plugin-converter_gtk3","plugin-ffmpeg","plugin-waveout",
+                        "plugin-converter_gtk3", "plugin-waveout",
                         "plugin-wildmidi", "plugin-soundtouch", "plugin-sid", "plugin-gme",
-                        "plugin-mms", "plugin-cdda", "plugin-sc68", "plugin-vtx"}
+                        "plugin-mms", "plugin-cdda", "plugin-sc68", "plugin-vtx",
+                        "plugin-notify"}
   for i,v in ipairs(plugins_to_disable) do
     if _OPTIONS[v] == nil then
       _OPTIONS[v] = "disabled"
@@ -50,10 +51,10 @@ filter "configurations:release"
 
 filter "configurations:debug or release"
   includedirs {
-    "plugins/libmp4ff",
+    "include",
+    ".",
     "static-deps/lib-x86-64/include/x86_64-linux-gnu",
     "static-deps/lib-x86-64/include",
-    "external/mp4p/include"
   }
   libdirs {
     "static-deps/lib-x86-64/lib/x86_64-linux-gnu",
@@ -77,6 +78,7 @@ filter "configurations:debug or release"
 
 
 filter "platforms:Windows"
+  WINDOWS_SYSTEM_PREFIX = (os.getenv("MSYSTEM_PREFIX") or '')
   buildoptions {
     "-include shared/windows/mingw32_layer.h",
     "-fno-builtin"
@@ -86,7 +88,7 @@ filter "platforms:Windows"
   }
   includedirs {
     "shared/windows/include",
-    "/mingw64/include/opus",
+    WINDOWS_SYSTEM_PREFIX .. "/include/opus",
     "xdispatch_ddb/include"
   }
   libdirs {
@@ -106,14 +108,14 @@ filter "platforms:Windows"
 
 -- clang preset in premake5 does not support icon compiling, define it here
 filter 'files:**.rc'
-  buildcommands {'windres -O coff -o "%{cfg.objdir}/%{file.basename}.o" "%{file.relpath}"'}
+  buildcommands {'windres --define VERSION=\"' .. get_version() .. '\" -O coff -o "%{cfg.objdir}/%{file.basename}.o" "%{file.relpath}"'}
   buildoutputs {'%{cfg.objdir}/%{file.basename}.o'}
 
 -- YASM compiling for ffap
 filter 'files:**.asm'
   buildmessage 'YASM Assembling : %{file.relpath}'
   buildcommands {'mkdir -p obj/%{cfg.buildcfg}/ffap/'}
-  buildcommands {'yasm -f elf -D ARCH_X86_64 -m amd64 -DPIC -DPREFIX -o "obj/%{cfg.buildcfg}/ffap/%{file.basename}.o" "%{file.relpath}"'}
+  buildcommands {'yasm -f win64 -D ARCH_X86_64 -m amd64 -DPIC -DPREFIX -o "obj/%{cfg.buildcfg}/ffap/%{file.basename}.o" "%{file.relpath}"'}
   buildoutputs {"obj/%{cfg.buildcfg}/ffap/%{file.basename}.o"}
 
 -- Libraries
@@ -190,11 +192,17 @@ project "deadbeef"
   kind (ddb_type)
   targetdir "bin/%{cfg.buildcfg}"
   files {
-    "*.c",
-    "md5/*.c",
+    "src/md5/*.c",
+    "src/undo/*.c",
+    "shared/undo/*.c",
+    "shared/filereader/*.c",
+    "src/*.c",
     "plugins/libparser/*.c",
     "external/wcwidth/wcwidth.c",
     "shared/ctmap.c",
+  }
+  includedirs {
+    "shared"
   }
   defines {
     "PORTABLE=1",
@@ -239,11 +247,13 @@ end
 if _OPTIONS["plugin-aac"] == "auto" or _OPTIONS["plugin-aac"] == nil then
   -- hard-coded :(
   -- todo: linuxify
-  if os.outputof("ls /mingw64/include/neaacdec.h") == nil  then
-    print ("\27[93m" .. "neaacdec.h not found in \"/mingw64/include/\", run premake5 with \"--plugin-aac=enabled\" to force enable aac plugin" ..  "\27[39m")
+  if os.outputof("ls " .. WINDOWS_SYSTEM_PREFIX .. "/include/neaacdec.h") == nil  then
+    print ("\27[93m" .. "neaacdec.h not found in \"" .. WINDOWS_SYSTEM_PREFIX .. "/include/\", run premake5 with \"--plugin-aac=enabled\" to force enable aac plugin" ..  "\27[39m")
     _OPTIONS["plugin-aac"] = "disabled"
+    _OPTIONS["plugin-alac"] = "disabled"
   else
     _OPTIONS["plugin-aac"] = "enabled"
+    _OPTIONS["plugin-alac"] = "enabled"
   end
 end
 
@@ -257,6 +267,7 @@ project "aac_plugin"
     "plugins/aac/aac_parser.c",
     "shared/mp4tagutil.c"
   }
+  includedirs { "external/mp4p/include" }
   links { "faad", "mp4p" }
 end
 
@@ -274,6 +285,11 @@ project "adplug_plugin"
   defines {"stricmp=strcasecmp"}
   includedirs {"plugins/adplug/adplug", "plugins/adplug/libbinio"}
   links {"stdc++"}
+
+  filter "files:**.cpp"
+    buildoptions {
+        "-std=c++11"
+    }
 end
 
 if option ("plugin-alac") then
@@ -284,6 +300,7 @@ project "alac_plugin"
     "plugins/alac/alac.c",
     "shared/mp4tagutil.c"
   }
+  includedirs { "external/mp4p/include" }
   links {"faad", "mp4p"}
 end
 
@@ -317,14 +334,15 @@ project "dca_plugin"
   targetname "dca"
   files {
     "plugins/dca/dcaplug.c",
-    "plugins/dca/extract_dca.c",
-    "plugins/dca/gettimeofday.c",
-    "plugins/dca/parse.c",
-    "plugins/dca/bitstream.c",
-    "plugins/dca/downmix.c"
+    "plugins/dca/libdca/extract_dca.c",
+    "plugins/dca/libdca/gettimeofday.c",
+    "plugins/dca/libdca/parse.c",
+    "plugins/dca/libdca/bitstream.c",
+    "plugins/dca/libdca/downmix.c"
   }
-  prebuildcommands {"touch plugins/dca/config.h"}
-  postbuildcommands {"rm plugins/dca/config.h"}
+  includedirs {
+    "plugins/dca/libdca"
+  }
 end
 
 if option ("plugin-dumb") then
@@ -520,7 +538,7 @@ project "gme_plugin"
     "plugins/gme/game-music-emu-0.6pre/gme/",
     "plugins/gme/game-music-emu-0.6pre"
   }
-  defines {"GME_VERSION_055"}
+  defines {"GME_VERSION_055","HAVE_STDINT_H"}
   links {"stdc++", "z"}
   filter 'files:**.cpp'
     buildoptions {"-include cstdint"}
@@ -547,7 +565,7 @@ project "notify_plugin"
   files {
     "plugins/notify/notify.c"
   }
-  pkgconfig ("dbus-1")
+  pkgconfig ("dbus-1", "glib-2.0", "gio-2.0", "gdk-pixbuf-2.0")
   buildoptions {"-fblocks"}
   links {"dispatch", "BlocksRuntime"}
 end
@@ -571,39 +589,39 @@ end
 
 if option ("plugin-sc68") then
 project "sc68_plugin"
-  targetname "sc68"
+  targetname "in_sc68"
   files {
     "plugins/sc68/in_sc68.c",
-    "plugins/sc68/file68/src/*.c",
-    "plugins/sc68/libsc68/dial68/*.c",
-    "plugins/sc68/unice68/unice68_unpack.c",
-    "plugins/sc68/unice68/unice68_pack.c",
-    "plugins/sc68/unice68/unice68_version.c",
-    "plugins/sc68/libsc68/conf68.c",
-    "plugins/sc68/libsc68/api68.c",
-    "plugins/sc68/libsc68/mixer68.c",
-    "plugins/sc68/libsc68/io68/*.c",
-    "plugins/sc68/libsc68/libsc68.c",
-    "plugins/sc68/libsc68/emu68/lines68.c",
-    "plugins/sc68/libsc68/emu68/ioplug68.c",
-    "plugins/sc68/libsc68/emu68/mem68.c",
-    "plugins/sc68/libsc68/emu68/getea68.c",
-    "plugins/sc68/libsc68/emu68/inst68.c",
-    "plugins/sc68/libsc68/emu68/emu68.c",
-    "plugins/sc68/libsc68/emu68/error68.c",
-    "plugins/sc68/desa68/desa68.c"
+    "plugins/sc68/libsc68/file68/src/*.c",
+    "plugins/sc68/libsc68/libsc68/dial68/*.c",
+    "plugins/sc68/libsc68/unice68/unice68_unpack.c",
+    "plugins/sc68/libsc68/unice68/unice68_pack.c",
+    "plugins/sc68/libsc68/unice68/unice68_version.c",
+    "plugins/sc68/libsc68/libsc68/conf68.c",
+    "plugins/sc68/libsc68/libsc68/api68.c",
+    "plugins/sc68/libsc68/libsc68/mixer68.c",
+    "plugins/sc68/libsc68/libsc68/io68/*.c",
+    "plugins/sc68/libsc68/libsc68/libsc68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/lines68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/ioplug68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/mem68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/getea68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/inst68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/emu68.c",
+    "plugins/sc68/libsc68/libsc68/emu68/error68.c",
+    "plugins/sc68/libsc68/desa68/desa68.c"
   }
   excludes {
-    "plugins/sc68/libsc68/io68/ym_atarist_table.c",
-    "plugins/sc68/libsc68/io68/ym_linear_table.c"
+    "plugins/sc68/libsc68/libsc68/io68/ym_atarist_table.c",
+    "plugins/sc68/libsc68/libsc68/io68/ym_linear_table.c"
   }
   includedirs {
-    "plugins/sc68/file68",
-    "plugins/sc68/file68/sc68",
-    "plugins/sc68/unice68",
-    "plugins/sc68/libsc68",
-    "plugins/sc68/libsc68/sc68",
-    "plugins/sc68/libsc68/emu68"
+    "plugins/sc68/libsc68/file68",
+    "plugins/sc68/libsc68/file68/sc68",
+    "plugins/sc68/libsc68/unice68",
+    "plugins/sc68/libsc68/libsc68",
+    "plugins/sc68/libsc68/libsc68/sc68",
+    "plugins/sc68/libsc68/libsc68/emu68"
   }
   buildoptions {"-include stdint.h"}
   defines {
@@ -645,19 +663,20 @@ if option ("plugin-shn") then
 project "shn_plugin"
   targetname "ddb_shn"
   files {
-    "plugins/shn/array.c",
-    "plugins/shn/convert.c",
-    "plugins/shn/misc.c",
-    "plugins/shn/output.c",
-    "plugins/shn/seek.c",
-    "plugins/shn/shn.c",
-    "plugins/shn/shn.h",
-    "plugins/shn/shorten.c",
-    "plugins/shn/sulawalaw.c",
-    "plugins/shn/vario.c",
-    "plugins/shn/wave.c"
+    "plugins/shn/shnplugin.c",
+    "plugins/shn/libshn/array.c",
+    "plugins/shn/libshn/convert.c",
+    "plugins/shn/libshn/misc.c",
+    "plugins/shn/libshn/output.c",
+    "plugins/shn/libshn/seek.c",
+    "plugins/shn/libshn/shn.h",
+    "plugins/shn/libshn/shorten.c",
+    "plugins/shn/libshn/sulawalaw.c",
+    "plugins/shn/libshn/vario.c",
+    "plugins/shn/libshn/wave.c"
   }
   buildoptions {"-include stdint.h"}
+  includedirs {"plugins/shn/libshn"}
   links {"m"}
 end
 
@@ -673,10 +692,11 @@ if option ("plugin-vtx") then
 project "vtx"
   files {
     "plugins/vtx/vtx.c",
-    "plugins/vtx/ay8912.c",
-    "plugins/vtx/lh5dec.c",
-    "plugins/vtx/vtxfile.c"
+    "plugins/vtx/libayemu/ay8912.c",
+    "plugins/vtx/libayemu/lh5dec.c",
+    "plugins/vtx/libayemu/vtxfile.c"
   }
+  includedirs {"plugins/vtx/libayemu"}
   undefines {"VERSION"}
 end
 
@@ -722,7 +742,8 @@ project "ffmpeg"
     "plugins/ffmpeg/*.c",
   }
   pkgconfig ("libavformat")
-  -- links {"avcodec", "pthread", "avformat", "avcodec", "avutil", "z", "opencore-amrnb", "opencore-amrwb", "opus"}
+  pkgconfig ("libavcodec")
+  pkgconfig ("libavutil")
 end
 
 if option ("plugin-vorbis", "vorbisfile vorbis ogg") then
@@ -808,13 +829,17 @@ project "ddb_gui_GTK2"
     "plugins/gtkui/*.c",
     "plugins/gtkui/medialib/*.c",
     "plugins/gtkui/prefwin/*.c",
+    "plugins/gtkui/covermanager/*.c",
+    "plugins/gtkui/playlist/*.c",
+    "plugins/gtkui/scriptable/*.c",
     "shared/eqpreset.c",
     "shared/pluginsettings.c",
     "shared/trkproperties_shared.c",
-    "analyzer/analyzer.c",
-    "scope/scope.c",
+    "shared/analyzer/analyzer.c",
+    "shared/scope/scope.c",
+    "shared/scriptable/*.c",
     "plugins/libparser/parser.c",
-    "utf8.c"
+    "src/utf8.c"
   }
   excludes {
     "plugins/gtkui/deadbeefapp.c",
@@ -822,10 +847,12 @@ project "ddb_gui_GTK2"
   }
   includedirs {
     "plugins/gtkui",
-    "plugins/libparser"
+    "plugins/libparser",
+    "shared"
   }
+  buildoptions {"-fblocks"}
   pkgconfig ("gtk+-2.0 jansson")
-  links {"libdeletefromdisk", "libtftintutil"}
+  links {"libdeletefromdisk", "libtftintutil", "dispatch", "BlocksRuntime"}
   defines ("GLIB_DISABLE_DEPRECATION_WARNINGS")
 end
 
@@ -835,25 +862,31 @@ project "ddb_gui_GTK3"
     "plugins/gtkui/*.c",
     "plugins/gtkui/medialib/*.c",
     "plugins/gtkui/prefwin/*.c",
+    "plugins/gtkui/covermanager/*.c",
+    "plugins/gtkui/playlist/*.c",
+    "plugins/gtkui/scriptable/*.c",
     "shared/eqpreset.c",
     "shared/pluginsettings.c",
     "shared/trkproperties_shared.c",
-    "analyzer/analyzer.c",
-    "scope/scope.c",
+    "shared/analyzer/analyzer.c",
+    "shared/scope/scope.c",
+    "shared/scriptable/*.c",
     "plugins/libparser/parser.c",
-    "utf8.c"
+    "src/utf8.c"
   }
   includedirs {
     "plugins/gtkui",
-    "plugins/libparser"
+    "plugins/libparser",
+    "shared"
   }
 
   prebuildcommands {
     "glib-compile-resources --sourcedir=plugins/gtkui --target=plugins/gtkui/gtkui-gresources.c --generate-source plugins/gtkui/gtkui.gresources.xml"
   }
 
+  buildoptions {"-fblocks"}
   pkgconfig("gtk+-3.0 jansson")
-  links {"libdeletefromdisk", "libtftintutil"}
+  links {"libdeletefromdisk", "libtftintutil", "dispatch", "BlocksRuntime"}
   defines ("GLIB_DISABLE_DEPRECATION_WARNINGS")
 end
 
@@ -863,6 +896,8 @@ project "rg_scanner"
     "plugins/rg_scanner/*.c",
     "plugins/rg_scanner/ebur128/*.c"
   }
+  buildoptions {"-fblocks"}
+  links {"dispatch", "BlocksRuntime"}
 end
 
 if option ("plugin-converter") then
@@ -871,6 +906,7 @@ project "converter"
     "plugins/converter/converter.c",
     "shared/mp4tagutil.c"
   }
+  includedirs {"external/mp4p/include", "shared"}
   links {"mp4p"}
 end
 
@@ -932,47 +968,47 @@ end
 if option ("plugin-psf", "zlib") then
 project "psf"
   includedirs {
-    "plugins/psf",
-    "plugins/psf/eng_ssf",
-    "plugins/psf/eng_qsf",
-    "plugins/psf/eng_dsf"
+    "plugins/psf/aosdk",
+    "plugins/psf/aosdk/eng_ssf",
+    "plugins/psf/aosdk/eng_qsf",
+    "plugins/psf/aosdk/eng_dsf"
   }
   defines {
     "HAS_PSXCPU=1"
   }
   files {
     "plugins/psf/plugin.c",
-    "plugins/psf/psfmain.c",
-    "plugins/psf/corlett.c",
-    "plugins/psf/eng_dsf/eng_dsf.c",
-    "plugins/psf/eng_dsf/dc_hw.c",
-    "plugins/psf/eng_dsf/aica.c",
-    "plugins/psf/eng_dsf/aicadsp.c",
-    "plugins/psf/eng_dsf/arm7.c",
-    "plugins/psf/eng_dsf/arm7i.c",
-    "plugins/psf/eng_ssf/m68kcpu.c",
-    "plugins/psf/eng_ssf/m68kopac.c",
-    "plugins/psf/eng_ssf/m68kopdm.c",
-    "plugins/psf/eng_ssf/m68kopnz.c",
-    "plugins/psf/eng_ssf/m68kops.c",
-    "plugins/psf/eng_ssf/scsp.c",
-    "plugins/psf/eng_ssf/scspdsp.c",
-    "plugins/psf/eng_ssf/sat_hw.c",
-    "plugins/psf/eng_ssf/eng_ssf.c",
-    "plugins/psf/eng_qsf/eng_qsf.c",
-    "plugins/psf/eng_qsf/kabuki.c",
-    "plugins/psf/eng_qsf/qsound.c",
-    "plugins/psf/eng_qsf/z80.c",
-    "plugins/psf/eng_qsf/z80dasm.c",
-    "plugins/psf/eng_psf/eng_psf.c",
-    "plugins/psf/eng_psf/psx.c",
-    "plugins/psf/eng_psf/psx_hw.c",
-    "plugins/psf/eng_psf/peops/spu.c",
-    "plugins/psf/eng_psf/eng_psf2.c",
-    "plugins/psf/eng_psf/peops2/spu2.c",
-    "plugins/psf/eng_psf/peops2/dma2.c",
-    "plugins/psf/eng_psf/peops2/registers2.c",
-    "plugins/psf/eng_psf/eng_spu.c",
+    "plugins/psf/aosdk/psfmain.c",
+    "plugins/psf/aosdk/corlett.c",
+    "plugins/psf/aosdk/eng_dsf/eng_dsf.c",
+    "plugins/psf/aosdk/eng_dsf/dc_hw.c",
+    "plugins/psf/aosdk/eng_dsf/aica.c",
+    "plugins/psf/aosdk/eng_dsf/aicadsp.c",
+    "plugins/psf/aosdk/eng_dsf/arm7.c",
+    "plugins/psf/aosdk/eng_dsf/arm7i.c",
+    "plugins/psf/aosdk/eng_ssf/m68kcpu.c",
+    "plugins/psf/aosdk/eng_ssf/m68kopac.c",
+    "plugins/psf/aosdk/eng_ssf/m68kopdm.c",
+    "plugins/psf/aosdk/eng_ssf/m68kopnz.c",
+    "plugins/psf/aosdk/eng_ssf/m68kops.c",
+    "plugins/psf/aosdk/eng_ssf/scsp.c",
+    "plugins/psf/aosdk/eng_ssf/scspdsp.c",
+    "plugins/psf/aosdk/eng_ssf/sat_hw.c",
+    "plugins/psf/aosdk/eng_ssf/eng_ssf.c",
+    "plugins/psf/aosdk/eng_qsf/eng_qsf.c",
+    "plugins/psf/aosdk/eng_qsf/kabuki.c",
+    "plugins/psf/aosdk/eng_qsf/qsound.c",
+    "plugins/psf/aosdk/eng_qsf/z80.c",
+    "plugins/psf/aosdk/eng_qsf/z80dasm.c",
+    "plugins/psf/aosdk/eng_psf/eng_psf.c",
+    "plugins/psf/aosdk/eng_psf/psx.c",
+    "plugins/psf/aosdk/eng_psf/psx_hw.c",
+    "plugins/psf/aosdk/eng_psf/peops/spu.c",
+    "plugins/psf/aosdk/eng_psf/eng_psf2.c",
+    "plugins/psf/aosdk/eng_psf/peops2/spu2.c",
+    "plugins/psf/aosdk/eng_psf/peops2/dma2.c",
+    "plugins/psf/aosdk/eng_psf/peops2/registers2.c",
+    "plugins/psf/aosdk/eng_psf/eng_spu.c",
   }
   links {"z", "m"}
 end
@@ -1044,6 +1080,30 @@ project "pltbrowser_gtk3"
   pkgconfig ("gtk+-3.0")
 end
 
+if option ("plugin-lyrics_gtk2", "gtk+-2.0") then
+project "lyrics_gtk2"
+  files {
+    "plugins/lyrics/lyrics.c",
+    "plugins/lyrics/support.c"
+  }
+  includedirs {
+    "plugins/gtkui"
+  }
+  pkgconfig ("gtk+-2.0")
+end
+
+if option ("plugin-lyrics_gtk3", "gtk+-3.0") then
+project "lyrics_gtk3"
+  files {
+    "plugins/lyrics/lyrics.c",
+    "plugins/lyrics/support.c"
+  }
+  includedirs {
+    "plugins/gtkui"
+  }
+  pkgconfig ("gtk+-3.0")
+end
+
 if option ("plugin-shellexecui_gtk2", "gtk+-2.0 jansson") then
 project "shellexecui_gtk2"
   files {
@@ -1100,28 +1160,18 @@ project "musepack_plugin"
   links {"m"}
 end
 
-if option ("plugin-artwork-legacy", "libjpeg libpng zlib flac ogg") then
-project "artwork_plugin"
-  targetname "artwork"
-  files {
-    "plugins/artwork-legacy/*.c",
-    "shared/mp4tagutil.c"
-  }
-  includedirs {"../libmp4ff"}
-  defines {"USE_OGG=1", "USE_VFS_CURL", "USE_METAFLAC", "USE_MP4FF", "USE_TAGGING=1"}
-  links {"jpeg", "png", "z", "FLAC", "ogg", "mp4p"}
-end
-if option ("plugin-artwork", "libjpeg libpng zlib flac ogg") and not is_enabled("plugin-artwork-legacy") then
+if option ("plugin-artwork", "flac ogg vorbisfile") then
 project "artwork_plugin"
   targetname "artwork"
   files {
     "plugins/artwork/*.c",
     "shared/mp4tagutil.c"
   }
-  includedirs {"../libmp4ff", "./shared"}
+  includedirs {"external/mp4p/include", "shared"}
   buildoptions {"-fblocks"}
   defines {"USE_OGG=1", "USE_VFS_CURL", "USE_METAFLAC", "USE_MP4FF", "USE_TAGGING=1"}
-  links {"jpeg", "png", "z", "FLAC", "ogg", "mp4p", "dispatch", "BlocksRuntime"}
+  pkgconfig ("flac ogg vorbisfile")
+  links {"FLAC", "ogg", "vorbisfile", "mp4p", "dispatch", "BlocksRuntime"}
 else
   options_dic["plugin-artwork"] = "no"
 end
@@ -1131,8 +1181,10 @@ project "supereq_plugin"
   targetname "supereq"
   files {
     "plugins/supereq/*.c",
-    "plugins/supereq/*.cpp"
+    "plugins/supereq/libsupereq/*.cpp",
+    "plugins/supereq/libsupereq/*.c"
   }
+  includedirs {"plugins/supereq/libsupereq"}
   defines {"USE_OOURA"}
   links {"m", "stdc++"}
 end
@@ -1175,8 +1227,41 @@ if option ("plugin-tta") then
 project "tta"
   files {
     "plugins/tta/ttaplug.c",
-    "plugins/tta/ttadec.c"
+    "plugins/tta/libtta/ttadec.c"
   }
+  includedirs { "plugins/tta/libtta" }
+end
+
+if option ("plugin-libretro") then
+project "ddb_dsp_libretro"
+  files {
+    "external/ddb_dsp_libretro/libretro.cpp"
+  }
+  buildoptions {
+    "-msse3"
+  }
+end
+
+if option ("plugin-medialib") then
+project "medialib"
+  files {
+    "plugins/medialib/medialib.c",
+    "plugins/medialib/medialibcommon.c",
+    "plugins/medialib/medialibdb.c",
+    "plugins/medialib/medialibfilesystem_stub.c",
+    "plugins/medialib/medialibscanner.c",
+    "plugins/medialib/medialibsource.c",
+    "plugins/medialib/medialibstate.c",
+    "plugins/medialib/medialibtree.c",
+    "plugins/medialib/scriptable_tfquery.c",
+    "shared/scriptable/*.c"
+  }
+  includedirs {
+    "shared"
+  }
+  pkgconfig ("jansson")
+  buildoptions {"-fblocks"}
+  links {"dispatch", "BlocksRuntime"}
 end
 
 project "translations"
@@ -1192,7 +1277,7 @@ project "translations"
 
 project "resources"
   kind "Utility"
-  files {"main.c"}
+  files {"src/main.c"}
   filter 'files:**.c'
     buildcommands {
       "mkdir -p bin/%{cfg.buildcfg}/pixmaps",
@@ -1207,7 +1292,7 @@ project "resources_windows"
   kind "Utility"
   removeplatforms {"Linux"}
   dependson {"translations", "ddb_gui_GTK3", "ddb_gui_GTK2"}
-  files {"main.c"}
+  files {"src/main.c"}
   filter 'files:**.c'
     buildcommands {"./scripts/windows_postbuild.sh bin/%{cfg.buildcfg}"}
     buildoutputs {'%{cfg.objdir}/%{file.basename}.c_fake'}

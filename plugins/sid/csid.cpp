@@ -1,6 +1,6 @@
 /*
     SID plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2014 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@
 //#include "md5.h"
 // #include "sidplay/sidendian.h"
 
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 #include "csid.h"
 
 extern DB_decoder_t sid_plugin;
@@ -48,6 +48,8 @@ typedef struct {
     ReSIDBuilder *resid;
     SidTune *tune;
     float duration; // of the current song
+    int chip_voices;
+    int rawsignal;
 } sid_info_t;
 
 static inline void
@@ -76,9 +78,6 @@ static size_t sldb_lengths_count;
 static int sldb_loaded;
 static int sldb_disable;
 static int sldb_legacy;
-
-static int chip_voices = 0xff;
-static int chip_voices_changed = 0;
 
 static int conf_hvsc_enable = 0;
 
@@ -124,9 +123,9 @@ sldb_load()
     }
 
     if (!sldb) {
-        sldb = (sldb_item_t *)calloc (sizeof(sldb_item_t), SLDB_PREALLOC_ITEMS);
+        sldb = (sldb_item_t *)calloc (SLDB_PREALLOC_ITEMS, sizeof(sldb_item_t));
         sldb_allocated_size = SLDB_PREALLOC_ITEMS;
-        sldb_lengths = (uint16_t *)calloc (sizeof (uint16_t), SLDB_PREALLOC_LENGTHS);
+        sldb_lengths = (uint16_t *)calloc (SLDB_PREALLOC_LENGTHS, sizeof (uint16_t));
         sldb_lengths_allocated_size = SLDB_PREALLOC_LENGTHS;
     }
     while (fgets (str, 1024, fp) == str) {
@@ -278,7 +277,9 @@ sldb_find (const uint8_t *digest) {
 
 DB_fileinfo_t *
 csid_open (uint32_t hints) {
-    sid_info_t *info = (sid_info_t *)calloc (sizeof (sid_info_t), 1);
+    sid_info_t *info = (sid_info_t *)calloc (1, sizeof (sid_info_t));
+    info->rawsignal = hints & DDB_DECODER_HINT_RAW_SIGNAL;
+    info->chip_voices = 0xff;
     return &info->info;
 }
 
@@ -290,7 +291,20 @@ csid_mute_voices (sid_info_t *info, int chip_voices) {
         if (emu) {
             for (int i = 0; i < 3; i++) {
                 bool mute = chip_voices & (1 << i) ? false : true;
-                emu->voice (i, mute ? 0x00 : 0xff, mute);
+
+                if (maxsids == 2) {
+                    // in stereo mode, sid0 has voices 0 and 2 muted, and sid1 has voice 1 muted
+                    // (libsidplay2 config.cpp:217)
+                    if (k == 0 && i != 1) {
+                        mute = true;
+                    }
+                    else if (k == 1 && i == 1) {
+                        mute = true;
+                    }
+                }
+
+                // volume parameter is ignored, pass 0
+                emu->voice (i, 0, mute);
             }
         }
     }
@@ -347,8 +361,6 @@ csid_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     _info->fmt.channelmask = _info->fmt.channels == 1 ? DDB_SPEAKER_FRONT_LEFT : (DDB_SPEAKER_FRONT_LEFT | DDB_SPEAKER_FRONT_RIGHT);
     _info->readpos = 0;
 
-    chip_voices = deadbeef->conf_get_int ("chip.voices", 0xff);
-    csid_mute_voices (info, chip_voices);
     return 0;
 }
 
@@ -363,6 +375,17 @@ csid_free (DB_fileinfo_t *_info) {
     }
 }
 
+static void
+_mute_voices(sid_info_t *info) {
+    if (!info->rawsignal) {
+        int chip_voices = deadbeef->conf_get_int ("chip.voices", 0xff);
+        if (chip_voices != info->chip_voices) {
+            info->chip_voices = chip_voices;
+            csid_mute_voices (info, chip_voices);
+        }
+    }
+}
+
 int
 csid_read (DB_fileinfo_t *_info, char *bytes, int size) {
     sid_info_t *info = (sid_info_t *)_info;
@@ -370,11 +393,7 @@ csid_read (DB_fileinfo_t *_info, char *bytes, int size) {
         return 0;
     }
 
-    if (chip_voices_changed) {
-        chip_voices = deadbeef->conf_get_int ("chip.voices", 0xff);
-        chip_voices_changed = 0;
-        csid_mute_voices (info, chip_voices);
-    }
+    _mute_voices(info);
 
     int rd = info->sidplay->play (bytes, size);
 
@@ -393,7 +412,7 @@ csid_seek (DB_fileinfo_t *_info, float time) {
     if (t < _info->readpos) {
         // reinit
         info->sidplay->load (info->tune);
-        csid_mute_voices (info, chip_voices);
+        _mute_voices(info);
     }
     else {
         t -= _info->readpos;
@@ -591,10 +610,6 @@ sid_configchanged (void) {
 
     // pick up new sldb filename in case it was changed
     sldb_free ();
-
-    if (chip_voices != deadbeef->conf_get_int ("chip.voices", 0xff)) {
-        chip_voices_changed = 1;
-    }
 
     return 0;
 }

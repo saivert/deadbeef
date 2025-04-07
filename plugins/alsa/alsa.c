@@ -1,6 +1,6 @@
 /*
     DeaDBeeF - The Ultimate Music Player
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include <unistd.h>
 #include <sys/prctl.h>
 #include <pthread.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #ifdef HAVE_CONFIG_H
 #include "../../config.h"
 #endif
@@ -78,6 +78,12 @@ static ddb_playback_state_t
 palsa_get_state (void);
 
 static int
+palsa_resume_playback (void);
+
+static int
+palsa_open (void);
+
+static int
 palsa_play (void);
 
 static int
@@ -111,11 +117,8 @@ palsa_set_hw_params (ddb_waveformat_t *fmt) {
         plugin.fmt.channels = 2;
         plugin.fmt.samplerate = 44100;
         plugin.fmt.channelmask = 3;
+        plugin.fmt.flags &= ~DDB_WAVEFORMAT_FLAG_IS_DOP;
     }
-
-    snd_pcm_nonblock(audio, 0);
-    snd_pcm_drain (audio);
-    snd_pcm_nonblock(audio, 1);
 
     if ((err = snd_pcm_hw_params_malloc (&hw_params)) < 0) {
         fprintf (stderr, "cannot allocate hardware parameter structure (%s)\n",
@@ -178,30 +181,45 @@ palsa_set_hw_params (ddb_waveformat_t *fmt) {
         int fmt_cnt[] = { 16, 24, 32, 32, 8 };
 #if WORDS_BIGENDIAN
         int fmt[] = { SND_PCM_FORMAT_S16_BE, SND_PCM_FORMAT_S24_3BE, SND_PCM_FORMAT_S32_BE, SND_PCM_FORMAT_FLOAT_BE, SND_PCM_FORMAT_S8, -1 };
+        int fmt_dop[] = { SND_PCM_FORMAT_S24_3BE, SND_PCM_FORMAT_S32_BE, -1 };
 #else
         int fmt[] = { SND_PCM_FORMAT_S16_LE, SND_PCM_FORMAT_S24_3LE, SND_PCM_FORMAT_S32_LE, SND_PCM_FORMAT_FLOAT_LE, SND_PCM_FORMAT_S8, -1 };
+        int fmt_dop[] = { SND_PCM_FORMAT_S24_3LE, SND_PCM_FORMAT_S32_LE, -1 };
 #endif
 
         // 1st try formats with higher bps
         int i = 0;
-        for (i = 0; fmt[i] != -1; i++) {
-            if (fmt[i] != sample_fmt && fmt_cnt[i] > plugin.fmt.bps) {
-                if (snd_pcm_hw_params_set_format (audio, hw_params, fmt[i]) >= 0) {
-                    fprintf (stderr, "Found compatible format %d bps\n", fmt_cnt[i]);
-                    sample_fmt = fmt[i];
-                    break;
+        if(plugin.fmt.flags & DDB_WAVEFORMAT_FLAG_IS_DOP) {
+            for (i = 0; fmt_dop[i] != -1; i++) {
+                if (fmt_dop[i] != sample_fmt) {
+                    if (snd_pcm_hw_params_set_format (audio, hw_params, fmt_dop[i]) >= 0) {
+                        fprintf (stderr, "Found DoP compatible format\n");
+                        sample_fmt = fmt_dop[i];
+                        break;
+                    }
                 }
             }
         }
-        if (fmt[i] == -1) {
-            // next try formats with lower bps
-            i = 0;
+        else {
             for (i = 0; fmt[i] != -1; i++) {
-                if (fmt[i] != sample_fmt && fmt_cnt[i] < plugin.fmt.bps) {
+                if (fmt[i] != sample_fmt && fmt_cnt[i] > plugin.fmt.bps) {
                     if (snd_pcm_hw_params_set_format (audio, hw_params, fmt[i]) >= 0) {
                         fprintf (stderr, "Found compatible format %d bps\n", fmt_cnt[i]);
                         sample_fmt = fmt[i];
                         break;
+                    }
+                }
+            }
+            if (fmt[i] == -1) {
+                // next try formats with lower bps
+                i = 0;
+                for (i = 0; fmt[i] != -1; i++) {
+                    if (fmt[i] != sample_fmt && fmt_cnt[i] < plugin.fmt.bps) {
+                        if (snd_pcm_hw_params_set_format (audio, hw_params, fmt[i]) >= 0) {
+                            fprintf (stderr, "Found compatible format %d bps\n", fmt_cnt[i]);
+                            sample_fmt = fmt[i];
+                            break;
+                        }
                     }
                 }
             }
@@ -219,18 +237,28 @@ palsa_set_hw_params (ddb_waveformat_t *fmt) {
     unsigned val = (unsigned)plugin.fmt.samplerate;
     int ret = 0;
 
-    if ((err = snd_pcm_hw_params_set_rate_resample (audio, hw_params, conf_alsa_resample)) < 0) {
+    int resample = conf_alsa_resample && !(plugin.fmt.flags & DDB_WAVEFORMAT_FLAG_IS_DOP);
+    if ((err = snd_pcm_hw_params_set_rate_resample (audio, hw_params, resample)) < 0) {
         fprintf (stderr, "cannot setup resampling (%s)\n",
                 snd_strerror (err));
         goto error;
     }
 
-    if ((err = snd_pcm_hw_params_set_rate_near (audio, hw_params, &val, &ret)) < 0) {
-        fprintf (stderr, "cannot set sample rate (%s)\n",
-                snd_strerror (err));
-        goto error;
+    if(plugin.fmt.flags & DDB_WAVEFORMAT_FLAG_IS_DOP) {
+        if ((err = snd_pcm_hw_params_set_rate (audio, hw_params, val, 0)) < 0) {
+            fprintf (stderr, "cannot set sample rate (%s)\n",
+                    snd_strerror (err));
+            goto error;
+        }
     }
-    plugin.fmt.samplerate = val;
+    else {
+        if ((err = snd_pcm_hw_params_set_rate_near (audio, hw_params, &val, &ret)) < 0) {
+            fprintf (stderr, "cannot set sample rate (%s)\n",
+                    snd_strerror (err));
+            goto error;
+        }
+        plugin.fmt.samplerate = val;
+    }
     trace ("chosen samplerate: %d Hz\n", val);
 
     unsigned chanmin, chanmax;
@@ -337,7 +365,7 @@ error:
 }
 
 static int
-palsa_init (void) {
+palsa_open (void) {
     int err;
 
     // get and cache conf variables
@@ -346,8 +374,6 @@ palsa_init (void) {
     trace ("alsa_soundcard: %s\n", conf_alsa_soundcard);
 
     snd_pcm_sw_params_t *sw_params = NULL;
-    state = DDB_PLAYBACK_STATE_STOPPED;
-    //const char *conf_alsa_soundcard = conf_get_str ("alsa_soundcard", "default");
     if ((err = snd_pcm_open (&audio, conf_alsa_soundcard, SND_PCM_STREAM_PLAYBACK, 0))) {
         fprintf (stderr, "could not open audio device (%s)\n",
                 snd_strerror (err));
@@ -390,12 +416,6 @@ palsa_init (void) {
     trace ("alsa avail_min: %d frames\n", (int)av);
 
 
-//    if ((err = snd_pcm_sw_params_set_start_threshold (audio, sw_params, 0U)) < 0) {
-//        trace ("cannot set start mode (%s)\n",
-//                snd_strerror (err));
-//        goto open_error;
-//    }
-
     if ((err = snd_pcm_sw_params (audio, sw_params)) < 0) {
         fprintf (stderr, "cannot set software parameters (%s)\n",
                 snd_strerror (err));
@@ -404,18 +424,11 @@ palsa_init (void) {
     snd_pcm_sw_params_free (sw_params);
     sw_params = NULL;
 
-    /* the interface will interrupt the kernel every N frames, and ALSA
-       will wake up this program very soon after that.
-       */
-
     if ((err = snd_pcm_prepare (audio)) < 0) {
         fprintf (stderr, "cannot prepare audio interface for use (%s)\n",
                 snd_strerror (err));
         goto open_error;
     }
-
-    alsa_terminate = 0;
-    alsa_tid = deadbeef->thread_start (palsa_thread, NULL);
 
     return 0;
 
@@ -424,10 +437,24 @@ open_error:
         snd_pcm_sw_params_free (sw_params);
     }
     if (audio != NULL) {
-        palsa_free ();
+        snd_pcm_drop (audio);
+        snd_pcm_close (audio);
+        audio = NULL;
     }
 
     return -1;
+}
+
+static int
+palsa_init (void) {
+    if (palsa_open () != 0) {
+        return -1;
+    }
+
+    alsa_terminate = 0;
+    alsa_tid = deadbeef->thread_start (palsa_thread, NULL);
+
+    return 0;
 }
 
 static int
@@ -453,6 +480,25 @@ _setformat_apply (void) {
         , requested_fmt.channelmask, plugin.fmt.channelmask
         );
     }
+
+    if (audio != NULL) {
+        trace ("alsa: new format: draining...\n");
+        snd_pcm_nonblock(audio, 0);
+        snd_pcm_drain (audio);
+        snd_pcm_nonblock(audio, 1);
+        trace ("alsa: new format: reinitializing\n");
+        snd_pcm_drop (audio);
+        snd_pcm_close (audio);
+        audio = NULL;
+        if (palsa_open() < 0) {
+            return -1;
+        }
+    }
+
+    snd_pcm_nonblock (audio, 0);
+    snd_pcm_drain (audio);
+    snd_pcm_nonblock (audio, 1);
+
     int ret = palsa_set_hw_params (&requested_fmt);
     if (ret < 0) {
         trace ("palsa_setformat: impossible to set requested format\n");
@@ -461,6 +507,15 @@ _setformat_apply (void) {
         return -1;
     }
     trace ("new format %dbit %s %dch %dHz channelmask=%X\n", plugin.fmt.bps, plugin.fmt.is_float ? "float" : "int", plugin.fmt.channels, plugin.fmt.samplerate, plugin.fmt.channelmask);
+
+    switch (state) {
+    case DDB_PLAYBACK_STATE_STOPPED:
+    case DDB_PLAYBACK_STATE_PAUSED:
+        return 0;
+    case DDB_PLAYBACK_STATE_PLAYING:
+        return palsa_resume_playback();
+    }
+
     return 0;
 }
 
@@ -506,6 +561,17 @@ palsa_hw_pause (int pause) {
 }
 
 static int
+palsa_resume_playback (void) {
+    int err = snd_pcm_prepare (audio);
+    if (err < 0) {
+        fprintf (stderr, "snd_pcm_prepare: %s\n", snd_strerror (err));
+        return err;
+    }
+    snd_pcm_start (audio);
+    return 0;
+}
+
+static int
 palsa_play (void) {
     int err = 0;
     LOCK;
@@ -523,13 +589,11 @@ palsa_play (void) {
         fprintf (stderr, "snd_pcm_drop: %s\n", snd_strerror (err));
         return err;
     }
-    err = snd_pcm_prepare (audio);
-    if (err < 0) {
+    err = palsa_resume_playback ();
+    if (err != 0) {
         UNLOCK;
-        fprintf (stderr, "snd_pcm_prepare: %s\n", snd_strerror (err));
-        return err;
+        return -1;
     }
-    snd_pcm_start (audio);
     state = DDB_PLAYBACK_STATE_PLAYING;
     UNLOCK;
     return 0;
@@ -698,8 +762,10 @@ palsa_thread (void *context) {
     }
 
     LOCK;
-    snd_pcm_close(audio);
-    audio = NULL;
+    if (audio != NULL) {
+        snd_pcm_close(audio);
+        audio = NULL;
+    }
     alsa_terminate = 0;
     alsa_tid = 0;
     UNLOCK;
@@ -824,7 +890,7 @@ static DB_output_t plugin = {
     .plugin.name = "ALSA output plugin",
     .plugin.descr = "plays sound through linux standard alsa library",
     .plugin.copyright =
-        "Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "\n"
         "This program is free software; you can redistribute it and/or\n"
         "modify it under the terms of the GNU General Public License\n"

@@ -2,148 +2,145 @@
 //  medialibwidget.c
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 11/08/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 11/08/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
-
 
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "../../../gettext.h"
-#include "../../medialib/medialib.h"
+#include "../../artwork/artwork.h"
+#include "../covermanager/covermanager.h"
 #include "../prefwin/prefwin.h"
 #include "../support.h"
-#include "ddblistview.h"
+#include "../playlist/ddblistview.h"
 #include "medialibwidget.h"
 #include "medialibmanager.h"
 #include "plmenu.h"
+#include "../../../shared/scriptable/scriptable.h"
+#include "../scriptable/gtkScriptableSelectViewController.h"
+#include "mlcellrendererpixbuf.h"
+#include "../gtkui.h"
+#include "../undointegration.h"
 
 extern DB_functions_t *deadbeef;
+static DB_mediasource_t *plugin;
 
 typedef struct {
     ddb_gtkui_widget_t base;
+    gtkScriptableSelectViewController_t *selectViewController;
+    gtkScriptableSelectViewControllerDelegate_t scriptableSelectDelegate;
     GtkTreeView *tree;
-    GtkComboBoxText *selector;
     GtkEntry *search_entry;
-    ddb_medialib_plugin_t *plugin;
-    ddb_mediasource_source_t source;
-    ddb_mediasource_list_selector_t *selectors;
-    int active_selector;
+    ddb_mediasource_source_t *source;
     char *search_text;
     int listener_id;
     GtkTreeIter root_iter;
+    GtkTreeStore *store;
     ddb_medialib_item_t *item_tree;
     gint collapse_expand_select_timeout;
-    int is_reloading;
+    gboolean is_reloading;
+    gboolean has_changed_selection;
+    MlCellRendererPixbufDelegate pixbuf_cell_delegate;
+
+    GdkPixbuf *folder_icon;
+    int reload_index;
+    int64_t artwork_source_id;
+    dispatch_queue_t background_queue;
 } w_medialib_viewer_t;
 
 enum {
+    COL_ICON,
     COL_TITLE,
     COL_TRACK,
     COL_ITEM,
+    COL_PATH,
 };
 
 static void
 _restore_selected_expanded_state_for_iter (w_medialib_viewer_t *mlv, GtkTreeStore *store, GtkTreeIter *iter);
 
-static int
-_item_comparator (const void *a, const void *b) {
-    const ddb_medialib_item_t *item1 = *((ddb_medialib_item_t **)a);
-    const ddb_medialib_item_t *item2 = *((ddb_medialib_item_t **)b);
-
-     if (!item1->track || !item2->track) {
-         return strcasecmp (item1->text, item2->text);
-     }
-
-     int n1 = atoi (deadbeef->pl_find_meta (item1->track, "track") ?: "0");
-     int n2 = atoi (deadbeef->pl_find_meta (item2->track, "track") ?: "0");
-     int d1 = atoi (deadbeef->pl_find_meta (item1->track, "disc") ?: "0") + 1;
-     int d2 = atoi (deadbeef->pl_find_meta (item2->track, "disc") ?: "0") + 1;
-     n1 = d1 * 10000 + n1;
-     n2 = d2 * 10000 + n2;
-
-    return n1-n2;
-}
-
-static ddb_medialib_item_t **
-_sorted_children_from_item (ddb_medialib_item_t *item) {
-    ddb_medialib_item_t **children = calloc (item->num_children, sizeof (ddb_medialib_item_t *));
-    ddb_medialib_item_t *c = item->children;
-    for (int i = 0; i < item->num_children; i++) {
-        children[i] = c;
-        c = c->next;
-    }
-
-    qsort (children, item->num_children, sizeof (ddb_medialib_item_t *), _item_comparator);
-
-    return children;
-}
-
 static void
-_add_items (w_medialib_viewer_t *mlv, GtkTreeIter *iter, ddb_medialib_item_t *item) {
+_add_items (w_medialib_viewer_t *mlv, GtkTreeIter *iter, const ddb_medialib_item_t *item, GtkTreePath *parent_path) {
     if (item == NULL) {
         return;
     }
-    GtkTreeStore *store = GTK_TREE_STORE (gtk_tree_view_get_model (mlv->tree));
+    GtkTreeStore *store = mlv->store;
 
-    ddb_medialib_item_t **sorted_items = _sorted_children_from_item (item);
-
-    for (int i = 0; i < item->num_children; i++) {
-        ddb_medialib_item_t *child_item = sorted_items[i];
+    const ddb_medialib_item_t *child_item = plugin->tree_item_get_children (item);
+    int index = 0;
+    while (child_item != NULL) {
         GtkTreeIter child;
         gtk_tree_store_append (store, &child, iter);
-        if (child_item->num_children > 0) {
-            size_t len = strlen(child_item->text) + 20;
+        int child_numchildren = plugin->tree_item_get_children_count (child_item);
+        const char *item_text = plugin->tree_item_get_text (child_item);
+        if (child_numchildren > 0) {
+            size_t len = strlen (item_text) + 20;
             char *text = malloc (len + 20);
-            snprintf (text, len, "%s (%d)", child_item->text, child_item->num_children);
+            snprintf (text, len, "%s (%d)", item_text, child_numchildren);
             gtk_tree_store_set (store, &child, COL_TITLE, text, -1);
             free (text);
         }
         else {
-            gtk_tree_store_set (store, &child, COL_TITLE, child_item->text, -1);
+            gtk_tree_store_set (store, &child, COL_TITLE, item_text, -1);
         }
 
-        gtk_tree_store_set(store, &child, COL_TRACK, child_item->track, -1);
-        gtk_tree_store_set(store, &child, COL_ITEM, child_item, -1);
+        ddb_playItem_t *track = plugin->tree_item_get_track (child_item);
+        gtk_tree_store_set (store, &child, COL_TRACK, track, -1);
+        gtk_tree_store_set (store, &child, COL_ITEM, child_item, -1);
 
-        if (child_item->children != NULL) {
-            _add_items (mlv, &child, child_item);
+        GtkTreePath *path = gtk_tree_path_copy (parent_path);
+        gtk_tree_path_append_index (path, index++);
+
+        gchar *strpath = gtk_tree_path_to_string (path);
+        gtk_tree_store_set (store, &child, COL_PATH, strpath, -1);
+        g_free (strpath);
+
+        const ddb_medialib_item_t *child_children = plugin->tree_item_get_children (child_item);
+        if (child_children != NULL) {
+            _add_items (mlv, &child, child_item, path);
         }
+
+        gtk_tree_path_free (path);
+
+        child_item = plugin->tree_item_get_next (child_item);
     }
-
-    free (sorted_items);
 }
 
 static gboolean
 _medialib_state_did_change (void *user_data) {
     w_medialib_viewer_t *mlv = user_data;
-    ddb_mediasource_state_t state = mlv->plugin->plugin.scanner_state (mlv->source);
-    int enabled = mlv->plugin->plugin.get_source_enabled (mlv->source);
-    GtkTreeStore *store = GTK_TREE_STORE (gtk_tree_view_get_model (mlv->tree));
+    ddb_mediasource_state_t state = plugin->scanner_state (mlv->source);
+    int enabled = plugin->is_source_enabled (mlv->source);
+    GtkTreeStore *store = mlv->store;
     switch (state) {
     case DDB_MEDIASOURCE_STATE_IDLE:
         if (enabled) {
             char text[200];
-            snprintf (text, sizeof (text), "%s (%d)", _("All Music"), mlv->item_tree ? mlv->item_tree->num_children : 0);
+            int count = 0;
+            if (mlv->item_tree != NULL) {
+                count = plugin->tree_item_get_children_count (mlv->item_tree);
+            }
+            snprintf (text, sizeof (text), "%s (%d)", _ ("All Music"), mlv->item_tree ? count : 0);
             gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, text, -1);
         }
         else {
-            gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _("Media library is disabled"), -1);
+            gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _ ("Media library is disabled"), -1);
         }
         break;
     case DDB_MEDIASOURCE_STATE_LOADING:
-        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _("Loading..."), -1);
+        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _ ("Loading..."), -1);
         break;
     case DDB_MEDIASOURCE_STATE_SCANNING:
-        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _("Scanning..."), -1);
+        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _ ("Scanning..."), -1);
         break;
     case DDB_MEDIASOURCE_STATE_INDEXING:
-        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _("Indexing..."), -1);
+        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _ ("Indexing..."), -1);
         break;
     case DDB_MEDIASOURCE_STATE_SAVING:
-        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _("Saving..."), -1);
+        gtk_tree_store_set (store, &mlv->root_iter, COL_TITLE, _ ("Saving..."), -1);
         break;
     }
 
@@ -153,38 +150,58 @@ _medialib_state_did_change (void *user_data) {
 static void
 _reload_content (w_medialib_viewer_t *mlv) {
     // populate the tree
+    mlv->reload_index++;
+
+    GtkTreeStore *store = mlv->store;
+
     if (mlv->item_tree != NULL) {
-        mlv->plugin->plugin.free_item_tree (mlv->source, mlv->item_tree);
+        plugin->free_item_tree (mlv->source, mlv->item_tree);
         mlv->item_tree = NULL;
     }
-    mlv->item_tree = mlv->plugin->plugin.create_item_tree (mlv->source, mlv->selectors[mlv->active_selector], mlv->search_text);
 
-    mlv->is_reloading = 1;
-    // clear
-    GtkTreeIter iter;
-    GtkTreeStore *store = GTK_TREE_STORE (gtk_tree_view_get_model (mlv->tree));
-    if (gtk_tree_model_iter_children (GTK_TREE_MODEL (store), &iter, &mlv->root_iter)) {
-        while (gtk_tree_store_remove (store, &iter));
+    scriptableItem_t *preset = NULL;
+
+    scriptableItem_t *presets = plugin->get_queries_scriptable (mlv->source);
+    if (presets) {
+        scriptableModel_t *model = gtkui_medialib_get_model ();
+
+        char *curr_preset = scriptableModelGetAPI (model)->get_active_name (model);
+        if (curr_preset) {
+            preset = scriptableItemSubItemForName (presets, curr_preset);
+        }
+        if (preset == NULL) {
+            preset = scriptableItemChildren (presets);
+        }
+        mlv->item_tree = plugin->create_item_tree (mlv->source, preset, mlv->search_text);
+        free (curr_preset);
     }
 
-    _add_items (mlv, &mlv->root_iter, mlv->item_tree);
+    mlv->is_reloading = TRUE;
+    // clear
+    GtkTreeIter iter;
+    if (gtk_tree_model_iter_children (GTK_TREE_MODEL (store), &iter, &mlv->root_iter)) {
+        while (gtk_tree_store_remove (store, &iter))
+            ;
+    }
 
-    GtkTreePath *path = gtk_tree_path_new_from_indices (0, -1);
-    gtk_tree_view_expand_row (mlv->tree, path, mlv->search_text != NULL);
-    gtk_tree_path_free (path);
+    GtkTreePath *root_path = gtk_tree_path_new_from_indices (0, -1);
+    _add_items (mlv, &mlv->root_iter, mlv->item_tree, root_path);
+
+    gtk_tree_view_expand_row (mlv->tree, root_path, mlv->search_text != NULL);
+    gtk_tree_path_free (root_path);
 
     _medialib_state_did_change (mlv);
 
     // restore selected/expanded state
     _restore_selected_expanded_state_for_iter (mlv, store, &mlv->root_iter);
 
-    mlv->is_reloading = 0;
+    mlv->is_reloading = FALSE;
 }
 
 static gboolean
 _medialib_content_did_change (void *user_data) {
     w_medialib_viewer_t *mlv = user_data;
-    if (mlv->plugin == NULL) {
+    if (plugin == NULL) {
         return FALSE;
     }
     _reload_content (mlv);
@@ -201,21 +218,21 @@ _medialib_listener (ddb_mediasource_event_type_t event, void *user_data) {
     case DDB_MEDIASOURCE_EVENT_ENABLED_DID_CHANGE:
         g_idle_add (_medialib_state_did_change, user_data);
         break;
-    case DDB_MEDIASOURCE_EVENT_SELECTORS_DID_CHANGE:
+    default:
         break;
     }
 }
 
-static gboolean _selection_func (
-                                 GtkTreeSelection  *selection,
-                                 GtkTreeModel      *model,
-                                 GtkTreePath       *path,
-                                 gboolean           path_currently_selected,
-                                 gpointer           data
-                                 ) {
-    gint *indices = gtk_tree_path_get_indices(path);
+static gboolean
+_selection_func (
+    GtkTreeSelection *selection,
+    GtkTreeModel *model,
+    GtkTreePath *path,
+    gboolean path_currently_selected,
+    gpointer data) {
+    gint *indices = gtk_tree_path_get_indices (path);
 
-    int count = gtk_tree_path_get_depth(path);
+    int count = gtk_tree_path_get_depth (path);
 
     // don't select root
     if (count == 1 && indices[0] == 0) {
@@ -230,63 +247,63 @@ _save_selection_state_with_iter (w_medialib_viewer_t *mlv, GtkTreeStore *store, 
     if (mlv->is_reloading) {
         return;
     }
-    GtkTreeModel *model = GTK_TREE_MODEL(store);
+    GtkTreeModel *model = GTK_TREE_MODEL (store);
 
-    GValue value = {0};
+    GValue value = { 0 };
     gtk_tree_model_get_value (model, iter, COL_ITEM, &value);
     ddb_medialib_item_t *medialibItem = g_value_get_pointer (&value);
     g_value_unset (&value);
 
     if (medialibItem != NULL) {
-        GtkTreePath *path = gtk_tree_model_get_path(model, iter);
+        GtkTreePath *path = gtk_tree_model_get_path (model, iter);
         if (path != NULL) {
             GtkTreeSelection *selection = gtk_tree_view_get_selection (mlv->tree);
-            gboolean selected = gtk_tree_selection_iter_is_selected(selection, iter);
-            gboolean expanded = gtk_tree_view_row_expanded(mlv->tree, path);
-            mlv->plugin->plugin.set_tree_item_selected (mlv->source, medialibItem, selected ? 1 : 0);
-            mlv->plugin->plugin.set_tree_item_expanded (mlv->source, medialibItem, expanded ? 1 : 0);
+            gboolean selected = gtk_tree_selection_iter_is_selected (selection, iter);
+            gboolean expanded = gtk_tree_view_row_expanded (mlv->tree, path);
+            plugin->set_tree_item_selected (mlv->source, medialibItem, selected ? 1 : 0);
+            plugin->set_tree_item_expanded (mlv->source, medialibItem, expanded ? 1 : 0);
         }
     }
 
     GtkTreeIter child;
     if (gtk_tree_model_iter_children (model, &child, iter)) {
         do {
-            _save_selection_state_with_iter(mlv, store, &child);
+            _save_selection_state_with_iter (mlv, store, &child);
         } while (gtk_tree_model_iter_next (model, &child));
     }
 }
 
 static void
 _restore_selected_expanded_state_for_iter (w_medialib_viewer_t *mlv, GtkTreeStore *store, GtkTreeIter *iter) {
-    GtkTreeModel *model = GTK_TREE_MODEL(store);
+    GtkTreeModel *model = GTK_TREE_MODEL (store);
 
-    GValue value = {0};
+    GValue value = { 0 };
     gtk_tree_model_get_value (model, iter, COL_ITEM, &value);
     ddb_medialib_item_t *medialibItem = g_value_get_pointer (&value);
     g_value_unset (&value);
 
     if (medialibItem != NULL) {
-        int selected = mlv->plugin->plugin.is_tree_item_selected (mlv->source, medialibItem);
-        int expanded = mlv->plugin->plugin.is_tree_item_expanded (mlv->source, medialibItem);
+        int selected = plugin->is_tree_item_selected (mlv->source, medialibItem);
+        int expanded = plugin->is_tree_item_expanded (mlv->source, medialibItem);
 
-        GtkTreePath *path = gtk_tree_model_get_path(model, iter);
+        GtkTreePath *path = gtk_tree_model_get_path (model, iter);
         if (expanded) {
-            gtk_tree_view_expand_row(mlv->tree, path, FALSE);
+            gtk_tree_view_expand_row (mlv->tree, path, FALSE);
         }
         else {
-            gtk_tree_view_collapse_row(mlv->tree, path);
+            gtk_tree_view_collapse_row (mlv->tree, path);
         }
 
         GtkTreeSelection *selection = gtk_tree_view_get_selection (mlv->tree);
         if (selected) {
-            gtk_tree_selection_select_iter(selection, iter);
+            gtk_tree_selection_select_iter (selection, iter);
         }
     }
 
     GtkTreeIter child;
     if (gtk_tree_model_iter_children (model, &child, iter)) {
         do {
-            _restore_selected_expanded_state_for_iter(mlv, store, &child);
+            _restore_selected_expanded_state_for_iter (mlv, store, &child);
         } while (gtk_tree_model_iter_next (model, &child));
     }
 }
@@ -294,61 +311,86 @@ _restore_selected_expanded_state_for_iter (w_medialib_viewer_t *mlv, GtkTreeStor
 static gboolean
 _row_collapse_expand_selection_did_change (void *user_data) {
     w_medialib_viewer_t *mlv = user_data;
-    GtkTreeStore *store = GTK_TREE_STORE (gtk_tree_view_get_model (mlv->tree));
-    _save_selection_state_with_iter(mlv, store, &mlv->root_iter);
+    mlv->has_changed_selection = TRUE;
     mlv->collapse_expand_select_timeout = 0;
     return FALSE;
 }
 
 static void
-_selection_did_change (GtkTreeSelection* self, w_medialib_viewer_t *mlv) {
+_selection_did_change (GtkTreeSelection *self, w_medialib_viewer_t *mlv) {
     if (mlv->collapse_expand_select_timeout != 0) {
         g_source_remove (mlv->collapse_expand_select_timeout);
     }
     if (mlv->is_reloading) {
         return;
     }
-    mlv->collapse_expand_select_timeout = g_timeout_add(0.05, _row_collapse_expand_selection_did_change, mlv);
+    mlv->collapse_expand_select_timeout = g_timeout_add (50, _row_collapse_expand_selection_did_change, mlv);
 }
 
 static void
-_row_did_collapse_expand (GtkTreeView* self, GtkTreeIter* iter, GtkTreePath* path, w_medialib_viewer_t *mlv) {
+_row_did_collapse_expand (GtkTreeView *self, GtkTreeIter *iter, GtkTreePath *path, w_medialib_viewer_t *mlv) {
     if (mlv->collapse_expand_select_timeout != 0) {
         g_source_remove (mlv->collapse_expand_select_timeout);
     }
     if (mlv->is_reloading) {
         return;
     }
-    mlv->collapse_expand_select_timeout = g_timeout_add(0.05, _row_collapse_expand_selection_did_change, mlv);
+    mlv->collapse_expand_select_timeout = g_timeout_add (50, _row_collapse_expand_selection_did_change, mlv);
+}
+
+static void
+_scriptableSelectSelectionDidChange (gtkScriptableSelectViewController_t *vc, scriptableItem_t *item, void *context) {
+    w_medialib_viewer_t *mlv = context;
+
+    _reload_content (mlv);
+}
+
+static void
+_scriptableSelectScriptableDidChange (
+    gtkScriptableSelectViewController_t *view_controller,
+    gtkScriptableChange_t change_type,
+    void *context) {
+    w_medialib_viewer_t *mlv = context;
+    scriptableItem_t *presets = plugin->get_queries_scriptable (mlv->source);
+    scriptableItemSave (presets);
+
+    // refresh the tree
+    int index = gtkScriptableSelectViewControllerIndexOfSelectedItem (mlv->selectViewController);
+    scriptableItem_t *item = scriptableItemChildAtIndex (presets, (unsigned int)index);
+    _scriptableSelectSelectionDidChange (mlv->selectViewController, item, context);
 }
 
 static void
 w_medialib_viewer_init (struct ddb_gtkui_widget_s *w) {
     // observe medialib source
     w_medialib_viewer_t *mlv = (w_medialib_viewer_t *)w;
-    mlv->plugin = (ddb_medialib_plugin_t *)deadbeef->plug_get_for_id ("medialib");
-    if (mlv->plugin == NULL) {
+    if (plugin == NULL) {
+        plugin = (DB_mediasource_t *)deadbeef->plug_get_for_id ("medialib");
+    }
+    if (plugin == NULL) {
         return;
     }
-    mlv->source = gtkui_medialib_get_source ();
-    mlv->selectors = mlv->plugin->plugin.get_selectors_list (mlv->source);
-    mlv->listener_id =  mlv->plugin->plugin.add_listener (mlv->source, _medialib_listener, mlv);
 
-    for (int i = 0; mlv->selectors[i]; i++) {
-        gtk_combo_box_text_append_text (mlv->selector, mlv->plugin->plugin.selector_name (mlv->source, mlv->selectors[i]));
-    }
-    gtk_combo_box_set_active (GTK_COMBO_BOX (mlv->selector), 0);
-    mlv->active_selector = 0;
+    mlv->source = gtkui_medialib_get_source ();
+    mlv->listener_id = plugin->add_listener (mlv->source, _medialib_listener, mlv);
+
+    scriptableItem_t *presets = plugin->get_queries_scriptable (mlv->source);
+
+    mlv->scriptableSelectDelegate.selection_did_change = _scriptableSelectSelectionDidChange;
+    mlv->scriptableSelectDelegate.scriptable_did_change = _scriptableSelectScriptableDidChange;
+    gtkScriptableSelectViewControllerSetScriptable (mlv->selectViewController, presets);
+    gtkScriptableSelectViewControllerSetModel (mlv->selectViewController, gtkui_medialib_get_model ());
+    gtkScriptableSelectViewControllerSetDelegate (mlv->selectViewController, &mlv->scriptableSelectDelegate, mlv);
 
     // Root node
-    GtkTreeStore *store = GTK_TREE_STORE (gtk_tree_view_get_model (mlv->tree));
+    GtkTreeStore *store = mlv->store;
     gtk_tree_store_append (store, &mlv->root_iter, NULL);
 
     GtkTreeSelection *selection = gtk_tree_view_get_selection (mlv->tree);
-    gtk_tree_selection_set_select_function(selection, _selection_func, mlv, NULL);
-    g_signal_connect(selection, "changed", G_CALLBACK(_selection_did_change), w);
-    g_signal_connect(mlv->tree, "row-collapsed", G_CALLBACK(_row_did_collapse_expand), w);
-    g_signal_connect(mlv->tree, "row-expanded", G_CALLBACK(_row_did_collapse_expand), w);
+    gtk_tree_selection_set_select_function (selection, _selection_func, mlv, NULL);
+    g_signal_connect (selection, "changed", G_CALLBACK (_selection_did_change), w);
+    g_signal_connect (mlv->tree, "row-collapsed", G_CALLBACK (_row_did_collapse_expand), w);
+    g_signal_connect (mlv->tree, "row-expanded", G_CALLBACK (_row_did_collapse_expand), w);
 
     _reload_content (mlv);
 }
@@ -356,60 +398,31 @@ w_medialib_viewer_init (struct ddb_gtkui_widget_s *w) {
 static void
 w_medialib_viewer_destroy (struct ddb_gtkui_widget_s *w) {
     w_medialib_viewer_t *mlv = (w_medialib_viewer_t *)w;
+    if (mlv->background_queue != NULL) {
+        dispatch_release (mlv->background_queue);
+        mlv->background_queue = NULL;
+    }
+    if (mlv->selectViewController != NULL) {
+        gtkScriptableSelectViewControllerFree (mlv->selectViewController);
+    }
     if (mlv->source != NULL) {
-        mlv->plugin->plugin.remove_listener (mlv->source, mlv->listener_id);
+        plugin->remove_listener (mlv->source, mlv->listener_id);
     }
     if (mlv->item_tree != NULL) {
-        mlv->plugin->plugin.free_item_tree (mlv->source, mlv->item_tree);
+        plugin->free_item_tree (mlv->source, mlv->item_tree);
         mlv->item_tree = NULL;
-    }
-    if (mlv->selectors != NULL) {
-        mlv->plugin->plugin.free_selectors_list (mlv->source, mlv->selectors);
-        mlv->selectors = NULL;
     }
     free (mlv->search_text);
     mlv->search_text = NULL;
+    if (mlv->folder_icon) {
+        g_object_unref (mlv->folder_icon);
+        mlv->folder_icon = NULL;
+    }
 }
 
 static int
 w_medialib_viewer_message (ddb_gtkui_widget_t *w, uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2) {
     return 0;
-}
-
-static GtkTreeViewColumn *
-add_treeview_column (w_medialib_viewer_t *w, GtkTreeView *tree, int pos, int expand, int align_right, const char *title, int is_pixbuf)
-{
-    GtkCellRenderer *rend = NULL;
-    GtkTreeViewColumn *col = NULL;
-    if (is_pixbuf) {
-        rend = gtk_cell_renderer_pixbuf_new ();
-        col = gtk_tree_view_column_new_with_attributes (title, rend, "pixbuf", pos, NULL);
-    }
-    else {
-        rend = gtk_cell_renderer_text_new ();
-        col = gtk_tree_view_column_new_with_attributes (title, rend, "text", pos, NULL);
-    }
-    if (align_right) {
-        g_object_set (rend, "xalign", 1.0, NULL);
-    }
-
-    gtk_tree_view_column_set_sizing (col, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
-    gtk_tree_view_column_set_expand (col, expand);
-    gtk_tree_view_insert_column (GTK_TREE_VIEW (tree), col, pos);
-    GtkWidget *label = gtk_label_new (title);
-    gtk_tree_view_column_set_widget (col, label);
-    gtk_widget_show (label);
-    return col;
-}
-
-static void
-_active_selector_did_change (GtkComboBox* self, gpointer user_data) {
-    w_medialib_viewer_t *mlv = user_data;
-    int active_selector = gtk_combo_box_get_active (self);
-    if (mlv->active_selector != active_selector) {
-        mlv->active_selector = active_selector;
-        _reload_content (mlv);
-    }
 }
 
 static void
@@ -430,15 +443,15 @@ _search_text_did_change (GtkEditable *editable, gpointer user_data) {
 static int
 _collect_tracks_from_iter (GtkTreeModel *model, GtkTreeIter *iter, ddb_playItem_t **tracks, int append_position) {
     // is it a track?
-    GValue value = {0};
+    GValue value = { 0 };
     gtk_tree_model_get_value (model, iter, COL_TRACK, &value);
     ddb_playItem_t *track = g_value_get_pointer (&value);
     g_value_unset (&value);
 
     if (track) {
         if (tracks != NULL) {
-            ddb_playItem_t *it = deadbeef->pl_item_alloc();
-            deadbeef->pl_item_copy(it, track);
+            ddb_playItem_t *it = deadbeef->pl_item_alloc ();
+            deadbeef->pl_item_copy (it, track);
             tracks[append_position] = it;
         }
         return 1;
@@ -459,7 +472,11 @@ _collect_tracks_from_iter (GtkTreeModel *model, GtkTreeIter *iter, ddb_playItem_
 }
 
 static int
-_collect_selected_tracks (GtkTreeModel *model, GtkTreeSelection *selection, ddb_playItem_t **tracks, int append_position) {
+_collect_selected_tracks (
+    GtkTreeModel *model,
+    GtkTreeSelection *selection,
+    ddb_playItem_t **tracks,
+    int append_position) {
     GList *selected_rows = gtk_tree_selection_get_selected_rows (selection, NULL);
 
     int count = 0;
@@ -468,19 +485,24 @@ _collect_selected_tracks (GtkTreeModel *model, GtkTreeSelection *selection, ddb_
         GtkTreePath *path = (GtkTreePath *)row->data;
         GtkTreeIter iter;
         if (!gtk_tree_model_get_iter (model, &iter, path)) {
+            gtk_tree_path_free (path);
             continue;
         }
 
         int appended_count = _collect_tracks_from_iter (model, &iter, tracks, append_position);
         count += appended_count;
         append_position += appended_count;
+        gtk_tree_path_free (path);
     }
 
-    g_list_free_full (selected_rows, (GDestroyNotify) gtk_tree_path_free);
+    g_list_free (selected_rows);
     return count;
 }
 
-static void _append_tracks_to_playlist (ddb_playItem_t **tracks, int count, ddb_playlist_t *plt) {
+static void
+_append_tracks_to_playlist (ddb_playItem_t **tracks, int count, ddb_playlist_t *plt) {
+    ddb_undo->group_begin ();
+
     ddb_playItem_t *prev = deadbeef->plt_get_tail_item (plt, PL_MAIN);
     for (int i = 0; i < count; i++) {
         ddb_playItem_t *it = deadbeef->pl_item_alloc ();
@@ -491,6 +513,10 @@ static void _append_tracks_to_playlist (ddb_playItem_t **tracks, int count, ddb_
         }
         prev = it;
     }
+
+    ddb_undo->group_end ();
+    ddb_undo->set_action_name (_("Add Files"));
+
     if (prev != NULL) {
         deadbeef->pl_item_unref (prev);
     }
@@ -512,10 +538,10 @@ _get_target_playlist (void) {
 }
 
 static void
-_treeview_row_did_activate (GtkTreeView* self, GtkTreePath* path, GtkTreeViewColumn* column, gpointer user_data) {
+_treeview_row_did_activate (GtkTreeView *self, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data) {
     w_medialib_viewer_t *mlv = user_data;
 
-    GtkTreeModel *model = GTK_TREE_MODEL (gtk_tree_view_get_model (mlv->tree));
+    GtkTreeModel *model = GTK_TREE_MODEL (mlv->store);
     GtkTreeIter iter;
     if (!gtk_tree_model_get_iter (model, &iter, path)) {
         return;
@@ -558,12 +584,10 @@ _treeview_row_did_activate (GtkTreeView* self, GtkTreePath* path, GtkTreeViewCol
 static gboolean
 _select_at_position (GtkTreeView *treeview, gint x, gint y) {
     GtkTreeSelection *selection = gtk_tree_view_get_selection (treeview);
-    GtkTreeModel *model = GTK_TREE_MODEL (gtk_tree_view_get_model (treeview));
+    GtkTreeModel *model = gtk_tree_view_get_model (treeview);
 
     GtkTreePath *path;
-    if (!gtk_tree_view_get_path_at_pos (treeview,
-                                       x, y,
-                                       &path, NULL, NULL, NULL)) {
+    if (!gtk_tree_view_get_path_at_pos (treeview, x, y, &path, NULL, NULL, NULL)) {
         gtk_tree_selection_unselect_all (selection);
         return FALSE;
     }
@@ -579,16 +603,27 @@ _select_at_position (GtkTreeView *treeview, gint x, gint y) {
 }
 
 static void
+_refresh_mediasource(w_medialib_viewer_t *mlv) {
+    if (mlv->has_changed_selection) {
+        GtkTreeStore *store = mlv->store;
+        _save_selection_state_with_iter (mlv, store, &mlv->root_iter);
+        mlv->has_changed_selection = FALSE;
+    }
+
+    plugin->refresh (mlv->source);
+}
+
+static void
 _trkproperties_did_change_tracks (void *user_data) {
     w_medialib_viewer_t *mlv = user_data;
-    mlv->plugin->plugin.refresh (mlv->source);
+    _refresh_mediasource(mlv);
 }
 
 static void
 _trkproperties_did_delete_files (void *user_data, int cancelled) {
     if (!cancelled) {
         w_medialib_viewer_t *mlv = user_data;
-        mlv->plugin->plugin.refresh (mlv->source);
+        _refresh_mediasource(mlv);
     }
 }
 
@@ -599,7 +634,7 @@ static trkproperties_delegate_t _trkproperties_delegate = {
 };
 
 gboolean
-_treeview_row_mousedown (GtkWidget* self, GdkEventButton *event, gpointer user_data) {
+_treeview_row_mousedown (GtkWidget *self, GdkEventButton *event, gpointer user_data) {
     if (w_get_design_mode ()) {
         return FALSE;
     }
@@ -609,7 +644,7 @@ _treeview_row_mousedown (GtkWidget* self, GdkEventButton *event, gpointer user_d
     }
 
     w_medialib_viewer_t *mlv = user_data;
-    GtkTreeModel *model = GTK_TREE_MODEL (gtk_tree_view_get_model (mlv->tree));
+    GtkTreeModel *model = GTK_TREE_MODEL (mlv->store);
     GtkTreeSelection *selection = gtk_tree_view_get_selection (mlv->tree);
 
     if (!_select_at_position (mlv->tree, event->x, event->y)) {
@@ -632,21 +667,19 @@ _treeview_row_mousedown (GtkWidget* self, GdkEventButton *event, gpointer user_d
     if (event->button == 3) {
         _trkproperties_delegate.user_data = mlv;
 
-        ddb_playlist_t *plt = deadbeef->plt_alloc("MediaLib Action Playlist");
+        ddb_playlist_t *plt = deadbeef->plt_alloc ("MediaLib Action Playlist");
 
         ddb_playItem_t *after = NULL;
         for (int i = 0; i < count; i++) {
-            after = deadbeef->plt_insert_item(plt, after, tracks[i]);
+            after = deadbeef->plt_insert_item (plt, after, tracks[i]);
         }
-        deadbeef->plt_select_all(plt);
+        deadbeef->plt_select_all (plt);
 
         list_context_menu_with_dynamic_track_list (plt, &_trkproperties_delegate);
 
-        deadbeef->plt_unref(plt);
-
-
-
+        deadbeef->plt_unref (plt);
     }
+
     // append to playlist
     else if (event->button == 2 && count > 0) {
         ddb_playlist_t *curr_plt = _get_target_playlist ();
@@ -665,18 +698,12 @@ _treeview_row_mousedown (GtkWidget* self, GdkEventButton *event, gpointer user_d
 }
 
 static void
-_configure_did_activate (GtkButton* self, gpointer user_data) {
+_configure_did_activate (GtkButton *self, gpointer user_data) {
     prefwin_run (PREFWIN_TAB_INDEX_MEDIALIB);
 }
 
 static void
-_drag_data_get (
-               GtkWidget* widget,
-               GdkDragContext* context,
-               GtkSelectionData* selection_data,
-               guint info,
-               guint time_
-                ) {
+_drag_data_get (GtkWidget *widget, GdkDragContext *context, GtkSelectionData *selection_data, guint info, guint time) {
     GtkTreeModel *model = GTK_TREE_MODEL (gtk_tree_view_get_model (GTK_TREE_VIEW (widget)));
     GtkTreeSelection *selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (widget));
 
@@ -688,14 +715,99 @@ _drag_data_get (
     _collect_selected_tracks (model, selection, tracks, 0);
 
     GdkAtom type = gtk_selection_data_get_target (selection_data);
-    gtk_selection_data_set (selection_data,
-                           type,
-                           sizeof (void *) * 8,
-                           (const guchar *)tracks,
-                           count * sizeof (ddb_playItem_t *));
+    gtk_selection_data_set (
+        selection_data,
+        type,
+        sizeof (void *) * 8,
+        (const guchar *)tracks,
+        count * sizeof (ddb_playItem_t *));
 
     free (tracks);
     tracks = NULL;
+}
+
+static void
+_receive_cover (w_medialib_viewer_t *mlv, GtkTreePath *path, GdkPixbuf *img) {
+    g_object_ref (img);
+    dispatch_async (mlv->background_queue, ^{
+        // scale
+        GtkAllocation a;
+        a.x = 0;
+        a.y = 0;
+        a.width = ML_CELL_RENDERER_PIXBUF_SIZE;
+        a.height = ML_CELL_RENDERER_PIXBUF_SIZE;
+        GdkPixbuf *scaled_img = covermanager_create_scaled_image (covermanager_shared (), img, a);
+
+        gtkui_dispatch_on_main (^{
+            GtkTreeStore *store = mlv->store;
+            GtkTreeIter iter;
+            GtkTreeModel *model = GTK_TREE_MODEL (mlv->store);
+            gtk_tree_model_get_iter (model, &iter, path);
+            gtk_tree_store_set (store, &iter, COL_ICON, scaled_img, -1);
+            g_object_unref (scaled_img);
+            gtk_tree_path_free (path);
+            g_object_unref (img);
+        });
+    });
+}
+
+static GdkPixbuf *
+_pixbuf_cell_did_become_visible (void *ctx, const char *pathstr) {
+    if (pathstr == NULL) {
+        return NULL;
+    }
+    GtkTreePath *path = gtk_tree_path_new_from_string (pathstr);
+    if (path == NULL) {
+        return NULL;
+    }
+
+    w_medialib_viewer_t *mlv = ctx;
+    if (mlv->is_reloading) {
+        return NULL;
+    }
+    GtkTreeModel *model = GTK_TREE_MODEL (mlv->store);
+
+    GtkTreeIter iter;
+    gtk_tree_model_get_iter (model, &iter, path);
+    if (!gtk_tree_model_iter_has_child (model, &iter)) {
+        return NULL; // leaf
+    }
+
+    // get first child
+    GtkTreePath *child_path = gtk_tree_path_copy (path);
+    gtk_tree_path_append_index (child_path, 0);
+    gtk_tree_model_get_iter (model, &iter, child_path);
+    gtk_tree_path_free (child_path);
+    child_path = NULL;
+
+    GValue value = { 0 };
+    gtk_tree_model_get_value (model, &iter, COL_TRACK, &value);
+    ddb_playItem_t *track = g_value_get_pointer (&value);
+    g_value_unset (&value);
+
+    if (track == NULL) {
+        return mlv->folder_icon;
+    }
+
+    if (mlv->artwork_source_id == 0) {
+        return mlv->folder_icon;
+    }
+
+    int64_t reload_index = mlv->reload_index;
+    GdkPixbuf *cached_cover = covermanager_cover_for_track_no_default (
+        covermanager_shared (),
+        track,
+        mlv->artwork_source_id,
+        ^(GdkPixbuf *img) {
+            if (reload_index == mlv->reload_index && img != NULL) {
+                _receive_cover (mlv, path, img);
+            }
+        });
+
+    if (cached_cover != NULL) {
+        _receive_cover (mlv, path, cached_cover);
+    }
+    return mlv->folder_icon;
 }
 
 ddb_gtkui_widget_t *
@@ -709,41 +821,46 @@ w_medialib_viewer_create (void) {
 
     gtk_widget_set_can_focus (w->base.widget, FALSE);
 
-    ddb_medialib_plugin_t *plugin = (ddb_medialib_plugin_t *)deadbeef->plug_get_for_id ("medialib");
+    DB_mediasource_t *plugin = (DB_mediasource_t *)deadbeef->plug_get_for_id ("medialib");
     if (plugin == NULL) {
-        GtkWidget *label = gtk_label_new(_("Media Library plugin is unavailable."));
+        GtkWidget *label = gtk_label_new (_ ("Media Library plugin is unavailable."));
         gtk_widget_show (label);
         gtk_container_add (GTK_CONTAINER (w->base.widget), label);
         return (ddb_gtkui_widget_t *)w;
     }
 
-    GtkWidget *vbox = gtk_vbox_new (FALSE, 8);
+    GtkWidget *vbox = gtk_vbox_new (FALSE, 0);
     gtk_widget_show (vbox);
     gtk_container_add (GTK_CONTAINER (w->base.widget), vbox);
 
-    GtkWidget *configure_wrap_hbox = gtk_hbox_new (FALSE, 8);
-    gtk_widget_show (configure_wrap_hbox);
-    gtk_box_pack_start (GTK_BOX (vbox), configure_wrap_hbox, FALSE, TRUE, 0);
+    GtkWidget *headerbox = gtk_vbox_new (FALSE, 8);
+    gtk_widget_show (headerbox);
+    gtk_box_pack_start (GTK_BOX (vbox), headerbox, FALSE, FALSE, 8);
 
-    GtkWidget *configure_hbox = gtk_hbox_new (FALSE, 8);
-    gtk_widget_show (configure_hbox);
-    gtk_box_pack_start (GTK_BOX (configure_wrap_hbox), configure_hbox, TRUE, TRUE, 20);
+    w->selectViewController = gtkScriptableSelectViewControllerNew ();
 
-    w->selector = GTK_COMBO_BOX_TEXT (gtk_combo_box_text_new ());
-    gtk_widget_show (GTK_WIDGET (w->selector));
-    gtk_box_pack_start (GTK_BOX (configure_hbox), GTK_WIDGET (w->selector), TRUE, TRUE, 0);
+    GtkWidget *selectViewControllerWidget = gtkScriptableSelectViewControllerGetView (w->selectViewController);
 
-    GtkWidget *configure_button = gtk_button_new_with_label (_("Configure"));
+    GtkWidget *buttons_padding_hbox = gtk_hbox_new (FALSE, 0);
+    gtk_widget_show (buttons_padding_hbox);
+    gtk_box_pack_start (GTK_BOX (headerbox), buttons_padding_hbox, FALSE, TRUE, 0);
+
+    GtkWidget *buttons_container_hbox = gtk_hbox_new (FALSE, 8);
+    gtk_widget_show (buttons_container_hbox);
+    gtk_box_pack_start (GTK_BOX (buttons_padding_hbox), buttons_container_hbox, TRUE, TRUE, 20);
+    gtk_box_pack_start (GTK_BOX (buttons_container_hbox), selectViewControllerWidget, TRUE, TRUE, 0);
+
+    GtkWidget *configure_button = gtk_button_new_with_label (_ ("Configure"));
     gtk_widget_show (configure_button);
-    gtk_box_pack_start (GTK_BOX (configure_hbox), configure_button, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (buttons_container_hbox), configure_button, FALSE, FALSE, 0);
 
-    GtkWidget *search_hbox = gtk_hbox_new (FALSE, 8);
+    GtkWidget *search_hbox = gtk_hbox_new (FALSE, 0);
     gtk_widget_show (search_hbox);
-    gtk_box_pack_start (GTK_BOX (vbox), search_hbox, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (headerbox), search_hbox, FALSE, TRUE, 0);
 
     w->search_entry = GTK_ENTRY (gtk_entry_new ());
-#if GTK_CHECK_VERSION (3,2,0)
-    gtk_entry_set_placeholder_text (w->search_entry, _("Search"));
+#if GTK_CHECK_VERSION(3, 2, 0)
+    gtk_entry_set_placeholder_text (w->search_entry, _ ("Search"));
 #endif
     gtk_widget_show (GTK_WIDGET (w->search_entry));
     gtk_box_pack_start (GTK_BOX (search_hbox), GTK_WIDGET (w->search_entry), TRUE, TRUE, 20);
@@ -764,16 +881,43 @@ w_medialib_viewer_create (void) {
 
     gtk_container_add (GTK_CONTAINER (scroll), GTK_WIDGET (w->tree));
 
+    GtkIconTheme *icon_theme = gtk_icon_theme_get_default ();
+    // NOTE: using "folder-music" icon doesn't yield a good result,
+    // since it doesn't look like a folder across the icon themes.
+    w->folder_icon = gtk_icon_theme_load_icon (icon_theme, "folder", ML_CELL_RENDERER_PIXBUF_SIZE, 0, NULL);
+    ddb_artwork_plugin_t *artwork_plugin = (ddb_artwork_plugin_t *)deadbeef->plug_get_for_id ("artwork2");
+    if (artwork_plugin != NULL) {
+        w->artwork_source_id = artwork_plugin->allocate_source_id ();
+    }
+    w->pixbuf_cell_delegate.ctx = w;
+    w->pixbuf_cell_delegate.cell_did_became_visible = _pixbuf_cell_did_become_visible;
+    w->background_queue = dispatch_queue_create ("MedialibBackgroundQueue", NULL);
+
     GtkTreeStore *store = gtk_tree_store_new (
-                                              3,
-                                              G_TYPE_STRING,  // COL_TITLE
-                                              G_TYPE_POINTER, // COL_TRACK
-                                              G_TYPE_POINTER  // COL_ITEM
-                                              );
+        5,
+        GDK_TYPE_PIXBUF, // COL_ICON
+        G_TYPE_STRING, // COL_TITLE
+        G_TYPE_POINTER, // COL_TRACK
+        G_TYPE_POINTER, // COL_ITEM
+        G_TYPE_STRING // COL_PATH
+    );
+    w->store = store;
+
     gtk_tree_view_set_model (GTK_TREE_VIEW (w->tree), GTK_TREE_MODEL (store));
 
     gtk_tree_view_set_rules_hint (GTK_TREE_VIEW (w->tree), TRUE);
-    add_treeview_column (w, GTK_TREE_VIEW (w->tree), COL_TITLE, 1, 0, "", 0);
+    GtkCellRenderer *rend_pixbuf = GTK_CELL_RENDERER (ml_cell_renderer_pixbuf_new (&w->pixbuf_cell_delegate));
+    GtkCellRenderer *rend_text = gtk_cell_renderer_text_new ();
+
+    GtkTreeViewColumn *col = gtk_tree_view_column_new ();
+    gtk_tree_view_append_column (w->tree, col);
+    gtk_tree_view_column_set_sizing (col, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
+    gtk_tree_view_column_pack_start (col, rend_pixbuf, FALSE);
+    gtk_tree_view_column_pack_start (col, rend_text, FALSE);
+
+    gtk_tree_view_column_add_attribute (col, rend_pixbuf, "path", COL_PATH);
+    gtk_tree_view_column_add_attribute (col, rend_pixbuf, "pixbuf", COL_ICON);
+    gtk_tree_view_column_add_attribute (col, rend_text, "text", COL_TITLE);
 
     gtk_tree_view_set_headers_clickable (GTK_TREE_VIEW (w->tree), FALSE);
     gtk_tree_view_set_headers_visible (GTK_TREE_VIEW (w->tree), FALSE);
@@ -781,20 +925,15 @@ w_medialib_viewer_create (void) {
     GtkTreeSelection *selection = gtk_tree_view_get_selection (w->tree);
     gtk_tree_selection_set_mode (selection, GTK_SELECTION_MULTIPLE);
 
-    g_signal_connect ((gpointer)w->selector, "changed", G_CALLBACK (_active_selector_did_change), w);
     g_signal_connect ((gpointer)w->search_entry, "changed", G_CALLBACK (_search_text_did_change), w);
     g_signal_connect ((gpointer)w->tree, "row-activated", G_CALLBACK (_treeview_row_did_activate), w);
     g_signal_connect ((gpointer)w->tree, "button_press_event", G_CALLBACK (_treeview_row_mousedown), w);
     g_signal_connect ((gpointer)configure_button, "clicked", G_CALLBACK (_configure_did_activate), w);
 
-    GtkTargetEntry entry = {
-        .target = TARGET_PLAYITEM_POINTERS,
-        .flags = GTK_TARGET_SAME_APP,
-        .info = 0
-    };
+    GtkTargetEntry entry = { .target = TARGET_PLAYITEM_POINTERS, .flags = GTK_TARGET_SAME_APP, .info = 0 };
     gtk_drag_source_set (GTK_WIDGET (w->tree), GDK_BUTTON1_MASK, &entry, 1, GDK_ACTION_COPY);
 
-    g_signal_connect ((gpointer) w->tree, "drag_data_get", G_CALLBACK (_drag_data_get), w);
+    g_signal_connect ((gpointer)w->tree, "drag_data_get", G_CALLBACK (_drag_data_get), w);
 
     w_override_signals (w->base.widget, w);
 

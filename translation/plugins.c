@@ -1,8 +1,25 @@
+// external/ddb_output_pw/pw.c
+// xgettext:no-c-format
+_("PipeWire remote daemon name (empty for default)");
+// xgettext:no-c-format
+_("Custom properties (overrides existing ones):");
+// xgettext:no-c-format
+_("Use PipeWire volume control");
 // plugins/adplug/plugin.c
 // xgettext:no-c-format
-_("Prefer Ken emu over Satoh (surround won't work)");
+_("Sample rate (real OPL is 49716Hz)");
 // xgettext:no-c-format
-_("Enable surround");
+_("Synth engine");
+// xgettext:no-c-format
+_("Nuked OPL3");
+// xgettext:no-c-format
+_("DOSBox OPL3 emulator");
+// xgettext:no-c-format
+_("Tatsuyuki Satoh's OPL2 emulator");
+// xgettext:no-c-format
+_("Ken Silverman's OPL emulator");
+// xgettext:no-c-format
+_("Simon Peter's OPL emulator");
 // plugins/alsa/alsa.c
 // xgettext:no-c-format
 _("Use ALSA resampling");
@@ -10,11 +27,9 @@ _("Use ALSA resampling");
 _("Preferred buffer size");
 // xgettext:no-c-format
 _("Preferred period size");
-// plugins/artwork-legacy/artwork.c
+// plugins/artwork/artwork.c
 // xgettext:no-c-format
-_("Refresh cover art");
-// xgettext:no-c-format
-_("Cache update period (in hours, 0=never)");
+_("Refresh Cover Art");
 // xgettext:no-c-format
 _("Fetch from embedded tags");
 // xgettext:no-c-format
@@ -26,7 +41,9 @@ _("Fetch from MusicBrainz");
 // xgettext:no-c-format
 _("Fetch from Albumart.org");
 // xgettext:no-c-format
-_("Fetch from World of Spectrum (AY files only)");
+_("Fetch from World of Spectrum (AY files)");
+// xgettext:no-c-format
+_("Save downloaded files to music folders");
 // xgettext:no-c-format
 _("When no artwork is found");
 // xgettext:no-c-format
@@ -38,16 +55,17 @@ _("display custom image");
 // xgettext:no-c-format
 _("Custom image path");
 // xgettext:no-c-format
-_("Scale artwork towards longer side");
-// plugins/artwork/artwork.c
+_("Save to file name");
 // xgettext:no-c-format
-_("Disable disk cache");
+_("Search masks (; separated)");
 // xgettext:no-c-format
-_("Save extracted covers to music folders");
+_("Search folders (; separated)");
 // xgettext:no-c-format
-_("Local file mask");
+_("Cache refresh (hrs)");
 // xgettext:no-c-format
-_("Artwork folders");
+_("Simplified cache file names");
+// xgettext:no-c-format
+_("Image size");
 // plugins/cdda/cdda.c
 // xgettext:no-c-format
 _("CD drive to load");
@@ -58,13 +76,13 @@ _("File");
 // xgettext:no-c-format
 _("Add Audio CD");
 // xgettext:no-c-format
-_("Use CDDB/FreeDB");
+_("Use CDDB/GnuDb");
 // xgettext:no-c-format
 _("Prefer CD-Text over CDDB");
 // xgettext:no-c-format
-_("CDDB url (e.g. 'freedb.org')");
+_("CDDB url (e.g. 'gnudb.gnudb.org')");
 // xgettext:no-c-format
-_("CDDB port number (e.g. '888')");
+_("CDDB port number (e.g. '8880')");
 // xgettext:no-c-format
 _("Use CDDB protocol");
 // xgettext:no-c-format
@@ -115,6 +133,8 @@ _("8-bit output");
 _("Use all extensions supported by ffmpeg");
 // xgettext:no-c-format
 _("File Extensions (separate with ';')");
+// xgettext:no-c-format
+_("Enable DoP output");
 // plugins/flac/flac.c
 // xgettext:no-c-format
 _("Ignore bad header errors");
@@ -151,7 +171,7 @@ _("Select All");
 // xgettext:no-c-format
 _("Quit");
 // xgettext:no-c-format
-_("Remove From Disk");
+_("Delete from Disk");
 // xgettext:no-c-format
 _("Add Location");
 // xgettext:no-c-format
@@ -205,7 +225,7 @@ _("Sort Custom");
 // xgettext:no-c-format
 _("Crop Selected");
 // xgettext:no-c-format
-_("Remove Track(s) From Playlist");
+_("Remove Track(s) from Playlist");
 // xgettext:no-c-format
 _("Save Playlist");
 // xgettext:no-c-format
@@ -213,9 +233,9 @@ _("Load Playlist");
 // xgettext:no-c-format
 _("Remove Current Playlist");
 // xgettext:no-c-format
-_("Rename Current Playlist");
-// xgettext:no-c-format
 _("New Playlist");
+// xgettext:no-c-format
+_("Rename Current Playlist");
 // xgettext:no-c-format
 _("Show\\/Hide Equalizer");
 // xgettext:no-c-format
@@ -233,11 +253,19 @@ _("Find");
 // xgettext:no-c-format
 _("Show\\/Hide Log window");
 // xgettext:no-c-format
+_("Undo");
+// xgettext:no-c-format
+_("Redo");
+// xgettext:no-c-format
 _("Ask confirmation to delete files from disk");
+// xgettext:no-c-format
+_("Status icon settings:");
 // xgettext:no-c-format
 _("Status icon volume control sensitivity");
 // xgettext:no-c-format
 _("Custom status icon");
+// xgettext:no-c-format
+_("Misc:");
 // xgettext:no-c-format
 _("Add separators between plugin context menu items");
 // xgettext:no-c-format
@@ -246,73 +274,79 @@ _("Use unicode chars instead of images for track state");
 _("Disable seekbar overlay text");
 // plugins/hotkeys/hotkeys.c
 // xgettext:no-c-format
+_("Previous or Restart Current Track");
+// xgettext:no-c-format
+_("Duplicate Playlist");
+// xgettext:no-c-format
 _("Reload Metadata");
 // xgettext:no-c-format
-_("Jump To Currently Playing Track");
+_("Jump to Currently Playing Track");
 // xgettext:no-c-format
 _("Skip to");
 // xgettext:no-c-format
-_("Previous genre");
+_("Previous Genre");
 // xgettext:no-c-format
-_("Previous composer");
+_("Previous Composer");
 // xgettext:no-c-format
-_("Previous artist");
+_("Previous Artist");
 // xgettext:no-c-format
-_("Previous album");
+_("Previous Album");
 // xgettext:no-c-format
-_("Next genre");
+_("Next Genre");
 // xgettext:no-c-format
-_("Next composer");
+_("Next Composer");
 // xgettext:no-c-format
-_("Next artist");
+_("Next Artist");
 // xgettext:no-c-format
-_("Next album");
+_("Next Album");
 // xgettext:no-c-format
 _("Next Playlist");
 // xgettext:no-c-format
-_("Prev Playlist");
+_("Previous Playlist");
 // xgettext:no-c-format
-_("Switch To Playlist 10");
+_("Switch to Playlist 10");
 // xgettext:no-c-format
-_("Switch To Playlist 9");
+_("Switch to Playlist 9");
 // xgettext:no-c-format
-_("Switch To Playlist 8");
+_("Switch to Playlist 8");
 // xgettext:no-c-format
-_("Switch To Playlist 7");
+_("Switch to Playlist 7");
 // xgettext:no-c-format
-_("Switch To Playlist 6");
+_("Switch to Playlist 6");
 // xgettext:no-c-format
-_("Switch To Playlist 5");
+_("Switch to Playlist 5");
 // xgettext:no-c-format
-_("Switch To Playlist 4");
+_("Switch to Playlist 4");
 // xgettext:no-c-format
-_("Switch To Playlist 3");
+_("Switch to Playlist 3");
 // xgettext:no-c-format
-_("Switch To Playlist 2");
+_("Switch to Playlist 2");
 // xgettext:no-c-format
-_("Switch To Playlist 1");
+_("Switch to Playlist 1");
 // xgettext:no-c-format
 _("Sort Randomize");
 // xgettext:no-c-format
-_("Sort By Date");
+_("Sort by Date");
 // xgettext:no-c-format
-_("Sort By Artist");
+_("Sort by Artist");
 // xgettext:no-c-format
-_("Sort By Album");
+_("Sort by Album");
 // xgettext:no-c-format
-_("Sort By Track Number");
+_("Sort by Track Number");
 // xgettext:no-c-format
-_("Sort By Title");
+_("Sort by Title");
 // xgettext:no-c-format
 _("Invert Selection");
 // xgettext:no-c-format
 _("Clear Playlist");
 // xgettext:no-c-format
-_("Remove From Playback Queue");
+_("Remove from Playback Queue");
 // xgettext:no-c-format
-_("Add To Playback Queue");
+_("Add to Playback Queue");
 // xgettext:no-c-format
-_("Toggle In Playback Queue");
+_("Add to Front of Playback Queue");
+// xgettext:no-c-format
+_("Toggle in Playback Queue");
 // xgettext:no-c-format
 _("Move");
 // xgettext:no-c-format
@@ -333,6 +367,12 @@ _("Next");
 _("Toggle Pause");
 // xgettext:no-c-format
 _("Play\\/Pause");
+// xgettext:no-c-format
+_("Play Next Album");
+// xgettext:no-c-format
+_("Play Previous Album");
+// xgettext:no-c-format
+_("Play Random Album");
 // xgettext:no-c-format
 _("Play Random");
 // xgettext:no-c-format
@@ -361,7 +401,7 @@ _("Toggle Stop After Current Track");
 _("Toggle Stop After Current Album");
 // plugins/lastfm/lastfm.c
 // xgettext:no-c-format
-_("Lookup On Last.fm");
+_("Lookup on Last.fm");
 // xgettext:no-c-format
 _("Enable scrobbler");
 // xgettext:no-c-format
@@ -378,6 +418,8 @@ _("Prefer Album Artist over Artist field");
 _("Send MusicBrainz ID");
 // xgettext:no-c-format
 _("Submit tracks shorter than 30 seconds (not recommended)");
+// xgettext:no-c-format
+_("Enable logging");
 // plugins/mono2stereo/mono2stereo.c
 // xgettext:no-c-format
 _("Left mix");
@@ -399,6 +441,8 @@ _("Notification content format");
 _("Show album art");
 // xgettext:no-c-format
 _("Album art size (px)");
+// xgettext:no-c-format
+_("Don't reuse notifications (KDE quirk)");
 // plugins/oss/oss.c
 // xgettext:no-c-format
 _("Device file");
@@ -435,7 +479,7 @@ _("Skip when shorter than (sec)");
 // plugins/shellexecui/shellexecui.c
 // xgettext:no-c-format
 _("Configure Custom Shell Commands");
-// plugins/shn/shn.c
+// plugins/shn/shnplugin.c
 // xgettext:no-c-format
 _("Relative seek table path");
 // xgettext:no-c-format
@@ -474,9 +518,33 @@ _("10K");
 _("14K");
 // xgettext:no-c-format
 _("20K");
-// plugins/vfs_curl/vfs_curl.c
-// xgettext:no-c-format
-_("Enable logging");
 // plugins/wildmidi/wildmidiplug.c
 // xgettext:no-c-format
 _("Timidity++ bank configuration file");
+// src/scriptable/scriptable_encoder.c
+// xgettext:no-c-format
+_("File extension");
+// xgettext:no-c-format
+_("Encoder command line");
+// xgettext:no-c-format
+_("Data transfer method");
+// xgettext:no-c-format
+_("Pipe (stdin)");
+// xgettext:no-c-format
+_("Temporary file");
+// xgettext:no-c-format
+_("Source file");
+// xgettext:no-c-format
+_("ID3v2 version");
+// xgettext:no-c-format
+_("Write ID3v2 tag");
+// xgettext:no-c-format
+_("Write ID3v1 tag");
+// xgettext:no-c-format
+_("Write APEv2 tag");
+// xgettext:no-c-format
+_("Write FLAC tag");
+// xgettext:no-c-format
+_("Write OggVorbis tag");
+// xgettext:no-c-format
+_("Write MP4 tag");

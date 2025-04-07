@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -x
 VERSION=`cat PORTABLE_VERSION | perl -ne 'chomp and print'`
 OSTYPE=`uname -s`
 if [[ "$ARCH" == "i686" ]]; then
@@ -21,9 +23,9 @@ mkdir -p $PLUGDIR
 mkdir -p $DOCDIR
 mkdir -p $PIXMAPDIR
 
-cp ./deadbeef $OUTDIR
+cp src/deadbeef $OUTDIR
 
-for i in converter pltbrowser shellexecui ; do
+for i in converter pltbrowser shellexecui lyrics ; do
     if [ -f ./plugins/$i/.libs/${i}_gtk2.so ]; then
         cp ./plugins/$i/.libs/${i}_gtk2.so $PLUGDIR/
     else
@@ -46,7 +48,7 @@ for i in nullout cdda flac alsa mp3 hotkeys vtx \
      supereq gme dumb notify musepack wildmidi \
      tta dca aac mms shn psf shellexec vfs_zip \
      m3u converter pulse dsp_libsrc mono2stereo \
-     wma rg_scanner soundtouch\
+     wma rg_scanner soundtouch artwork medialib\
      ; do
     if [ -f ./plugins/$i/.libs/$i.so ]; then
         cp ./plugins/$i/.libs/$i.so $PLUGDIR/
@@ -59,12 +61,6 @@ for i in nullout cdda flac alsa mp3 hotkeys vtx \
     fi
 done
 
-if [ -f ./plugins/artwork-legacy/.libs/artwork.so ]; then
-    cp ./plugins/artwork-legacy/.libs/artwork.so $PLUGDIR/
-else
-    echo ./plugins/artwork-legacy/.libs/artwork.so not found
-fi
-
 if [ -f ./plugins/gtkui/.libs/ddb_gui_GTK2.so ]; then
     cp ./plugins/gtkui/.libs/ddb_gui_GTK2.so $PLUGDIR/
 else
@@ -76,6 +72,9 @@ if [ -f ./plugins/gtkui/.libs/ddb_gui_GTK3.so ]; then
 else
     echo ./plugins/gtkui/.libs/ddb_gui_GTK3.so not found
 fi
+
+cp ./external/ddb_output_pw/.libs/ddb_out_pw.so $PLUGDIR/
+cp ./external/ddb_dsp_libretro/.libs/ddb_dsp_libretro.so $PLUGDIR/
 
 #pixmaps
 
@@ -97,12 +96,11 @@ cp -r plugins/converter/convpresets $OUTDIR/plugins/
 # sc68data
 cp -r plugins/sc68/.libs/in_sc68.so $OUTDIR/plugins/
 mkdir -p  $OUTDIR/plugins/data68/Replay
-cp -r plugins/sc68/file68/data68/Replay/*.bin $OUTDIR/plugins/data68/Replay/
+cp -r plugins/sc68/libsc68/file68/data68/Replay/*.bin $OUTDIR/plugins/data68/Replay/
 
 # dynamic libs
 mkdir -p $OUTDIR/lib
 cp -r static-deps/lib-x86-64/lib/libBlocksRuntime.so* $OUTDIR/lib/
-cp -r static-deps/lib-x86-64/lib/libkqueue.so* $OUTDIR/lib/
 cp -r static-deps/lib-x86-64/lib/libdispatch.so* $OUTDIR/lib/
 cp -r static-deps/lib-x86-64/lib/libcurl.so* $OUTDIR/lib/
 cp -r static-deps/lib-x86-64/lib/libmbed*.so* $OUTDIR/lib/
@@ -114,7 +112,6 @@ for i in po/*.gmo ; do
     mkdir -p $OUTDIR/locale/$base/LC_MESSAGES
     cp $i $OUTDIR/locale/$base/LC_MESSAGES/deadbeef.mo
 done
-cp translation/help.ru.txt $OUTDIR/doc/
 
 # strip
 if [ $OSTYPE != 'Darwin' ];then

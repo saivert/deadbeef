@@ -2,13 +2,13 @@
 //  DesignModeState.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 21/02/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 21/02/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "DesignModeState.h"
 #import "DesignModeDeps.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -68,7 +68,7 @@ static DesignModeState *_sharedInstance;
 
     char *layout = malloc (100000);
     deadbeef->conf_get_str ("cocoaui.layout", "", layout, 100000);
-    NSString *strLayout = [NSString stringWithUTF8String:layout];
+    NSString *strLayout = @(layout);
     free (layout);
 
     NSData *data = [strLayout dataUsingEncoding:NSUTF8StringEncoding];

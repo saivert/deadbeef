@@ -30,9 +30,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "../../gettext.h"
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "gtkui.h"
-#include "ddblistview.h"
+#include "playlist/ddblistview.h"
 #include <sys/stat.h>
 
 typedef struct {

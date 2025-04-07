@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -81,7 +81,7 @@ DdbCellEditableTextView* ddb_cell_editable_text_view_new (void);
 DdbCellEditableTextView* ddb_cell_editable_text_view_construct (GType object_type);
 GType ddb_cell_renderer_text_multiline_get_type (void);
 DdbCellRendererTextMultiline* ddb_cell_renderer_text_multiline_new (void);
-DdbCellRendererTextMultiline* ddb_cell_renderer_text_multiline_construct (GType object_type);
+void ddb_cell_renderer_text_multiline_set_columns(DdbCellRendererTextMultiline *self, guint is_mult, guint value);
 
 
 G_END_DECLS

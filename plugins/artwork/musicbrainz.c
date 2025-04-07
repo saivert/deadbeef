@@ -1,7 +1,6 @@
 /*
-    Album Art plugin for DeaDBeeF
-    Copyright (C) 2014 Ian Nartowicz <deadbeef@nartowicz.co.uk>
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    DeaDBeeF -- the music player
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -43,8 +42,7 @@
 #define MB_ART_STRING "\"large\":\""
 
 
-int fetch_from_musicbrainz (const char *artist, const char *album, const char *dest)
-{
+int fetch_from_musicbrainz (const char *artist, const char *album, const char *dest) {
     if (!artist || !album) {
         return -1;
     }

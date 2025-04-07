@@ -2,8 +2,8 @@
 //  SplitterWidget.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 20/02/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 20/02/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "SplitterWidget.h"
@@ -27,7 +27,7 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
 @property (nonatomic) HoldingMode holdingMode;
 @property (nonatomic) BOOL isLocked;
 
-@property (nonatomic) BOOL layoutFinalized; // must be set to true when the splitview gets its final bounds
+@property (nonatomic) BOOL isPositionTrackingEnabled; // must be set to true when the splitview gets its final bounds
 
 //@property (nonatomic,readonly) CGFloat viewDividerPosition;
 @property (nonatomic,readonly) CGFloat splitViewSize;
@@ -56,6 +56,7 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
     _deps = deps;
 
     _splitView = [[NSSplitView alloc] initWithFrame:NSZeroRect];
+    _splitView.arrangesAllSubviews = NO;
     _splitView.vertical = !self.isVertical; // The NSSplitView.vertical means the divider line orientation
 
     // Default settings
@@ -82,63 +83,63 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
     [_splitView.topAnchor constraintEqualToAnchor:self.topLevelView.topAnchor].active = YES;
     [_splitView.bottomAnchor constraintEqualToAnchor:self.topLevelView.bottomAnchor].active = YES;
 
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(splitViewBoundsDidChange:) name:NSViewBoundsDidChangeNotification object:nil];
-    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(splitViewBoundsDidChange:) name:NSViewFrameDidChangeNotification object:nil];
-
     _splitView.delegate = self;
 
     return self;
 }
 
 - (void)appendChild:(id<WidgetProtocol>)child {
-    // should not ever be called, since "isPlaceholder" is NO
+    // This is called when new splitter is created
     [super appendChild:child];
 }
 
 - (void)removeChild:(id<WidgetProtocol>)child {
-    CGFloat normalizedDividerPosition = self.normalizedDividerPosition;
     [super removeChild:child];
     id<WidgetProtocol> pane = [self.deps.factory createWidgetWithType:PlaceholderWidget.widgetType];
     if (self.splitView.arrangedSubviews[0] == child.view) {
-        [self.splitView removeArrangedSubview:child.view];
+        [child.view removeFromSuperview];
         [_splitView insertArrangedSubview:pane.view atIndex:0];
         [super insertChild:pane atIndex:0];
     }
     else {
-        [self.splitView removeArrangedSubview:child.view];
+        [child.view removeFromSuperview];
         [_splitView insertArrangedSubview:pane.view atIndex:1];
         [super insertChild:pane atIndex:1];
     }
-    [self updateDividerPositionFromNormalized:normalizedDividerPosition];
 }
 
 - (void)updateDividerPositionFromNormalized:(CGFloat)dividerPosition {
     CGFloat splitViewSize = self.splitViewSize;
 
+    CGFloat position = 0;
+
     switch (self.holdingMode) {
     case HoldingModeProportional:
-        [self.splitView setPosition:(dividerPosition * splitViewSize) ofDividerAtIndex:0];
+        position = dividerPosition * splitViewSize;
         break;
     case HoldingModeFirst:
-        [self.splitView setPosition:dividerPosition ofDividerAtIndex:0];
+        position = dividerPosition;
         break;
     case HoldingModeSecond:
-        [self.splitView setPosition:(splitViewSize - dividerPosition) ofDividerAtIndex:0];
+        position = splitViewSize - dividerPosition;
         break;
     }
+
+    [self.splitView setPosition:position ofDividerAtIndex:0];
+    // HACK: sometimes setPosition will not apply the change, and needs to be called twice.
+    // This seems to be a framework bug.
+    [self.splitView setPosition:position ofDividerAtIndex:0];
 }
 
 - (void)replaceChild:(id<WidgetProtocol>)child withChild:(id<WidgetProtocol>)newChild {
-    CGFloat dividerPosition = self.normalizedDividerPosition;
-
     if (self.splitView.arrangedSubviews[0] == child.view) {
-        [self.splitView removeArrangedSubview:child.view];
+        [child.view removeFromSuperview];
         [_splitView insertArrangedSubview:newChild.view atIndex:0];
         [self.childWidgets removeObject:child];
         [self.childWidgets insertObject:newChild atIndex:0];
     }
     else {
-        [self.splitView removeArrangedSubview:child.view];
+        [child.view removeFromSuperview];
         [_splitView insertArrangedSubview:newChild.view atIndex:1];
         [self.childWidgets removeObject:child];
         [self.childWidgets insertObject:newChild atIndex:1];
@@ -146,7 +147,7 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
     child.parentWidget = nil;
     newChild.parentWidget = self;
 
-    [self updateDividerPositionFromNormalized:dividerPosition];
+    [self configure];
 }
 
 - (CGFloat)splitViewSize {
@@ -162,7 +163,7 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
 }
 
 - (void)updateNormalizedDividerPosition {
-    if (!self.layoutFinalized) {
+    if (!self.isPositionTrackingEnabled) {
         return;
     }
     CGFloat splitViewSize = self.splitViewSize;
@@ -237,9 +238,6 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
     if ([positionObject isKindOfClass:NSNumber.class]) {
         NSNumber *positionNumber = positionObject;
         self.normalizedDividerPosition = positionNumber.doubleValue;
-
-        // Update the splitview if it's ready
-        [self updateDividerPositionFromNormalized:self.normalizedDividerPosition];
     }
 
     id isLockedObject = dictionary[@"isLocked"];
@@ -256,17 +254,21 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
     return YES;
 }
 
-- (void)splitViewBoundsDidChange:(NSNotification *)notification {
-    if (NSEqualSizes(self.splitView.bounds.size, NSZeroSize)
-        || self.layoutFinalized) {
+- (void)configure {
+    if (self.view.window == nil || NSWidth(self.view.frame) == 0 || NSHeight(self.view.frame) == 0) {
         return;
     }
     self.splitView.delegate = nil;
 
-    self.layoutFinalized = YES;
+    self.isPositionTrackingEnabled = NO;
+
     [self updateDividerPositionFromNormalized: self.normalizedDividerPosition];
 
+    self.isPositionTrackingEnabled = YES;
+
     self.splitView.delegate = self;
+
+    [super configure];
 }
 
 - (NSArray<NSMenuItem *> *)menuItems {
@@ -333,7 +335,7 @@ typedef NS_ENUM(NSInteger,HoldingMode) {
 // Update should not occur, if the split view is not fully configured (doesn't have both panes, or the initial position was not applied yet)
 - (void)splitViewDidResizeSubviews:(NSNotification *)notification {
     CGFloat splitViewSize = self.splitViewSize;
-    if (splitViewSize == 0 || !self.layoutFinalized) {
+    if (splitViewSize == 0 || !self.isPositionTrackingEnabled) {
         return;
     }
 

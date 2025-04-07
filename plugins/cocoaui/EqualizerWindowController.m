@@ -2,14 +2,14 @@
 //  EqualizerWindowController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 1/29/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 1/29/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "EqualizerWindowController.h"
 #import "PropertySheetViewController.h"
 #import "PropertySheetContentView.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "eqpreset.h"
 
 extern DB_functions_t *deadbeef;
@@ -65,7 +65,7 @@ extern DB_functions_t *deadbeef;
 
     char str[200];
     eq->plugin->get_param (eq, key.intValue, str, sizeof (str));
-    return [NSString stringWithUTF8String:str];
+    return @(str);
 }
 
 - (void)propertySheet:(PropertySheetViewController *)vc setValue:(NSString *)value forKey:(NSString *)key item:(id)item {

@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -22,15 +22,26 @@
 */
 
 #import <Foundation/Foundation.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
+
+@protocol CoverManagerListener
+- (void)coverManagerDidReset;
+@end
 
 @interface CoverManager : NSObject
 
-+ (nonnull CoverManager *)defaultCoverManager;
+@property (class,nonatomic,readonly,nonnull) CoverManager *shared;
 
++ (void)freeSharedInstance;
+
+@property (atomic) BOOL isTerminating;
+
+- (void)addListener:(nonnull id<CoverManagerListener>)observer;
+- (void)removeListener:(nonnull id<CoverManagerListener>) observer;
+
+- (nullable NSImage *)coverForTrack:(nonnull DB_playItem_t *)track sourceId:(int64_t)sourceId completionBlock:(nonnull void (^) (NSImage * _Nullable img))completionBlock;
 - (nullable NSImage *)coverForTrack:(nonnull DB_playItem_t *)track completionBlock:(nonnull void (^) (NSImage * _Nullable img))completionBlock;
-- (nullable NSImage *)createCachedImage:(NSImage * _Nonnull)image size:(NSSize)size;
-- (NSSize)artworkDesiredSizeForImageSize:(NSSize)imageSize albumArtSpaceWidth:(CGFloat)albumArtSpaceWidth;
-- (void)resetCache;
+- (nullable NSImage *)createScaledImage:(NSImage * _Nonnull)image newSize:(CGSize)size;
+- (CGSize)desiredSizeForImageSize:(CGSize)imageSize availableSize:(CGSize)availableSize;
 
 @end

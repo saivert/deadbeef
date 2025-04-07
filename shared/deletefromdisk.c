@@ -2,8 +2,8 @@
 //  deletefromdisk.c
 //  ddbcore
 //
-//  Created by Alexey Yakovenko on 24/01/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 24/01/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #include <stdlib.h>
@@ -33,7 +33,7 @@ typedef struct {
 
 ddbUtilTrackList_t
 ddbUtilTrackListAlloc (void) {
-    return calloc (sizeof (ddbUtilTrackListData_t), 1);
+    return calloc (1, sizeof (ddbUtilTrackListData_t));
 }
 
 ddbUtilTrackList_t
@@ -45,7 +45,7 @@ ddbUtilTrackListInitWithPlaylist (ddbUtilTrackList_t trackList, ddb_playlist_t *
     deadbeef->plt_ref (plt);
     data->plt = plt;
 
-    data->it_current_song = deadbeef->streamer_get_playing_track ();
+    data->it_current_song = deadbeef->streamer_get_playing_track_safe ();
     data->idx_current_song = -1;
 
     if (ctx == DDB_ACTION_CTX_SELECTION) {
@@ -88,7 +88,7 @@ ddbUtilTrackListInitWithPlaylist (ddbUtilTrackList_t trackList, ddb_playlist_t *
         }
     }
     else if (ctx == DDB_ACTION_CTX_NOWPLAYING) {
-        DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
+        DB_playItem_t *it = deadbeef->streamer_get_playing_track_safe ();
         if (it) {
             const char *uri = deadbeef->pl_find_meta (it, ":URI");
             if (deadbeef->is_local_file (uri)) {
@@ -123,7 +123,7 @@ ddbUtilTrackListInitWithWithTracks (ddbUtilTrackList_t trackList, ddb_playlist_t
     data->idx_current_song = currentTrackIdx;
 
     if (tracks) {
-        data->tracklist = calloc (sizeof (ddb_playItem_t *), count);
+        data->tracklist = calloc (count, sizeof (ddb_playItem_t *));
         for (int i = 0; i < count; i++) {
             ddb_playItem_t *track = tracks[i];
             deadbeef->pl_item_ref (track);
@@ -176,7 +176,7 @@ ddb_playlist_t *ddbUtilTrackListGetPlaylist (ddbUtilTrackList_t trackList) {
 #pragma mark - Controller
 
 ddbDeleteFromDiskController_t ddbDeleteFromDiskControllerAlloc (void) {
-    return calloc(sizeof (ddbDeleteFromDiskControllerData_t), 1);
+    return calloc(1, sizeof (ddbDeleteFromDiskControllerData_t));
 }
 
 ddbDeleteFromDiskController_t ddbDeleteFromDiskControllerInitWithPlaylist (ddbDeleteFromDiskController_t ctl, ddb_playlist_t *plt, ddb_action_context_t ctx) {
@@ -248,7 +248,6 @@ _warningCallback (ddbDeleteFromDiskController_t ctl, int shouldCancel) {
         return;
     }
 
-    deadbeef->pl_lock ();
     DB_playItem_t **tracklist = trackListData->tracklist;
     unsigned trackcount = trackListData->trackcount;
     ddb_playlist_t *plt = trackListData->plt;
@@ -263,7 +262,7 @@ _warningCallback (ddbDeleteFromDiskController_t ctl, int shouldCancel) {
     if (data->shouldSkipDeletedTracks
         && ((plt == NULL) || deadbeef->plt_get_item_idx (plt, trackListData->it_current_song, PL_MAIN) == -1)
         && deadbeef->streamer_get_current_playlist () == deadbeef->plt_get_curr_idx ()
-        && deadbeef->get_output ()->state () == OUTPUT_STATE_PLAYING) {
+        && deadbeef->get_output ()->state () == DDB_PLAYBACK_STATE_PLAYING) {
 
         if (trackListData->idx_current_song != -1
             && deadbeef->playqueue_get_count () == 0
@@ -275,7 +274,6 @@ _warningCallback (ddbDeleteFromDiskController_t ctl, int shouldCancel) {
         }
     }
 
-    deadbeef->pl_unlock ();
     data->delegate.completed(ctl, shouldCancel);
 }
 

@@ -2,11 +2,10 @@
 //  ScopeWidget.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 18/10/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 18/10/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
-#import "AAPLNSView.h"
 #import "ScopeVisualizationViewController.h"
 #import "ScopeSettings.h"
 #import "ScopeWidget.h"
@@ -53,9 +52,6 @@ static void *kCustomBackgroundColorContext = &kCustomBackgroundColorContext;
     _deps = deps;
 
     _visualizationViewController = [ScopeVisualizationViewController new];
-    _visualizationViewController.view = [[AAPLNSView alloc] initWithFrame:NSZeroRect];
-    _visualizationViewController.view.translatesAutoresizingMaskIntoConstraints = NO;
-    [_visualizationViewController awakeFromNib];
 
     [self.topLevelView addSubview:_visualizationViewController.view];
     [_visualizationViewController.view.leadingAnchor constraintEqualToAnchor:self.topLevelView.leadingAnchor].active = YES;

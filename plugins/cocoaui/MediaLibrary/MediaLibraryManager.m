@@ -2,8 +2,8 @@
 //  MediaLibraryManager.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 8/29/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 8/29/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "MediaLibraryManager.h"
@@ -12,8 +12,9 @@ extern DB_functions_t *deadbeef;
 
 @interface MediaLibraryManager()
 
-@property (nonatomic) DB_mediasource_t *medialibPlugin;
-@property (nonatomic,readwrite) ddb_mediasource_source_t source;
+@property (nonatomic,readwrite) DB_mediasource_t *medialibPlugin;
+@property (nonatomic,readwrite) ddb_mediasource_source_t *source;
+@property (nonatomic,readwrite) scriptableModel_t *model;
 
 @end
 
@@ -33,12 +34,21 @@ extern DB_functions_t *deadbeef;
     _source = self.medialibPlugin->create_source ("deadbeef");
     self.medialibPlugin->refresh(_source);
 
+    self.model = scriptableModelInit(scriptableModelAlloc(), deadbeef, "medialib.preset");
+
     return self;
 }
 
-- (void)dealloc
-{
-    if (_source) {
+- (void)dealloc {
+    [self cleanup];
+}
+
+- (void)cleanup {
+    if (_model != NULL) {
+        scriptableModelFree(_model);
+        _model = NULL;
+    }
+    if (_source != NULL) {
         _medialibPlugin->free_source(_source);
         _source = NULL;
     }

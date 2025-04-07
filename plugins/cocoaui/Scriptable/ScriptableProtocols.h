@@ -2,12 +2,12 @@
 //  ScriptableProtocols.h
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 3/29/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 3/29/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
-#include "scriptable.h"
+#include "scriptable/scriptable.h"
 
 typedef NS_ENUM(NSUInteger, ScriptableItemChange) {
     ScriptableItemChangeCreate,
@@ -17,7 +17,7 @@ typedef NS_ENUM(NSUInteger, ScriptableItemChange) {
 
 @protocol ScriptableItemDelegate
 
-- (void)scriptableItemChanged:(scriptableItem_t *_Nonnull)scriptable change:(ScriptableItemChange)change;
+- (void)scriptableItemDidChange:(scriptableItem_t *_Nonnull)scriptable change:(ScriptableItemChange)change;
 
 @end
 

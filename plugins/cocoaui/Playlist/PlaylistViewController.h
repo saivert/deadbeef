@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -35,6 +35,7 @@ typedef struct {
     char *title;
     int type; // predefined col type
     char *format;
+    char *sortFormat;
     int size;
     PlaylistColumnAlignment alignment;
     int set_text_color;
@@ -48,7 +49,6 @@ typedef struct {
 @property (nonatomic,readonly) plt_col_info_t *columns;
 @property (nonatomic,readonly) int ncolumns;
 
-- (void)setup;
 - (void)cleanup;
 - (int)sendMessage:(uint32_t)_id ctx:(uintptr_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2;
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1240"
+   LastUpgradeVersion = "1410"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -55,28 +55,13 @@
       </BuildableProductRunnable>
       <EnvironmentVariables>
          <EnvironmentVariable
-            key = "LC_ALL"
-            value = "en_US.UTF-8"
-            isEnabled = "NO">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "LC_ALL"
-            value = "ru_RU.UTF-8"
-            isEnabled = "NO">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "LANG"
-            value = "ru_RU.UTF-8"
-            isEnabled = "NO">
-         </EnvironmentVariable>
-         <EnvironmentVariable
             key = "XDG_CONFIG_HOME"
             value = "/Users/waker/ddbhome"
             isEnabled = "YES">
          </EnvironmentVariable>
          <EnvironmentVariable
-            key = "LANG"
-            value = "en_US.UTF-8"
+            key = "GTK_DEBUG"
+            value = "interactive"
             isEnabled = "NO">
          </EnvironmentVariable>
       </EnvironmentVariables>

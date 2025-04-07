@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -21,21 +21,28 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 
-#import "DesignModeState.h"
+#include <deadbeef/deadbeef.h>
+#import "DdbShared.h"
+#import "DeletePlaylistConfirmationController.h"
 #import "DesignModeDeps.h"
+#import "DesignModeState.h"
 #import "GuiPreferencesWindowController.h"
 #import "MainWindowController.h"
+#import "MediaLibraryManager.h"
 #import "PlaylistWidget.h"
+#import "PlaylistWithTabsWidget.h"
 #import "PreferencesWindowController.h"
-#import "TrackPositionFormatter.h"
-#include "deadbeef.h"
-#import "DdbShared.h"
-#include <sys/time.h>
+#import "ScriptableErrorViewer.h"
+#import "ScriptableSelectViewController.h"
 #import "SidebarSplitViewController.h"
+#import "TrackPositionFormatter.h"
+#import "Weakify.h"
+
+#include <sys/time.h>
 
 extern DB_functions_t *deadbeef;
 
-@interface MainWindowController () {
+@interface MainWindowController () <NSMenuDelegate,DeletePlaylistConfirmationControllerDelegate,ScriptableSelectDelegate> {
     NSTimer *_updateTimer;
     char *_titlebar_playing_script;
     char *_titlebar_playing_subtitle_script;
@@ -43,7 +50,11 @@ extern DB_functions_t *deadbeef;
     char *_titlebar_stopped_subtitle_script;
     char *_statusbar_playing_script;
     int _prevSeekBarPos;
+    int _deletePlaylistIndex;
 }
+
+@property (nonatomic) ScriptableTableDataSource *mlQueriesDataSource;
+@property (nonatomic) ScriptableSelectViewController *tfQuerySelectViewController;
 
 @property (nonatomic,weak) IBOutlet NSView *designableContainerView;
 @property (nonatomic,weak) IBOutlet NSView *playlistWithTabsView;
@@ -51,6 +62,12 @@ extern DB_functions_t *deadbeef;
 @property (nonatomic) MainContentViewController *mainContentViewController;
 
 @property (weak) NSMenuItem *designModeMenuItem;
+
+@property (strong) IBOutlet NSMenu *volumeScaleMenu;
+@property (weak) IBOutlet NSMenuItem *volumeDbScaleItem;
+@property (weak) IBOutlet NSMenuItem *volumeLinearScaleItem;
+@property (weak) IBOutlet NSMenuItem *volumeCubicScaleItem;
+@property (weak) IBOutlet NSView *tfQueryContainer;
 
 @end
 
@@ -63,6 +80,7 @@ extern DB_functions_t *deadbeef;
         [_updateTimer invalidate];
         _updateTimer = nil;
     }
+    [self.sidebarOutlineViewController close];
     [DesignModeDeps cleanup];
 }
 
@@ -71,16 +89,25 @@ extern DB_functions_t *deadbeef;
     [self freeTitleBarConfig];
 }
 
-- (BOOL)setInitialFirstResponder:(id<WidgetProtocol>)widget {
-    if ([widget respondsToSelector:@selector(makeFirstResponder)]) {
+// Find and activate the first visible playlist widget
+- (BOOL)setupInitialFirstResponder:(id<WidgetProtocol>)widget {
+    BOOL visible = widget.view.window != nil; // inactive tab check within NSTabView
+    BOOL responder = [widget respondsToSelector:@selector(makeFirstResponder)];
+    BOOL isPlaylistWithTabs = [widget.widgetType isEqualToString:PlaylistWithTabsWidget.widgetType];
+    BOOL isPlaylist = [widget.widgetType isEqualToString:PlaylistWidget.widgetType];
+
+    if (visible && responder
+        && (isPlaylist || isPlaylistWithTabs)) {
         [widget makeFirstResponder];
         return YES;
     }
+
     for (id<WidgetProtocol> child in widget.childWidgets) {
-        if ([self setInitialFirstResponder:child]) {
+        if ([self setupInitialFirstResponder:child]) {
             return YES;
         }
     }
+
     return NO;
 }
 
@@ -94,21 +121,23 @@ extern DB_functions_t *deadbeef;
     }
 #endif
 
-#if ENABLE_MEDIALIB
     self.playlistWithTabsView = self.splitViewController.bodyViewController.wrapperView;
     self.designableContainerView = self.splitViewController.bodyViewController.designableView;
-#else
-    self.mainContentViewController = [[MainContentViewController alloc] initWithNibName:@"MainContentViewController" bundle:nil];
-    [self.designableContainerView addSubview:self.mainContentViewController.view];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.designableContainerView.topAnchor constraintEqualToAnchor:self.mainContentViewController.view.topAnchor],
-        [self.designableContainerView.bottomAnchor constraintEqualToAnchor:self.mainContentViewController.view.bottomAnchor],
-        [self.designableContainerView.leadingAnchor constraintEqualToAnchor:self.mainContentViewController.view.leadingAnchor],
-        [self.designableContainerView.trailingAnchor constraintEqualToAnchor:self.mainContentViewController.view.trailingAnchor],
-    ]];
 
-    self.designableContainerView = self.mainContentViewController.designableView;
-#endif
+
+    if (self.mediaLibraryManager.medialibPlugin && self.mediaLibraryManager.source) {
+        scriptableItem_t *tfQueryRoot =  self.mediaLibraryManager.medialibPlugin->get_queries_scriptable(self.mediaLibraryManager.source);
+        self.mlQueriesDataSource = [ScriptableTableDataSource dataSourceWithScriptable:tfQueryRoot];
+    }
+
+    // preset list and browse button
+    self.tfQuerySelectViewController = [ScriptableSelectViewController new];
+    self.tfQuerySelectViewController.delegate = self;
+    self.tfQuerySelectViewController.view.frame = _tfQueryContainer.bounds;
+    [_tfQueryContainer addSubview:self.tfQuerySelectViewController.view];
+    self.tfQuerySelectViewController.errorViewer = ScriptableErrorViewer.sharedInstance;
+    self.tfQuerySelectViewController.dataSource = self.mlQueriesDataSource;
+    self.tfQuerySelectViewController.scriptableModel = self.mediaLibraryManager.model;
 
     id<WidgetProtocol> rootWidget = DesignModeState.sharedInstance.rootWidget;
     NSView *view = rootWidget.view;
@@ -120,8 +149,6 @@ extern DB_functions_t *deadbeef;
     [view.bottomAnchor constraintEqualToAnchor:self.designableContainerView.bottomAnchor].active = YES;
     [view.leadingAnchor constraintEqualToAnchor:self.designableContainerView.leadingAnchor].active = YES;
     [view.trailingAnchor constraintEqualToAnchor:self.designableContainerView.trailingAnchor].active = YES;
-
-    [self setInitialFirstResponder:rootWidget];
 
     NSLayoutYAxisAnchor *topAnchor;
     if (self.window.contentLayoutGuide && self.playlistWithTabsView) {
@@ -138,11 +165,30 @@ extern DB_functions_t *deadbeef;
     // seekbar value formatter
     self.seekBar.formatter = [TrackPositionFormatter new];
 
-    __weak MainWindowController *weakself = self;
+    [self ensureRefresh];
+}
+
+- (void)ensureRefresh {
+    if (_updateTimer != nil) {
+        return;
+    }
+    if (deadbeef->get_output()->state() != DDB_PLAYBACK_STATE_PLAYING) {
+        [self frameUpdate];
+        return;
+    }
+
+    weakify(self);
     _updateTimer = [NSTimer timerWithTimeInterval:1.0f/10.0f repeats:YES block:^(NSTimer * _Nonnull timer) {
-        MainWindowController *strongself = weakself;
-        if (strongself) {
-            [self frameUpdate];
+        strongify(self);
+        if (self == nil) {
+            return;
+        }
+
+        [self frameUpdate];
+
+        if (deadbeef->get_output()->state() != DDB_PLAYBACK_STATE_PLAYING) {
+            [self->_updateTimer invalidate];
+            self->_updateTimer = nil;
         }
     }];
 
@@ -175,7 +221,7 @@ static char sb_text[512];
         snprintf (totaltime_str, sizeof (totaltime_str), _("%d days %d:%02d:%02d"), daystotal, hourtotal, mintotal, sectotal);
     }
     
-    DB_playItem_t *track = deadbeef->streamer_get_playing_track ();
+    DB_playItem_t *track = deadbeef->streamer_get_playing_track_safe ();
     
     if (!output || (output->state () == DDB_PLAYBACK_STATE_STOPPED || !track)) {
         snprintf (sbtext_new, sizeof (sbtext_new), _("Stopped | %d tracks | %s total playtime"), deadbeef->pl_getcount (PL_MAIN), totaltime_str);
@@ -194,7 +240,7 @@ static char sb_text[512];
     
     if (strcmp (sbtext_new, sb_text)) {
         strcpy (sb_text, sbtext_new);
-        self.statusBar.stringValue = [NSString stringWithUTF8String:sb_text];
+        self.statusBar.stringValue = @(sb_text);
     }
     
     if (track) {
@@ -202,7 +248,7 @@ static char sb_text[512];
     }
 }
 
-- (void)advanceSeekBar:(DB_playItem_t *)trk {
+- (void)refreshSeekBar:(DB_playItem_t *)trk {
     float dur = -1;
     float perc = 0;
     if (trk) {
@@ -221,7 +267,7 @@ static char sb_text[512];
         }
     }
 
-    if (![_seekBar dragging]) {
+    if (!_seekBar.dragging) {
         int cmp =(int)(perc*4000);
         if (cmp != _prevSeekBarPos) {
             _prevSeekBarPos = cmp;
@@ -239,13 +285,9 @@ static char sb_text[512];
 }
 
 - (void)frameUpdate {
-    if (![self.window isVisible]) {
-        return;
-    }
+    DB_playItem_t *trk = deadbeef->streamer_get_playing_track_safe ();
 
-    DB_playItem_t *trk = deadbeef->streamer_get_playing_track ();
-
-    [self advanceSeekBar:trk];
+    [self refreshSeekBar:trk];
 
     [self updateSonginfo];
 
@@ -255,7 +297,7 @@ static char sb_text[512];
 }
 
 - (IBAction)seekBarAction:(DdbSeekBar *)sender {
-    DB_playItem_t *trk = deadbeef->streamer_get_playing_track ();
+    DB_playItem_t *trk = deadbeef->streamer_get_playing_track_safe ();
     if (trk) {
         float dur = deadbeef->pl_get_item_duration (trk);
         if (dur >= 0) {
@@ -267,19 +309,89 @@ static char sb_text[512];
     }
 }
 
-- (IBAction)volumeBarAction:(NSControl *)sender {
-    float range = -deadbeef->volume_get_min_db ();
-    float volume = [(NSSlider*)sender floatValue] / 100.f * range - range;
-    if (volume < -range) {
-        volume = -range;
+- (void)updateVolumeBar {
+    char scale[10];
+    deadbeef->conf_get_str ("playback.volume.scale", "dB", scale, sizeof(scale));
+
+    if (!strcmp (scale, "linear")) {
+        self.volumeBar.floatValue = deadbeef->volume_get_amp () * 100;
     }
-    if (volume > 0) {
-        volume = 0;
+    else if (!strcmp (scale, "cubic")) {
+        self.volumeBar.floatValue = cbrt(deadbeef->volume_get_amp ()) * 100;
+    }
+    else {
+        float range = -deadbeef->volume_get_min_db ();
+        float vol = (deadbeef->volume_get_db () + range) / range * 100;
+        self.volumeBar.floatValue = vol;
     }
 
-    deadbeef->volume_set_db (volume);
-    int db = (int)volume;
-    sender.toolTip = [NSString stringWithFormat:@"%s%ddB", db < 0 ? "" : "+", db];
+    [self updateVolumeBarTooltip];
+}
+
+- (IBAction)volumeBarAction:(NSSlider *)sender {
+    char scale[10];
+    deadbeef->conf_get_str ("playback.volume.scale", "dB", scale, sizeof(scale));
+
+    float value = sender.floatValue / 100.f;
+
+    if (!strcmp (scale, "linear")) {
+        deadbeef->volume_set_amp (value);
+    }
+    else if (!strcmp (scale, "cubic")) {
+        deadbeef->volume_set_amp (value * value * value);
+    }
+    else {
+        float range = -deadbeef->volume_get_min_db ();
+        float volume = value * range - range;
+        if (volume < -range) {
+            volume = -range;
+        }
+        if (volume > 0) {
+            volume = 0;
+        }
+
+        deadbeef->volume_set_db (volume);
+    }
+
+    [self updateVolumeBarTooltip];
+}
+
+- (void)updateVolumeBarTooltip {
+    char scale[10];
+    deadbeef->conf_get_str ("playback.volume.scale", "dB", scale, sizeof(scale));
+
+    if (!strcmp (scale, "linear") || !strcmp (scale, "cubic")) {
+        int percents = (int)(deadbeef->volume_get_amp() * 100);
+        self.volumeBar.toolTip = [NSString stringWithFormat:@"%d%%", percents];
+    }
+    else {
+        int db = (int)deadbeef->volume_get_db();
+        self.volumeBar.toolTip = [NSString stringWithFormat:@"%s%ddB", db < 0 ? "" : "+", db];
+    }
+}
+
+- (IBAction)selectDbScaleAction:(NSMenuItem *)sender {
+    if (sender.state != NSControlStateValueOn) {
+        deadbeef->conf_set_str("playback.volume.scale", "dB");
+        deadbeef->sendmessage(DB_EV_CONFIGCHANGED, 0, 0, 0);
+        deadbeef->conf_save();
+    }
+}
+
+- (IBAction)selectLinearScaleAction:(NSMenuItem *)sender {
+    if (sender.state != NSControlStateValueOn) {
+        deadbeef->conf_set_str("playback.volume.scale", "linear");
+        deadbeef->sendmessage(DB_EV_CONFIGCHANGED, 0, 0, 0);
+        deadbeef->conf_save();
+    }
+}
+
+- (IBAction)selectCubicScaleAction:(NSMenuItem *)sender {
+    if (sender.state != NSControlStateValueOn) {
+        deadbeef->conf_set_str("playback.volume.scale", "cubic");
+        deadbeef->sendmessage(DB_EV_CONFIGCHANGED, 0, 0, 0);
+        deadbeef->conf_save();
+    }
 }
 
 - (IBAction)tbClicked:(id)sender {
@@ -305,16 +417,14 @@ static char sb_text[512];
 }
 
 - (IBAction)performCloseTabAction:(id)sender {
-    int idx = deadbeef->plt_get_curr_idx ();
-    if (idx != -1) {
-        deadbeef->plt_remove (idx);
+    _deletePlaylistIndex = deadbeef->plt_get_curr_idx ();
+    if (_deletePlaylistIndex != -1) {
+        DeletePlaylistConfirmationController *controller = [DeletePlaylistConfirmationController new];
+        controller.window = self.window;
+        controller.title = plt_get_title_wrapper (_deletePlaylistIndex);
+        controller.delegate = self;
+        [controller run];
     }
-}
-
-- (void)updateVolumeBar {
-    float range = -deadbeef->volume_get_min_db ();
-    float vol = (deadbeef->volume_get_db () + range) / range * 100;
-    [self volumeBar].floatValue = vol;
 }
 
 - (void)freeTitleBarConfig {
@@ -323,9 +433,19 @@ static char sb_text[512];
         _titlebar_playing_script = NULL;
     }
 
+    if (_titlebar_playing_subtitle_script) {
+        deadbeef->tf_free (_titlebar_playing_subtitle_script);
+        _titlebar_playing_subtitle_script = NULL;
+    }
+
     if (_titlebar_stopped_script) {
         deadbeef->tf_free (_titlebar_stopped_script);
         _titlebar_stopped_script = NULL;
+    }
+
+    if (_titlebar_stopped_subtitle_script) {
+        deadbeef->tf_free (_titlebar_stopped_subtitle_script);
+        _titlebar_stopped_subtitle_script = NULL;
     }
 
     if (_statusbar_playing_script) {
@@ -361,7 +481,7 @@ static char sb_text[512];
 
     ddb_tf_context_t ctx = {
         ._size = sizeof (ddb_tf_context_t),
-        .it = deadbeef->streamer_get_playing_track (),
+        .it = deadbeef->streamer_get_playing_track_safe (),
         .iter = PL_MAIN,
     };
 
@@ -377,16 +497,66 @@ static char sb_text[512];
 
 #if defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101600
     if (@available(macOS 10.16, *)) {
-        self.window.title = [NSString stringWithUTF8String:titleBuffer];
-        self.window.subtitle = [NSString stringWithUTF8String:subtitleBuffer];
+        self.window.title = @(titleBuffer);
+        self.window.subtitle = @(subtitleBuffer);
     } else
 #endif
     {
-        NSString *title = [NSString stringWithUTF8String:titleBuffer];
-        NSString *subTitle = [NSString stringWithUTF8String:subtitleBuffer];
+        NSString *title = @(titleBuffer);
+        NSString *subTitle = @(subtitleBuffer);
 
         self.window.title = [NSString stringWithFormat:@"%@%@%@", subTitle, (titleBuffer[0] && subtitleBuffer[0]) ? @" - " : @"", title];
     }
+}
+
+- (void)menuNeedsUpdate:(NSMenu *)menu {
+    if (menu == self.volumeScaleMenu) {
+        char scale[10];
+        deadbeef->conf_get_str ("playback.volume.scale", "dB", scale, sizeof(scale));
+
+        menu.font = [NSFont systemFontOfSize:NSFont.smallSystemFontSize];
+
+        self.volumeDbScaleItem.state = !strcmp (scale, "dB") ? NSControlStateValueOn : NSControlStateValueOff;
+        self.volumeLinearScaleItem.state = !strcmp (scale, "linear") ? NSControlStateValueOn : NSControlStateValueOff;
+        self.volumeCubicScaleItem.state = !strcmp (scale, "cubic") ? NSControlStateValueOn : NSControlStateValueOff;
+    }
+}
+
+- (void)message:(int)_id ctx:(uint64_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2 {
+    if (_id == DB_EV_PLAYBACK_STATE_DID_CHANGE) {
+        [self performSelectorOnMainThread:@selector(ensureRefresh) withObject:nil waitUntilDone:NO];
+    }
+    else if (_id == DB_EV_PLAYLISTCHANGED) {
+        [self performSelectorOnMainThread:@selector(updateSonginfo) withObject:nil waitUntilDone:NO];
+    }
+}
+
+#pragma mark - DeletePlaylistConfirmationControllerDelegate
+
+- (void)deletePlaylistDone:(DeletePlaylistConfirmationController *)controller {
+    if (_deletePlaylistIndex != -1) {
+        deadbeef->plt_remove (_deletePlaylistIndex);
+        _deletePlaylistIndex = -1;
+    }
+}
+
+#pragma mark - ScriptableSelectDelegate
+
+- (void)scriptableSelectItemSelected:(scriptableItem_t *)item {
+}
+
+- (void)scriptableItemDidChange:(scriptableItem_t *)scriptable change:(ScriptableItemChange)change {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.tfQuerySelectViewController reloadData];
+
+        // FIXME: save only when the dialog is closed
+        if (self.mediaLibraryManager.medialibPlugin && self.mediaLibraryManager.source) {
+            scriptableItem_t *tfQueryRoot =  self.mediaLibraryManager.medialibPlugin->get_queries_scriptable(self.mediaLibraryManager.source);
+            if (tfQueryRoot != NULL) {
+                scriptableItemSave(tfQueryRoot);
+            }
+        }
+    });
 }
 
 @end

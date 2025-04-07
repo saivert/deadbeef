@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2021 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -32,7 +32,6 @@
 #include "../../../gettext.h"
 #include "../callbacks.h"
 #include "../ctmapping.h"
-#include "../ddblistview.h"
 #include "../drawing.h"
 #include "../dspconfig.h"
 #include "../eq.h"
@@ -85,6 +84,7 @@ prefwin_init_theme_colors (void) {
     gtk_color_button_set_color (GTK_COLOR_BUTTON (lookup_widget (prefwin, "listview_column_text")), ((void)(gtkui_get_listview_column_text_color (&clr)), &clr));
     gtk_color_button_set_color (GTK_COLOR_BUTTON (lookup_widget (prefwin, "listview_cursor")), ((void)(gtkui_get_listview_cursor_color (&clr)), &clr));
     gtk_color_button_set_color (GTK_COLOR_BUTTON (lookup_widget (prefwin, "visualization_custom_color_button")), ((void)(gtkui_get_vis_custom_base_color (&clr)), &clr));
+    gtk_color_button_set_color (GTK_COLOR_BUTTON (lookup_widget (prefwin, "visualization_custom_background_color_button")), ((void)(gtkui_get_vis_custom_background_color (&clr)), &clr));
 }
 
 void
@@ -156,7 +156,7 @@ on_prefwin_response_cb (GtkDialog *dialog,
 }
 
 static void
-_init_prefwin() {
+_init_prefwin(void) {
     if (prefwin != NULL) {
         return;
     }
@@ -226,7 +226,7 @@ prefwin_run (int tab_index) {
 #if GTK_CHECK_VERSION(2,28,0)
     gtk_window_present_with_time (GTK_WINDOW(prefwin), (guint32)(g_get_monotonic_time() / 1000));
 #else
-    gtk_window_present_with_time (prefwin, GDK_CURRENT_TIME);
+    gtk_window_present_with_time (GTK_WINDOW(prefwin), GDK_CURRENT_TIME);
 #endif
 }
 

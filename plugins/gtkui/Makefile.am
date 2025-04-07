@@ -2,53 +2,71 @@ EXTRA_DIST = deadbeef.glade\
 	gtkui.gresources.xml\
 	gtk/menus.ui
 
-GTKUI_SOURCES =    gtkui.c gtkui.h\
-				   gtkui_deletefromdisk.c gtkui_deletefromdisk.h\
-				   callbacks.c interface.c support.c callbacks.h interface.h support.h\
-				   ddblistview.c ddblistview.h\
-				   mainplaylist.c mainplaylist.h\
-				   drawing.h gdkdrawing.c\
-				   progress.c progress.h\
-				   search.c search.h\
-				   fileman.c\
-				   pluginconf.c\
-				   ddbtabstrip.c ddbtabstrip.h\
-				   ddbvolumebar.c ddbvolumebar.h\
-				   trkproperties.c trkproperties.h\
-				   coverart.c coverart.h\
-				   plcommon.c plcommon.h\
-				   plmenu.c plmenu.h\
-				   prefwin/prefwin.c prefwin/prefwin.h\
-				   prefwin/prefwinappearance.c prefwin/prefwinappearance.h\
-				   prefwin/prefwinmedialib.c prefwin/prefwinmedialib.h\
-				   prefwin/prefwinmisc.c prefwin/prefwinmisc.h\
-				   prefwin/prefwinnetwork.c prefwin/prefwinnetwork.h\
-				   prefwin/prefwinplayback.c prefwin/prefwinplayback.h\
-				   prefwin/prefwinplugins.c prefwin/prefwinplugins.h\
-				   prefwin/prefwinsound.c prefwin/prefwinsound.h\
-				   eq.c eq.h\
-				   actions.c actions.h\
-				   dspconfig.c dspconfig.h\
-				   tagwritersettings.c tagwritersettings.h\
-				   wingeom.c wingeom.h\
-				   pluginconf.h\
-				   widgets.c widgets.h\
-				   ddbseekbar.h ddbequalizer.h ddbcellrenderertextmultiline.h\
-				   ddbseekbar.c ddbequalizer.c ddbcellrenderertextmultiline.c\
-                   hotkeys.c hotkeys.h\
-                   actionhandlers.c actionhandlers.h\
-                   pltmenu.c\
-                   ctmapping.c ctmapping.h\
-                   namedicons.c namedicons.h\
-                   tfimport.c tfimport.h\
-                   ddb_splitter.c ddb_splitter.h\
-                   ddb_splitter_size_mode.c ddb_splitter_size_mode.h\
-                   ../../utf8.c\
-                   clipboard.c clipboard.h\
-				   rg.c rg.h\
-				   medialib/medialibwidget.c medialib/medialibwidget.h\
-				   medialib/medialibmanager.c medialib/medialibmanager.h\
-				   $(SM_SOURCES) $(OSXSRC)
+GTKUI_SOURCES = \
+    ../../src/utf8.c\
+	actions.c actions.h\
+	callbacks.c callbacks.h\
+	support.c support.h\
+	interface.c interface.h\
+	ddbseekbar.c ddbseekbar.h\
+   	ddbcellrenderertextmultiline.c ddbcellrenderertextmultiline.h\
+ 	ddbequalizer.c ddbequalizer.h\
+	ddbtabstrip.c ddbtabstrip.h\
+	ddbvolumebar.c ddbvolumebar.h\
+	drawing.h gdkdrawing.c\
+	dspconfig.c dspconfig.h\
+	eq.c eq.h\
+	fileman.c\
+	gtkui.c gtkui.h\
+	gtkui_deletefromdisk.c gtkui_deletefromdisk.h\
+	plmenu.c plmenu.h\
+	pluginconf.c pluginconf.h\
+	progress.c progress.h\
+	rg.c rg.h\
+	search.c search.h\
+	tagwritersettings.c tagwritersettings.h\
+	trkproperties.c trkproperties.h\
+	widgets.c widgets.h\
+	selpropertieswidget.c selpropertieswidget.h\
+	wingeom.c wingeom.h\
+    actionhandlers.c actionhandlers.h\
+    clipboard.c clipboard.h\
+    ctmapping.c ctmapping.h\
+    ddb_splitter.c ddb_splitter.h\
+    ddb_splitter_size_mode.c ddb_splitter_size_mode.h\
+    hotkeys.c hotkeys.h\
+    namedicons.c namedicons.h\
+    pltmenu.c\
+    tfimport.c tfimport.h\
+	medialib/medialibwidget.c medialib/medialibwidget.h\
+	medialib/medialibmanager.c medialib/medialibmanager.h\
+	medialib/mlcellrendererpixbuf.c medialib/mlcellrendererpixbuf.h\
+	covermanager/covermanager.c covermanager/covermanager.h\
+	covermanager/gobjcache.c covermanager/gobjcache.h\
+	covermanager/albumartwidget.c covermanager/albumartwidget.h\
+	playlist/ddblistview.c playlist/ddblistview.h\
+	playlist/ddblistviewheader.c playlist/ddblistviewheader.h\
+	playlist/mainplaylist.c playlist/mainplaylist.h\
+	playlist/playlistcontroller.c playlist/playlistcontroller.h\
+	playlist/playlistrenderer.c playlist/playlistrenderer.h\
+	playlist/plcommon.c playlist/plcommon.h\
+	playlist/searchplaylist.c playlist/searchplaylist.h\
+	prefwin/prefwin.c prefwin/prefwin.h\
+	prefwin/prefwinappearance.c prefwin/prefwinappearance.h\
+	prefwin/prefwinmedialib.c prefwin/prefwinmedialib.h\
+	prefwin/prefwinmisc.c prefwin/prefwinmisc.h\
+	prefwin/prefwinnetwork.c prefwin/prefwinnetwork.h\
+	prefwin/prefwinplayback.c prefwin/prefwinplayback.h\
+	prefwin/prefwinplugins.c prefwin/prefwinplugins.h\
+	prefwin/prefwinsound.c prefwin/prefwinsound.h\
+	scriptable/gtkScriptable.c scriptable/gtkScriptable.h\
+	scriptable/gtkScriptableListEditViewController.c scriptable/gtkScriptableListEditViewController.h\
+	scriptable/gtkScriptableListEditWindowController.c scriptable/gtkScriptableListEditWindowController.h\
+	scriptable/gtkScriptableSelectViewController.c scriptable/gtkScriptableSelectViewController.h\
+	undostack.c undostack.h\
+	undointegration.c undointegration.h
+
+	$(SM_SOURCES) $(OSXSRC)
 
 sdkdir = $(pkgincludedir)
 sdk_HEADERS = gtkui_api.h
@@ -85,9 +103,9 @@ GTKUI_SOURCES_GTK2 = $(GTKUI_SOURCES)
 ddb_gui_GTK2_la_SOURCES = $(GTKUI_SOURCES_GTK2)
 ddb_gui_GTK2_la_LDFLAGS = -module -avoid-version
 
-ddb_gui_GTK2_la_LIBADD = $(LDADD) $(GTK2_DEPS_LIBS) $(SM_LIBADD) ../libparser/libparser.la ../../shared/libtrkpropertiesutil.la ../../shared/libeqpreset.la ../../shared/libdeletefromdisk.la ../../shared/libtftintutil.la ../../analyzer/libanalyzer.la ../../scope/libscope.la $(JANSSON_LIBS)
+ddb_gui_GTK2_la_LIBADD = $(LDADD) $(GTK2_DEPS_LIBS) $(SM_LIBADD) ../libparser/libparser.la ../../shared/libtrkpropertiesutil.la ../../shared/libeqpreset.la ../../shared/libdeletefromdisk.la ../../shared/libtftintutil.la ../../shared/analyzer/libanalyzer.la ../../shared/scope/libscope.la ../../shared/scriptable/libscriptable.la  $(JANSSON_LIBS) $(DISPATCH_LIBS)
 
-ddb_gui_GTK2_la_CFLAGS = -std=c99 $(GTK2_DEPS_CFLAGS) $(SM_CFLAGS) $(JANSSON_CFLAGS) -DDDB_WARN_DEPRECATED=1
+ddb_gui_GTK2_la_CFLAGS = -std=c99 -Werror -DGLIB_DISABLE_DEPRECATION_WARNINGS -DGDK_DISABLE_DEPRECATION_WARNINGS -DGTK_DISABLE_DEPRECATION_WARNINGS $(GTK2_DEPS_CFLAGS) $(SM_CFLAGS) $(JANSSON_CFLAGS) $(DISPATCH_CFLAGS) $(MEDIALIB_CFLAGS) -I@top_srcdir@/include -I@top_srcdir@/shared -DDDB_WARN_DEPRECATED=1
 
 endif
 
@@ -97,8 +115,8 @@ GTKUI_SOURCES_GTK3 = deadbeefapp.c deadbeefapp.h $(GTKUI_SOURCES)
 ddb_gui_GTK3_la_LDFLAGS = -module -avoid-version
 
 ddb_gui_GTK3_la_SOURCES = $(GTKUI_SOURCES_GTK3)
-ddb_gui_GTK3_la_LIBADD = $(LDADD) $(GTK3_DEPS_LIBS) $(SM_LIBADD) ../libparser/libparser.la ../../shared/libtrkpropertiesutil.la ../../shared/libeqpreset.la ../../shared/libdeletefromdisk.la ../../shared/libtftintutil.la ../../analyzer/libanalyzer.la ../../scope/libscope.la $(JANSSON_LIBS)
-ddb_gui_GTK3_la_CFLAGS = -std=c99 $(GTK3_DEPS_CFLAGS) $(SM_CFLAGS) $(JANSSON_CFLAGS)
+ddb_gui_GTK3_la_LIBADD = $(LDADD) $(GTK3_DEPS_LIBS) $(SM_LIBADD) ../libparser/libparser.la ../../shared/libtrkpropertiesutil.la ../../shared/libeqpreset.la ../../shared/libdeletefromdisk.la ../../shared/libtftintutil.la ../../shared/analyzer/libanalyzer.la ../../shared/scope/libscope.la ../../shared/scriptable/libscriptable.la $(JANSSON_LIBS) $(DISPATCH_LIBS)
+ddb_gui_GTK3_la_CFLAGS = -std=c99 -Werror -DGLIB_DISABLE_DEPRECATION_WARNINGS -DGDK_DISABLE_DEPRECATION_WARNINGS -DGTK_DISABLE_DEPRECATION_WARNINGS $(GTK3_DEPS_CFLAGS) $(SM_CFLAGS) $(JANSSON_CFLAGS) $(DISPATCH_CFLAGS) $(MEDIALIB_CFLAGS) -I@top_srcdir@/include -I@top_srcdir@/shared -DDDB_WARN_DEPRECATED=1
 ddb_gui_GTK3_la_OBJCFLAGS = $(GTK3_DEPS_CFLAGS) $(SM_CFLAGS) $(JANSSON_CFLAGS)
 
 nodist_ddb_gui_GTK3_la_SOURCES = gtkui-gresources.c

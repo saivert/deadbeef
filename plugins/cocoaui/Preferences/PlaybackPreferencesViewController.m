@@ -2,13 +2,13 @@
 //  PlaybackPreferencesViewController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/23/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/23/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "DdbShared.h"
 #import "PlaybackPreferencesViewController.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -30,6 +30,9 @@ extern DB_functions_t *deadbeef;
 @property (nonatomic) BOOL ignoreArchives;
 @property (nonatomic) BOOL stopAfterCurrentReset;
 @property (nonatomic) BOOL stopAfterCurrentAlbumReset;
+
+@property (weak) IBOutlet NSSlider *visBufferSlider;
+@property (weak) IBOutlet NSTextField *visBufferValue;
 
 @end
 
@@ -74,6 +77,13 @@ extern DB_functions_t *deadbeef;
     _stopAfterCurrentAlbumReset = deadbeef->conf_get_int ("playlist.stop_after_album_reset", 0) ? YES : NO;
 
     return self;
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    int value = deadbeef->conf_get_int ("playback.vis_buffer", 1000);
+    self.visBufferSlider.intValue = value;
+    self.visBufferValue.stringValue = [NSString stringWithFormat:@"%d ms", value];
 }
 
 #pragma mark - ReplayGain
@@ -161,5 +171,12 @@ extern DB_functions_t *deadbeef;
     deadbeef->conf_set_int ("playlist.stop_after_album_reset", stopAfterCurrentAlbumReset);
     deadbeef->sendmessage (DB_EV_CONFIGCHANGED, 0, 0, 0);
 }
+
+- (IBAction)visBufferSliderAction:(NSSlider *)sender {
+    self.visBufferValue.stringValue = [NSString stringWithFormat:@"%d ms", sender.intValue];
+    deadbeef->conf_set_int ("playback.vis_buffer", sender.intValue);
+    deadbeef->sendmessage(DB_EV_CONFIGCHANGED, 0, 0, 0);
+}
+
 
 @end

@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -26,7 +26,7 @@
 #include <stdlib.h>
 
 #include "gtkui.h"
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "support.h"
 #include "actions.h"
 
@@ -40,7 +40,10 @@
 static gboolean
 menu_action_cb (void *ctx) {
     DB_plugin_action_t *action = ctx;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     if (action->callback) {
+#pragma GCC diagnostic pop
         gtkui_exec_action_14 (action, -1);
     }
     else if (action->callback2) {
@@ -103,7 +106,10 @@ menu_add_action_items(GtkWidget *menu, int selected_count, ddb_playItem_t *selec
                 continue;
             }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
             if (!((action->callback2 && (action->flags & DB_ACTION_ADD_MENU)) || action->callback)) {
+#pragma GCC diagnostic pop
                 continue;
             }
 
@@ -244,9 +250,14 @@ menu_add_action_items(GtkWidget *menu, int selected_count, ddb_playItem_t *selec
             g_signal_connect ((gpointer) actionitem, "activate",
                               G_CALLBACK (activate_callback),
                               action);
-            if ((selected_count > 1 && !(action->flags & DB_ACTION_MULTIPLE_TRACKS)) ||
-                (action->flags & DB_ACTION_DISABLED)) {
-                gtk_widget_set_sensitive (GTK_WIDGET (actionitem), FALSE);
+
+            int is_playlist_action = (action->flags & DB_ACTION_PLAYLIST) && action_context == DDB_ACTION_CTX_PLAYLIST;
+
+            if (!is_playlist_action) {
+                if ((selected_count > 1 && !(action->flags & DB_ACTION_MULTIPLE_TRACKS)) ||
+                    (action->flags & DB_ACTION_DISABLED)) {
+                    gtk_widget_set_sensitive (GTK_WIDGET (actionitem), FALSE);
+                }
             }
         }
         if (count > 0 && deadbeef->conf_get_int ("gtkui.action_separators", 0))
@@ -273,11 +284,14 @@ add_mainmenu_actions (void) {
 void
 gtkui_exec_action_14 (DB_plugin_action_t *action, int cursor) {
     // Plugin can handle all tracks by itself
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     if (action->flags & DB_ACTION_CAN_MULTIPLE_TRACKS)
     {
         action->callback (action, NULL);
         return;
     }
+#pragma GCC diagnostic pop
 
     // For single-track actions just invoke it with first selected track
     if (!(action->flags & DB_ACTION_MULTIPLE_TRACKS))
@@ -290,7 +304,10 @@ gtkui_exec_action_14 (DB_plugin_action_t *action, int cursor) {
             return;
         }
         DB_playItem_t *it = deadbeef->pl_get_for_idx_and_iter (cursor, PL_MAIN);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         action->callback (action, it);
+#pragma GCC diagnostic pop
         deadbeef->pl_item_unref (it);
         return;
     }
@@ -299,7 +316,10 @@ gtkui_exec_action_14 (DB_plugin_action_t *action, int cursor) {
     DB_playItem_t *it = deadbeef->pl_get_first (PL_MAIN);
     while (it) {
         if (deadbeef->pl_is_selected (it)) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
             action->callback (action, it);
+#pragma GCC diagnostic pop
         }
         DB_playItem_t *next = deadbeef->pl_get_next (it, PL_MAIN);
         deadbeef->pl_item_unref (it);

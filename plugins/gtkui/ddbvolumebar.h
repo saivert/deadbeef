@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -42,7 +42,12 @@ typedef struct _DdbVolumeBarClass DdbVolumeBarClass;
 typedef void * DdbVolumeBarIter;
 typedef void * DdbVolumeBarColIter;
 
-typedef enum {DDB_VOLUMEBAR_SCALE_DB, DDB_VOLUMEBAR_SCALE_LINEAR, DDB_VOLUMEBAR_SCALE_CUBIC} DdbVolumeBarScale;
+typedef enum {
+    DDB_VOLUMEBAR_SCALE_DB,
+    DDB_VOLUMEBAR_SCALE_LINEAR,
+    DDB_VOLUMEBAR_SCALE_CUBIC,
+    DDB_VOLUMEBAR_SCALE_COUNT
+} DdbVolumeBarScale;
 
 struct _DdbVolumeBar {
     GtkWidget parent;

@@ -2,8 +2,8 @@
 //  WidgetBase.h
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 20/02/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 20/02/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
@@ -17,6 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)init NS_UNAVAILABLE;
 - (instancetype)initWithDeps:(id<DesignModeDepsProtocol>)deps NS_DESIGNATED_INITIALIZER;
+
+- (void)configure;
 
 @property (nullable,nonatomic,weak) id<WidgetProtocol> parentWidget;
 @property (nonatomic,readonly) NSView *topLevelView;

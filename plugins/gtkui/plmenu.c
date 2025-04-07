@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2021 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,13 +24,13 @@
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include "../../shared/deletefromdisk.h"
-#include "../../strdupa.h"
+#include <deadbeef/strdupa.h>
 #include "actions.h"
 #include "actionhandlers.h"
 #include "clipboard.h"
 #include "gtkui_deletefromdisk.h"
 #include "interface.h"
-#include "plcommon.h"
+#include "playlist/plcommon.h"
 #include "plmenu.h"
 #include "support.h"
 
@@ -79,6 +79,8 @@ _capture_selected_track_list (void) {
 
     ddb_playItem_t **tracks = NULL;
 
+    ddb_playItem_t *current = deadbeef->streamer_get_playing_track_safe ();
+
     deadbeef->pl_lock ();
 
     int count = 0;
@@ -92,15 +94,17 @@ _capture_selected_track_list (void) {
 
     if (count == 0) {
         deadbeef->pl_unlock ();
+        if (current != NULL) {
+            deadbeef->pl_item_unref (current);
+        }
         return;
     }
 
-    ddb_playItem_t *current = deadbeef->streamer_get_playing_track ();
     int current_idx = -1;
     int all_idx = 0;
     int idx = 0;
     if (count) {
-        tracks = calloc (sizeof (ddb_playItem_t *), count);
+        tracks = calloc (count, sizeof (ddb_playItem_t *));
 
         ddb_playItem_t *it = deadbeef->plt_get_first (_menuPlaylist, PL_MAIN);
         while (it) {
@@ -603,7 +607,7 @@ trk_context_menu_build (GtkWidget *menu) {
     int hide_remove_from_disk = deadbeef->conf_get_int ("gtkui.hide_remove_from_disk", 0);
 
     if (!hide_remove_from_disk) {
-        remove_from_disk = gtk_menu_item_new_with_mnemonic (_("Remove from Disk"));
+        remove_from_disk = gtk_menu_item_new_with_mnemonic (_("Delete from Disk"));
         gtk_widget_show (remove_from_disk);
         gtk_container_add (GTK_CONTAINER (menu), remove_from_disk);
         gtk_widget_set_sensitive(remove_from_disk, selected_count != 0);

@@ -1,6 +1,6 @@
 /*
     GameMusicEmu plugin for DeaDBeeF
-    Copyright (C) 2009-2015 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2015 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -31,8 +31,8 @@
 #include <math.h>
 #include "gme/gme.h"
 #include <zlib.h>
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 #if HAVE_SYS_CDEFS_H
 #include <sys/cdefs.h>
 #endif
@@ -50,8 +50,6 @@ static DB_decoder_t plugin;
 static DB_functions_t *deadbeef;
 static int conf_fadeout = 10;
 static int conf_loopcount = 2;
-static int chip_voices = 0xff;
-static int chip_voices_changed = 0;
 static int conf_play_forever = 0;
 static char *coleco_rom;
 
@@ -61,14 +59,18 @@ typedef struct {
     int reallength;
     float duration; // of current song
     int eof;
+    int chip_voices;
     int can_loop;
+    int rawsignal;
     int fade_set;
 } gme_fileinfo_t;
 
 static DB_fileinfo_t *
-cgme_open (uint32_t hint) {
-    gme_fileinfo_t *info = calloc (sizeof (gme_fileinfo_t), 1);
-    info->can_loop = hint & DDB_DECODER_HINT_CAN_LOOP;
+cgme_open (uint32_t hints) {
+    gme_fileinfo_t *info = calloc (1, sizeof (gme_fileinfo_t));
+    info->chip_voices = 0xff;
+    info->can_loop = hints & DDB_DECODER_HINT_CAN_LOOP;
+    info->rawsignal = hints & DDB_DECODER_HINT_RAW_SIGNAL;
     return &info->info;
 }
 
@@ -178,6 +180,24 @@ error:
     return res;
 }
 
+static float
+_get_duration (const gme_info_t *inf) {
+    if (inf->length != -1 && inf->length != 0) {
+        return (inf->length + conf_fadeout)/1000.f;
+    }
+
+    if (inf->loop_length <= 0 || conf_loopcount <= 0) {
+        return deadbeef->conf_get_float ("gme.songlength", 3) * 60.f;
+    }
+
+    float songlength = inf->intro_length / 1000.f;
+    if (songlength < 0) {
+        songlength = 0;
+    }
+    songlength += (inf->loop_length * conf_loopcount) / 1000.f;
+    return songlength;
+}
+
 static int
 cgme_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     gme_fileinfo_t *info = (gme_fileinfo_t*)_info;
@@ -223,8 +243,6 @@ cgme_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
         trace ("failed with error %d\n", res);
         return -1;
     }
-    chip_voices = deadbeef->conf_get_int ("chip.voices", 0xff);
-    gme_mute_voices (info->emu, chip_voices^0xff);
     gme_start_track (info->emu, deadbeef->pl_find_meta_int (it, ":TRACKNUM", 0));
 
     gme_info_t *inf;
@@ -235,8 +253,8 @@ cgme_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     _info->fmt.channels = 2;
     _info->fmt.samplerate = samplerate;
     _info->fmt.channelmask = _info->fmt.channels == 1 ? DDB_SPEAKER_FRONT_LEFT : (DDB_SPEAKER_FRONT_LEFT | DDB_SPEAKER_FRONT_RIGHT);
-    info->duration = deadbeef->pl_get_item_duration (it);
-    info->reallength = inf->length; 
+    info->duration = _get_duration(inf);
+    info->reallength = inf->length;
     _info->readpos = 0;
     info->eof = 0;
     return 0;
@@ -266,10 +284,12 @@ cgme_read (DB_fileinfo_t *_info, char *bytes, int size) {
         }
     }
 
-    if (chip_voices_changed) {
-        chip_voices = deadbeef->conf_get_int ("chip.voices", 0xff);
-        chip_voices_changed = 0;
-        gme_mute_voices (info->emu, chip_voices^0xff);
+    if (!info->rawsignal) {
+        int chip_voices = deadbeef->conf_get_int ("chip.voices", 0xff);
+        if (chip_voices != info->chip_voices) {
+            info->chip_voices = chip_voices;
+            gme_mute_voices (info->emu, chip_voices^0xff);
+        }
     }
 
     // FIXME: it makes more sense to call gme_set_fade on init and configchanged
@@ -421,25 +441,7 @@ cgme_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
                 deadbeef->pl_add_meta (it, ":GME_INTRO_LENGTH", str);
                 snprintf (str, sizeof(str), "%d", inf->loop_length);
                 deadbeef->pl_add_meta (it, ":GME_LOOP_LENGTH", str);
-                if (inf->length == -1 || inf->length == 0) {
-                    float songlength;
-                    
-                    if (inf->loop_length > 0 && conf_loopcount > 0) {
-                        songlength = inf->intro_length / 1000.f;
-                        if (songlength < 0) {
-                            songlength = 0;
-                        }
-                        songlength += (inf->loop_length * conf_loopcount) / 1000.f;
-                    }
-                    else {
-                        songlength = deadbeef->conf_get_float ("gme.songlength", 3) * 60.f;
-                    }
-                    deadbeef->plt_set_item_duration (plt, it, songlength);
-                }
-                else {
-                    inf->length += conf_fadeout*1000;
-                    deadbeef->plt_set_item_duration (plt, it, (float)inf->length/1000.f);
-                }
+                deadbeef->plt_set_item_duration (plt, it, _get_duration(inf));
                 const char *ext = fname + strlen (fname) - 1;
                 while (ext >= fname && *ext != '.') {
                     ext--;
@@ -537,9 +539,6 @@ cgme_message (uint32_t id, uintptr_t ctx, uint32_t p1, uint32_t p2) {
         conf_fadeout = deadbeef->conf_get_int ("gme.fadeout", 10);
         conf_loopcount = deadbeef->conf_get_int ("gme.loopcount", 2);
         conf_play_forever = deadbeef->streamer_get_repeat () == DDB_REPEAT_SINGLE;
-        if (chip_voices != deadbeef->conf_get_int ("chip.voices", 0xff)) {
-            chip_voices_changed = 1;
-        }
         init_coleco_bios ();
         break;
     }
@@ -565,7 +564,7 @@ static DB_decoder_t plugin = {
     .plugin.descr = "chiptune/game music player based on GME library",
     .plugin.copyright = 
         "Game_Music_Emu plugin for DeaDBeeF\n"
-        "Copyright (C) 2009-2015 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2009-2015 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"
@@ -590,7 +589,7 @@ static DB_decoder_t plugin = {
         "Game_Music_Emu (modified)\n"
         "Copyright (C) 2003-2009 Shay Green.\n"
         "Foobar2000-related modifications (C) Chris Moeller\n"
-        "DeaDBeeF-related modifications (C) Alexey Yakovenko.\n"
+        "DeaDBeeF-related modifications (C) Oleksiy Yakovenko.\n"
         "\n"
         "This library is free software; you can redistribute it and/or\n"
         "modify it under the terms of the GNU Lesser General Public\n"

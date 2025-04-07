@@ -1,6 +1,6 @@
 /*
     CURL VFS plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko
+    Copyright (C) 2009-2014 Oleksiy Yakovenko
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <curl/curlver.h>
-#include <time.h>
+#include <sys/time.h>
 #include "vfs_curl.h"
 
 #define trace(...) { deadbeef->log_detailed (&plugin.plugin, 0, __VA_ARGS__); }
@@ -308,7 +308,7 @@ parse_header (const uint8_t *p, const uint8_t *e, uint8_t *key, int keysize, uin
 }
 
 static size_t
-http_content_header_handler_int (void *ptr, size_t size, void *stream, int *end_of_headers) {
+http_content_header_handler_int (const void *ptr, size_t size, void *stream, int *end_of_headers) {
 //    trace ("http_content_header_handler\n");
     assert (stream);
     HTTP_FILE *fp = (HTTP_FILE *)stream;
@@ -391,7 +391,7 @@ http_content_header_handler_int (void *ptr, size_t size, void *stream, int *end_
 
 // returns number of bytes consumed
 size_t
-vfs_curl_handle_icy_headers (size_t avail, HTTP_FILE *fp, char *ptr) {
+vfs_curl_handle_icy_headers (size_t avail, HTTP_FILE *fp, const char *ptr) {
     size_t size = avail;
 
     // check if that's ICY
@@ -664,7 +664,7 @@ http_thread_func (void *ctx) {
         curl_easy_setopt (curl, CURLOPT_HTTPHEADER, headers);
         curl_easy_setopt (curl, CURLOPT_HTTP200ALIASES, ok_aliases);
 #ifdef __MINGW32__
-        curl_easy_setopt (curl,CURLOPT_CAINFO, getenv("CURL_CA_BUNDLE"));
+        curl_easy_setopt (curl, CURLOPT_CAINFO, getenv ("CURL_CA_BUNDLE"));
 #endif
         if (fp->pos > 0 && fp->length >= 0) {
             curl_easy_setopt (curl, CURLOPT_RESUME_FROM, (long)fp->pos);
@@ -1140,7 +1140,7 @@ static DB_vfs_t plugin = {
     .plugin.descr = "http and ftp streaming module using libcurl, with ICY protocol support",
     .plugin.copyright = 
         "CURL VFS plugin for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2014 Alexey Yakovenko\n"
+        "Copyright (C) 2009-2014 Oleksiy Yakovenko\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"

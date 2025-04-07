@@ -2,13 +2,13 @@
 //  GuiPreferencesWindowController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/26/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/26/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "DdbShared.h"
 #import "GuiPreferencesWindowController.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -18,7 +18,6 @@ extern DB_functions_t *deadbeef;
 @property (nonatomic) BOOL enableShiftJISDetection;
 @property (nonatomic) BOOL enableCP1251Detection;
 @property (nonatomic) BOOL enableCP936Detection;
-@property (nonatomic) NSInteger refreshRate;
 @property (nonatomic) NSString *titlebarPlaying;
 @property (nonatomic) NSString *titlebarStopped;
 
@@ -27,7 +26,7 @@ extern DB_functions_t *deadbeef;
 @property (nonatomic) BOOL hideRemoveFromDisk;
 @property (nonatomic) BOOL namePlaylistFromFolder;
 
-// Delete From Disk
+// Delete from Disk
 @property (nonatomic) BOOL deleteFromDiskUseBin;
 @property (nonatomic) BOOL deleteFromDiskEnableConfirmationDialog;
 @property (nonatomic) BOOL deleteFromDiskSkipDeletedTracks;
@@ -47,7 +46,6 @@ extern DB_functions_t *deadbeef;
     _enableShiftJISDetection =  deadbeef->conf_get_int ("junk.enable_shift_jis_detection", 0) ? YES : NO;
     _enableCP1251Detection =  deadbeef->conf_get_int ("junk.enable_cp1251_detection", 0) ? YES : NO;
     _enableCP936Detection =  deadbeef->conf_get_int ("junk.enable_cp936_detection", 0) ? YES : NO;
-    _refreshRate =  deadbeef->conf_get_int ("cocoaui.refresh_rate", 10);
     _titlebarPlaying = conf_get_nsstr ("cocoaui.titlebar_playing", DEFAULT_TITLEBAR_PLAYING_VALUE);
     _titlebarStopped = conf_get_nsstr ("cocoaui.titlebar_stopped", DEFAULT_TITLEBAR_STOPPED_VALUE);
 
@@ -79,12 +77,6 @@ extern DB_functions_t *deadbeef;
 - (void)setEnableCP936Detection:(BOOL)enableCP936Detection {
     _enableCP936Detection = enableCP936Detection;
     deadbeef->conf_set_int ("junk.enable_cp936_detection", enableCP936Detection);
-    deadbeef->sendmessage (DB_EV_CONFIGCHANGED, 0, 0, 0);
-}
-
-- (void)setRefreshRate:(NSInteger)refreshRate {
-    _refreshRate = refreshRate;
-    deadbeef->conf_set_int ("cocoaui.refresh_rate", (int)refreshRate);
     deadbeef->sendmessage (DB_EV_CONFIGCHANGED, 0, 0, 0);
 }
 

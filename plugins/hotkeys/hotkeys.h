@@ -1,7 +1,7 @@
 /*
     Hotkeys plugin for DeaDBeeF
     Copyright (C) 2009-2011 Viktor Semykin <thesame.ml@gmail.com>
-    Copyright (C) 2012-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2012-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,14 +24,14 @@
 #ifndef __HOTKEYS_H
 #define __HOTKEYS_H
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 typedef struct DB_hotkeys_plugin_s {
     DB_misc_t misc;
     const char *(*get_name_for_keycode) (int keycode);
     void (*reset) (void);
     // since plugin version 1.1
-    DB_plugin_action_t* (*get_action_for_keycombo) (int key, int mods, int isglobal, int *ctx);
+    DB_plugin_action_t *(*get_action_for_keycombo) (int key, int mods, int isglobal, ddb_action_context_t *ctx);
 } DB_hotkeys_plugin_t;
 
 #endif

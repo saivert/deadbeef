@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -208,7 +208,7 @@ ddb_volumebar_class_init(DdbVolumeBarClass *class)
                 G_PARAM_READWRITE));
 }
 
-GtkWidget * ddb_volumebar_new() {
+GtkWidget * ddb_volumebar_new(void) {
     return g_object_new (DDB_TYPE_VOLUMEBAR, NULL);
 }
 
@@ -246,15 +246,16 @@ volumebar_draw (GtkWidget *widget, cairo_t *cr) {
     DdbVolumeBarScale scale = DDB_VOLUMEBAR(widget)->priv->scale;
 
     switch (scale) {
-        case DDB_VOLUMEBAR_SCALE_DB:
-            range = -deadbeef->volume_get_min_db ();
-            vol = (range + deadbeef->volume_get_db ()) / range * n;
+    case DDB_VOLUMEBAR_SCALE_LINEAR:
+        vol = (deadbeef->volume_get_amp () ) * n;
         break;
-        case DDB_VOLUMEBAR_SCALE_LINEAR:
-            vol = (deadbeef->volume_get_amp () ) * n;
+    case DDB_VOLUMEBAR_SCALE_CUBIC:
+        vol = (cbrt(deadbeef->volume_get_amp ()) ) * n;
         break;
-        case DDB_VOLUMEBAR_SCALE_CUBIC:
-            vol = (cbrt(deadbeef->volume_get_amp ()) ) * n;
+    case DDB_VOLUMEBAR_SCALE_DB:
+    default:
+        range = -deadbeef->volume_get_min_db ();
+        vol = (range + deadbeef->volume_get_db ()) / range * n;
         break;
     }
 

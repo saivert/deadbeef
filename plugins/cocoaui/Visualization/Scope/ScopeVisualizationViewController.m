@@ -2,17 +2,21 @@
 //  ScopeVisualizationViewController.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 30/10/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 30/10/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
-#import "AAPLView.h"
+#include <deadbeef/deadbeef.h>
+#import <QuartzCore/CAMetalLayer.h>
+#import "MetalView.h"
+#import "MetalBufferLoop.h"
 #import "ScopePreferencesViewController.h"
 #import "ScopePreferencesWindowController.h"
-#import "ScopeRenderer.h"
+#import "ScopeShaderTypes.h"
 #import "ScopeVisualizationViewController.h"
+#import "ShaderRenderer.h"
+#import "ShaderRendererTypes.h"
 #import "VisualizationSettingsUtil.h"
-#include "deadbeef.h"
 #include "scope.h"
 
 extern DB_functions_t *deadbeef;
@@ -20,12 +24,18 @@ extern DB_functions_t *deadbeef;
 static NSString * const kWindowIsVisibleKey = @"view.window.isVisible";
 static void *kIsVisibleContext = &kIsVisibleContext;
 
-@interface ScopeVisualizationViewController() <AAPLViewDelegate>
+@interface ScopeVisualizationViewController() <MetalViewDelegate, CALayerDelegate, ShaderRendererDelegate>
 
 @property (nonatomic) BOOL isListening;
 @property (nonatomic) ScopeScaleMode scaleMode;
-@property (nonatomic,readonly) CGFloat scaleFactor;
 @property (nonatomic) NSPopover *preferencesPopover;
+
+@property (nonatomic) NSColor *baseColor;
+@property (nonatomic) NSColor *backgroundColor;
+
+@property (atomic) BOOL isVisible;
+
+@property (nonatomic) MetalBufferLoop *bufferLoop;
 
 @end
 
@@ -33,7 +43,7 @@ static void *kIsVisibleContext = &kIsVisibleContext;
     ddb_waveformat_t _fmt;
     ddb_scope_t _scope;
     ddb_scope_draw_data_t _draw_data;
-    ScopeRenderer *_renderer;
+    ShaderRenderer *_renderer;
 }
 
 static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
@@ -57,9 +67,34 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     ddb_scope_draw_data_dealloc(&_draw_data);
 }
 
-- (void)awakeFromNib {
-    [super awakeFromNib];
+- (void)loadView {
+    MetalView *metalView = [MetalView new];
+    metalView.delegate = self;
+    self.view = metalView;
+    self.view.wantsLayer = YES;
+    self.view.layerContentsRedrawPolicy = NSViewLayerContentsRedrawDuringViewResize;
+    [self setupMetalRenderer];
+    self.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [super loadView];
+}
 
+- (void)setupMetalRenderer {
+    CAMetalLayer *metalLayer = (CAMetalLayer *)self.view.layer;
+    self.view.layer.delegate = self;
+    metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    metalLayer.device = MTLCreateSystemDefaultDevice();
+    metalLayer.framebufferOnly = YES;
+
+    _renderer = [[ShaderRenderer alloc] initWithMetalDevice:metalLayer.device
+                                        drawablePixelFormat:metalLayer.pixelFormat
+                                         fragmentShaderName:@"scopeFragmentShader"
+    ];
+    _renderer.delegate = self;
+    self.bufferLoop = [[MetalBufferLoop alloc] initWithMetalDevice:metalLayer.device bufferCount:3];
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
     NSMenu *menu = [NSMenu new];
     NSMenuItem *renderModeMenuItem = [menu addItemWithTitle:@"Rendering Mode" action:nil keyEquivalent:@""];
     NSMenuItem *scaleModeMenuItem = [menu addItemWithTitle:@"Scale" action:nil keyEquivalent:@""];
@@ -94,30 +129,16 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     ddb_scope_init(&_scope);
     _scope.mode = DDB_SCOPE_MULTICHANNEL;
 
-    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-
-    AAPLView *view = (AAPLView *)self.view;
-
-    // Set the device for the layer so the layer can create drawable textures that can be rendered to
-    // on this device.
-    view.metalLayer.device = device;
-
-    // Set this class as the delegate to receive resize and render callbacks.
-    view.delegate = self;
-
-    view.metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
-
-    _renderer = [[ScopeRenderer alloc] initWithMetalDevice:device
-                                      drawablePixelFormat:view.metalLayer.pixelFormat];
-    _renderer.baseColor = VisualizationSettingsUtil.shared.baseColor;
+    [self setupMetalRenderer];
+    self.baseColor = VisualizationSettingsUtil.shared.baseColor;
 }
 
 - (void)updateVisListening {
-    if (!self.isListening && self.view.window.isVisible) {
+    if (!self.isListening && self.isVisible) {
         deadbeef->vis_waveform_listen((__bridge void *)(self), vis_callback);
         self.isListening = YES;
     }
-    else if (self.isListening && !self.view.window.isVisible) {
+    else if (self.isListening && !self.isVisible) {
         deadbeef->vis_waveform_unlisten ((__bridge void *)(self));
         self.isListening = NO;
     }
@@ -221,7 +242,7 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     self.preferencesPopover = [NSPopover new];
     self.preferencesPopover.behavior = NSPopoverBehaviorTransient;
 
-    ScopePreferencesViewController *preferencesViewController = [[ScopePreferencesViewController alloc] initWithNibName:@"ScopePreferencesViewController" bundle:nil];
+    ScopePreferencesViewController *preferencesViewController = [ScopePreferencesViewController new];
     preferencesViewController.settings = self.settings;
     preferencesViewController.popover = self.preferencesPopover;
 
@@ -230,26 +251,23 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     [self.preferencesPopover showRelativeToRect:NSZeroRect ofView:self.view preferredEdge:NSRectEdgeMaxY];
 }
 
-- (void)drawableResize:(CGSize)size {
-    [_renderer drawableResize:size];
-}
-
-- (CGFloat)scaleFactor {
+- (CGFloat)scaleFactorForBackingScaleFactor:(CGFloat)backingScaleFactor {
     switch (self.scaleMode) {
     case ScopeScaleModeAuto:
         return 1;
     case ScopeScaleMode1x:
-        return self.view.window.backingScaleFactor;
+        return backingScaleFactor;
     case ScopeScaleMode2x:
-        return self.view.window.backingScaleFactor / 2;
+        return backingScaleFactor / 2;
     case ScopeScaleMode3x:
-        return self.view.window.backingScaleFactor / 3;
+        return backingScaleFactor / 3;
     case ScopeScaleMode4x:
-        return self.view.window.backingScaleFactor / 4;
+        return backingScaleFactor / 4;
     }
 }
 
-- (BOOL)updateDrawData {
+- (BOOL)updateDrawDataWithViewParams:(ShaderRendererParams)params {
+    self.isVisible = params.isVisible;
     [self updateVisListening];
 
     if (!self.isListening) {
@@ -257,25 +275,15 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     }
 
     @synchronized (self) {
-        CGFloat scale = self.scaleFactor;
+        CGFloat scale = [self scaleFactorForBackingScaleFactor:params.backingScaleFactor];
 
         if (_scope.sample_count != 0) {
             ddb_scope_tick(&_scope);
-            ddb_scope_get_draw_data(&_scope, (int)(self.view.bounds.size.width * scale), (int)(self.view.bounds.size.height * scale), 1, &_draw_data);
+            ddb_scope_get_draw_data(&_scope, (int)(params.bounds.size.width * scale), (int)(params.bounds.size.height * scale), 1, &_draw_data);
         }
     }
 
     return YES;
-}
-
-- (void)renderToMetalLayer:(nonnull CAMetalLayer *)layer
-{
-    if (![self updateDrawData]) {
-        return;
-    }
-
-    float scale = (float)(self.view.window.backingScaleFactor / self.scaleFactor);
-    [_renderer renderToMetalLayer:layer drawData:&_draw_data scale:scale];
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
@@ -330,7 +338,7 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     if (color == nil) {
         color = VisualizationSettingsUtil.shared.baseColor;
     }
-    _renderer.baseColor = color;
+    self.baseColor = color;
 
     color = nil;
     if (self.settings.useCustomBackgroundColor) {
@@ -339,7 +347,7 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     if (color == nil) {
         color = VisualizationSettingsUtil.shared.backgroundColor;
     }
-    _renderer.backgroundColor = color;
+    self.backgroundColor = color;
 
 }
 
@@ -347,6 +355,83 @@ static void vis_callback (void *ctx, const ddb_audio_data_t *data) {
     if (_id == DB_EV_CONFIGCHANGED) {
         [self updateRendererSettings];
     }
+    [super message:_id ctx:ctx p1:p1 p2:p2];
+}
+
+- (NSColor *)baselor {
+#ifdef MAC_OS_X_VERSION_10_14
+    if (@available(macOS 10.14, *)) {
+        return NSColor.controlAccentColor;
+    }
+#endif
+    return NSColor.alternateSelectedControlColor;
+}
+
+// Called by the timer in superclass
+- (void)draw {
+    self.view.needsDisplay = YES;
+}
+
+#pragma mark - MetalViewDelegate
+
+- (void)metalViewDidResize:(NSView *)view {
+    NSSize size = [self.view convertSizeToBacking:self.view.bounds.size];
+    [_renderer drawableResize:size];
+}
+
+#pragma mark - CALayerDelegate
+
+- (void)displayLayer:(CALayer *)layer {
+    ShaderRendererParams params = {
+        .backingScaleFactor = self.view.window.screen.backingScaleFactor,
+        .isVisible = self.view.window.isVisible,
+        .bounds = self.view.bounds
+    };
+    if (![self updateDrawDataWithViewParams:params]) {
+        return;
+    }
+
+    [_renderer renderToMetalLayer:(CAMetalLayer *)layer viewParams:params];
+}
+
+#pragma mark - ShaderRendererDelegate
+
+- (BOOL)applyFragParamsWithViewport:(vector_uint2)viewport device:(id<MTLDevice>)device commandBuffer:(id<MTLCommandBuffer>)commandBuffer encoder:(id<MTLRenderCommandEncoder>)encoder viewParams:(ShaderRendererParams)viewParams {
+    float scale = (float)(viewParams.backingScaleFactor / [self scaleFactorForBackingScaleFactor:viewParams.backingScaleFactor]);
+
+    struct ScopeFragParams params;
+    NSColor *color = [self.baseColor colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
+    NSColor *backgroundColor = [self.backgroundColor colorUsingColorSpace:NSColorSpace.sRGBColorSpace];
+    CGFloat components[4];
+    [color getComponents:components];
+    CGFloat backgroundComponents[4];
+    [backgroundColor getComponents:backgroundComponents];
+
+    params.color = (vector_float4){ (float)components[0], (float)components[1], (float)components[2], 1 };
+    params.backgroundColor = (vector_float4){ (float)backgroundComponents[0], (float)backgroundComponents[1], (float)backgroundComponents[2], 1 };
+    params.size.x = viewport.x;
+    params.size.y = viewport.y;
+    params.point_count = _draw_data.point_count;
+    params.channels = _draw_data.mode == DDB_SCOPE_MONO ? 1 : _draw_data.channels;
+    params.scale = scale;
+    [encoder setFragmentBytes:&params length:sizeof (params) atIndex:0];
+
+    if (_draw_data.points == NULL) {
+        id<MTLBuffer> buffer = [self.bufferLoop nextBufferForSize:12];
+        [encoder setFragmentBuffer:buffer offset:0 atIndex:1];
+    }
+    else {
+        NSUInteger size = _draw_data.point_count * sizeof (ddb_scope_point_t) * params.channels;
+        id<MTLBuffer> buffer = [self.bufferLoop nextBufferForSize:size];
+        memcpy (buffer.contents, _draw_data.points, size);
+        [encoder setFragmentBuffer:buffer offset:0 atIndex:1];
+    }
+
+    [commandBuffer addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull completedCommandBuffer) {
+        [self.bufferLoop signalCompletion];
+    }];
+
+    return YES;
 }
 
 @end

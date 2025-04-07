@@ -1,6 +1,6 @@
 /*
     GTK hotkeys configuration for Deadbeef player
-    Copyright (C) 2009-2013 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2013 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -63,7 +63,7 @@ typedef struct
 #endif
 #endif
 #include "hotkeys.h"
-#include "../../strdupa.h"
+#include <deadbeef/strdupa.h>
 
 int gtkui_hotkeys_changed = 0;
 
@@ -348,7 +348,10 @@ init_action_tree (GtkWidget *actions, const char *act, int ctx) {
                         unescape_forward_slash (t, title, sizeof (title));
                         gtk_tree_store_set (actions_store, &iter, 0, title, 1, actions->name, 2, DDB_ACTION_CTX_MAIN, -1);
                     }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
                     if (actions->flags & (DB_ACTION_SINGLE_TRACK | DB_ACTION_MULTIPLE_TRACKS | DB_ACTION_CAN_MULTIPLE_TRACKS)) {
+#pragma GCC diagnostic pop
                         t = action_tree_append (actions->title, actions_store, &action_selection_iter, &iter);
                         unescape_forward_slash (t, title, sizeof (title));
                         gtk_tree_store_set (actions_store, &iter, 0, title, 1, actions->name, 2, DDB_ACTION_CTX_SELECTION, -1);
@@ -740,8 +743,6 @@ on_hotkeys_set_key_key_press_event     (GtkWidget       *widget,
     widget = hotkey_grabber_button;
     GdkModifierType accel_mods = 0;
     guint accel_key;
-    gboolean edited;
-    gboolean cleared;
     GdkModifierType consumed_modifiers;
     GdkDisplay *display;
     GtkTreePath *curpath;
@@ -755,9 +756,6 @@ on_hotkeys_set_key_key_press_event     (GtkWidget       *widget,
 
     if (event->is_modifier)
         return TRUE;
-
-    edited = FALSE;
-    cleared = FALSE;
 
     accel_mods = event->state & gtk_accelerator_get_default_mod_mask ();
 
@@ -931,6 +929,8 @@ gtkui_set_default_hotkeys (void) {
     deadbeef->conf_set_str ("hotkey.key30", "b 0 0 next");
     deadbeef->conf_set_str ("hotkey.key31", "n 0 0 playback_random");
     deadbeef->conf_set_str ("hotkey.key32", "\"Ctrl k\" 0 0 toggle_stop_after_album");
+    deadbeef->conf_set_str ("hotkey.key33", "\"Ctrl z\" 0 0 undo");
+    deadbeef->conf_set_str ("hotkey.key34", "\"Ctrl Shift z\" 0 0 redo");
     deadbeef->conf_save ();
 }
 

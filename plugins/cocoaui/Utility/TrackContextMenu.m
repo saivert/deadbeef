@@ -2,12 +2,12 @@
 //  TrackContextMenu.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 7/27/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 7/27/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #include <sys/stat.h>
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "deletefromdisk.h"
 #include "rg_scanner.h"
 #include "artwork.h"
@@ -30,6 +30,7 @@ extern DB_functions_t *deadbeef;
 @property (nonatomic) NSMenuItem *addToFrontOfQueueItem;
 @property (nonatomic) NSMenuItem *addToQueueItem;
 @property (nonatomic) NSMenuItem *removeFromQueueItem;
+@property (nonatomic) NSMenuItem *removeFromPlaylistItem;
 @property (nonatomic) NSMenuItem *convertItem;
 
 @property (nonatomic) NSMenuItem *rgScanPerFileItem;
@@ -37,6 +38,7 @@ extern DB_functions_t *deadbeef;
 @property (nonatomic) NSMenuItem *rgScanAsAlbumsItem;
 @property (nonatomic) NSMenuItem *rgRemoveInformationItem;
 
+@property (nonatomic) NSMenuItem *showInFinderItem;
 @property (nonatomic) NSMenuItem *deleteFromDiskItem;
 
 @property (nonatomic) NSMenuItem *pluginActionsSeparatorItem;
@@ -63,6 +65,7 @@ extern DB_functions_t *deadbeef;
 - (instancetype)initWithView:(NSView *)view {
     self = [super initWithTitle:@""];
     self.view = view;
+    self.font = [NSFont systemFontOfSize:NSFont.smallSystemFontSize];
     return self;
 }
 
@@ -111,6 +114,8 @@ extern DB_functions_t *deadbeef;
     self.reloadMetadataItem.target = self;
 
     NSMenu *rgMenu = [[NSMenu alloc] initWithTitle:@"ReplayGain"];
+    rgMenu.font = [NSFont systemFontOfSize:NSFont.smallSystemFontSize];
+
     rgMenu.autoenablesItems = NO;
 
     self.rgScanPerFileItem = [rgMenu addItemWithTitle:@"Scan Per-file Track Gain" action:@selector(rgScanTracks:) keyEquivalent:@""];
@@ -135,11 +140,17 @@ extern DB_functions_t *deadbeef;
     self.removeFromQueueItem = [self addItemWithTitle:@"Remove from Playback Queue" action:@selector(removeFromPlaybackQueue) keyEquivalent:@""];
     self.removeFromQueueItem.target = self;
 
+    self.removeFromPlaylistItem = [self addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@"\b"];
+    self.removeFromPlaylistItem.target = self;
+    self.removeFromPlaylistItem.keyEquivalentModifierMask = 0;
+
     [self addItem:NSMenuItem.separatorItem];
 
     self.convertItem = [self addItemWithTitle:@"Convert" action:@selector(convertSelection) keyEquivalent:@""];
     self.convertItem.target = self;
 
+    self.showInFinderItem = [self addItemWithTitle:@"Show in Finder" action:@selector(showInFinder) keyEquivalent:@""];
+    self.showInFinderItem.target = self;
     self.deleteFromDiskItem = [self addItemWithTitle:@"Delete from Disk" action:@selector(deleteFromDisk) keyEquivalent:@""];
     self.deleteFromDiskItem.target = self;
 
@@ -159,6 +170,7 @@ extern DB_functions_t *deadbeef;
         selected = tracks[0];
     }
 
+    self.showInFinderItem.enabled = selected_count != 0;
     self.deleteFromDiskItem.enabled = selected_count != 0;
 
     if ([self addPluginActionItemsForSelectedTrack:selected selectedCount:selected_count actionContext:actionContext]) {
@@ -316,7 +328,7 @@ extern DB_functions_t *deadbeef;
     ddb_replaygain_settings_t __block s;
     s._size = sizeof (ddb_replaygain_settings_t);
 
-    ddb_playItem_t __block **tracks = calloc (sizeof (ddb_playItem_t *), numtracks);
+    ddb_playItem_t __block **tracks = calloc (numtracks, sizeof (ddb_playItem_t *));
     int __block n = 0;
     [self forEachTrack:^(DB_playItem_t *it) {
         assert (n < numtracks);
@@ -374,18 +386,22 @@ static void _warningMessageForCtx (ddbDeleteFromDiskController_t ctl, ddb_action
 
 static int
 _deleteFile (ddbDeleteFromDiskController_t ctl, const char *uri) {
-    NSString *str = [NSString stringWithUTF8String:uri];
-    NSURL *url = [NSURL URLWithString:str];
-    if (!url) {
+    NSString *str = @(uri);
+
+    NSURL *url;
+
+    if (uri[0] == '/') {
         url = [NSURL fileURLWithPath:str];
     }
+    else if (!strncmp(uri, "file://", 7)) {
+        url = [NSURL URLWithString:str];
+    }
+
     if (!url) {
         return -1;
     }
     if (deadbeef->conf_get_int ("cocoaui.delete_use_bin", 1)) {
-        [NSWorkspace.sharedWorkspace recycleURLs:@[url] completionHandler:^(NSDictionary<NSURL *,NSURL *> * _Nonnull newURLs, NSError * _Nullable error) {
-            //            trace ("Failed to delete file: %s\n", uri);
-        }];
+        [NSWorkspace.sharedWorkspace recycleURLs:@[url] completionHandler:nil];
     } else {
         (void)unlink (uri);
 
@@ -450,7 +466,12 @@ _deleteCompleted (ddbDeleteFromDiskController_t ctl, int cancelled) {
 #endif
 
         [alert beginSheetModalForWindow:self.view.window completionHandler:^(NSModalResponse returnCode) {
-            callback(ctl, returnCode != NSAlertSecondButtonReturn);
+            BOOL shouldCancel = returnCode != NSAlertSecondButtonReturn;
+            // Defer the execution to next tick,
+            // to ensure that the alert is dismissed before proceeding.
+            dispatch_async(dispatch_get_main_queue(), ^{
+                callback(ctl, shouldCancel);
+            });
         }];
     }
     else {
@@ -460,7 +481,7 @@ _deleteCompleted (ddbDeleteFromDiskController_t ctl, int cancelled) {
 
 - (void)deleteCompleted:(ddbDeleteFromDiskController_t)ctl cancelled:(BOOL)cancelled {
     ddbDeleteFromDiskControllerFree(ctl);
-    self.deleteFromDiskController = NULL;
+    _deleteFromDiskController = NULL;
     [((id<TrackContextMenuDelegate>)self.delegate) trackContextMenuDidDeleteFiles:self cancelled:cancelled];
 }
 
@@ -504,6 +525,24 @@ _deleteCompleted (ddbDeleteFromDiskController_t ctl, int cancelled) {
     deadbeef->plt_unref (plt);
 }
 
+- (void)showInFinder {
+    NSMutableArray *urls = [NSMutableArray arrayWithCapacity:ddbUtilTrackListGetTrackCount(self.selectedTracksList)];
+    [self forEachTrack:^(DB_playItem_t *it) {
+        if (deadbeef->pl_is_selected (it)) {
+            const char *uri = deadbeef->pl_find_meta (it, ":URI");
+            NSString *str = @(uri);
+            NSURL *url = uri[0] == '/' ? [NSURL fileURLWithPath:str] : [NSURL URLWithString:str];
+            if (url) {
+                [urls addObject:url];
+            }
+        }
+        return YES;
+    }];
+    if (urls.count > 0) {
+        [NSWorkspace.sharedWorkspace activateFileViewerSelectingURLs:urls];
+    }
+}
+
 #pragma mark - Playback Queue
 
 - (void)addToFrontOfPlaybackQueue {
@@ -530,6 +569,14 @@ _deleteCompleted (ddbDeleteFromDiskController_t ctl, int cancelled) {
 
 - (void)trackProperties {
     [((id<TrackContextMenuDelegate>)self.delegate) trackContextMenuShowTrackProperties:self];
+}
+
+- (void)delete:(id)sender {
+    [self forEachTrack:^BOOL(DB_playItem_t *it) {
+        deadbeef->plt_remove_item(self.playlist, it);
+        return YES;
+    }];
+    deadbeef->sendmessage(DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
 }
 
 @end

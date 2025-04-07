@@ -2,14 +2,14 @@
 //  NetworkPreferencesViewController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/23/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/23/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "DdbShared.h"
 #import "NetworkPreferencesViewController.h"
 #include "ctmap.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -151,6 +151,20 @@ static NSString *kContentTypeMappingChangedNotification = @"ContentTypeMappingCh
     [self initContentTypeMapping];
 }
 
+
+- (IBAction)segmentedControlAction:(NSSegmentedControl *)sender {
+    NSInteger selectedSegment = sender.selectedSegment;
+
+    switch (selectedSegment) {
+    case 0:
+        [self.contentTypeMappingArrayController add:sender];
+        break;
+    case 1:
+        [self.contentTypeMappingArrayController remove:sender];
+        break;
+    }
+}
+
 - (void)initContentTypeMapping {
     [self.contentTypeMappingArrayController setContent:nil];
 
@@ -166,11 +180,11 @@ static NSString *kContentTypeMappingChangedNotification = @"ContentTypeMappingCh
                 if (i != 0) {
                     plugins = [plugins stringByAppendingString:@" "];
                 }
-                plugins = [plugins stringByAppendingString:[NSString stringWithUTF8String:m->plugins[i]]];
+                plugins = [plugins stringByAppendingString:@(m->plugins[i])];
             }
 
 
-            ContentTypeMap *map = [[ContentTypeMap alloc] initWithContentType:[NSString stringWithUTF8String:m->ct] plugins:plugins];
+            ContentTypeMap *map = [[ContentTypeMap alloc] initWithContentType:@(m->ct) plugins:plugins];
             [self.contentTypeMappingArrayController addObject:map];
 
             m = m->next;

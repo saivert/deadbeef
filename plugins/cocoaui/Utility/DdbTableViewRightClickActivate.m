@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -27,11 +27,11 @@
 
 - (NSMenu *)menuForEvent:(NSEvent *)theEvent
 {
-    NSInteger row = [self rowAtPoint: [self convertPoint: [theEvent locationInWindow] fromView: nil]];
-    if (row != -1 && ![[self selectedRowIndexes] containsIndex:row]) {
+    NSInteger row = [self rowAtPoint: [self convertPoint: theEvent.locationInWindow fromView: nil]];
+    if (row != -1 && ![self.selectedRowIndexes containsIndex:row]) {
         [self selectRowIndexes: [NSIndexSet indexSetWithIndex:row] byExtendingSelection: NO];
     }
-    return [super menu];
+    return super.menu;
 }
 
 @end

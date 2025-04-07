@@ -2,7 +2,7 @@
     Shellexec plugin for DeaDBeeF
     Copyright (C) 2010-2014 Deadbeef team
     Original developer Viktor Semykin <thesame.ml@gmail.com>
-    Maintenance, minor improvements Alexey Yakovenko <waker@users.sf.net>
+    Maintenance, minor improvements Oleksiy Yakovenko <waker@users.sf.net>
     GUI support and bugfixing Azeem Arshad <kr00r4n@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
@@ -47,7 +47,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <jansson.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "shellexec.h"
 #include "shellexecutil.h"
 
@@ -93,7 +93,7 @@ shx_callback (Shx_action_t *action, int ctx)
                 DB_playItem_t **items = NULL;
                 int items_count = deadbeef->plt_getselcount (plt);
                 if (0 < items_count) {
-                    items = calloc (sizeof (DB_playItem_t *), items_count);
+                    items = calloc (items_count, sizeof (DB_playItem_t *));
                     if (items) {
                         int n = 0;
                         DB_playItem_t *it = deadbeef->pl_get_first (PL_MAIN);
@@ -129,7 +129,7 @@ shx_callback (Shx_action_t *action, int ctx)
                 DB_playItem_t **items = NULL;
                 int items_count = deadbeef->plt_get_item_count (plt, PL_MAIN);
                 if (0 < items_count) {
-                    items = calloc (sizeof (DB_playItem_t *), items_count);
+                    items = calloc (items_count, sizeof (DB_playItem_t *));
                     if (items) {
                         int n = 0;
                         DB_playItem_t *it = deadbeef->pl_get_first (PL_MAIN);
@@ -153,7 +153,7 @@ shx_callback (Shx_action_t *action, int ctx)
         break;
     case DDB_ACTION_CTX_NOWPLAYING:
         {
-            DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
+            DB_playItem_t *it = deadbeef->streamer_get_playing_track_safe ();
             if (it) {
                 res = shx_exec_track_cmd (action, it);
                 deadbeef->pl_item_unref (it);
@@ -272,7 +272,7 @@ shx_get_actions_json (json_t *json) {
             name = "noname";
         }
 
-        Shx_action_t *action = calloc (sizeof (Shx_action_t), 1);
+        Shx_action_t *action = calloc (1, sizeof (Shx_action_t));
 
         action->parent.title = strdup (title);
         action->parent.name = strdup (name);
@@ -330,7 +330,7 @@ shx_get_actions_json (json_t *json) {
 
 Shx_action_t*
 shx_action_add (void) {
-    Shx_action_t *a = calloc (sizeof (Shx_action_t), 1);
+    Shx_action_t *a = calloc (1, sizeof (Shx_action_t));
     a->parent.callback2 = (DB_plugin_action_callback2_t)shx_callback;
     if (!actions) {
         actions = a;
@@ -439,7 +439,7 @@ static Shx_plugin_t plugin = {
         "Shellexec plugin for DeaDBeeF\n"
         "Copyright (C) 2010-2014 Deadbeef team\n"
         "Original developer Viktor Semykin <thesame.ml@gmail.com>\n"
-        "Maintenance, minor improvements Alexey Yakovenko <waker@users.sf.net>\n"
+        "Maintenance, minor improvements Oleksiy Yakovenko <waker@users.sf.net>\n"
         "GUI support and bugfixing Azeem Arshad <kr00r4n@gmail.com>"
         "\n"
         "This program is free software; you can redistribute it and/or\n"

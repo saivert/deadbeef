@@ -2,8 +2,8 @@
 //  ScriptableNodeEditorViewController.h
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 4/24/19.
-//  Copyright © 2019 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 4/24/19.
+//  Copyright © 2019 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>
@@ -29,7 +29,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (weak) NSObject<ScriptableNodeEditorCustomButtonsInitializer> *scriptableNodeEditorDelegate;
 @property (weak) NSObject<ScriptableErrorViewer> *errorViewer;
 
+@property (nonatomic) BOOL canReset;
+
 - (void)reloadData;
+- (void)reset;
 
 @end
 

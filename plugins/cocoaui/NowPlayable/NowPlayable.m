@@ -2,13 +2,14 @@
 //  NowPlayable.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 11/4/19.
-//  Copyright © 2019 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 11/4/19.
+//  Copyright © 2019 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "NowPlayable.h"
 #import <MediaPlayer/MediaPlayer.h>
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
+#import "Weakify.h"
 
 extern DB_functions_t *deadbeef;
 
@@ -58,18 +59,18 @@ extern DB_functions_t *deadbeef;
     [commandCenter.changePlaybackPositionCommand addTarget:self action:@selector(changePlaybackPositionCommand:)];
     commandCenter.changePlaybackPositionCommand.enabled = YES;
 
-    __weak NowPlayable *weakSelf = self;
+    weakify(self);
 
     self.updateTimer = [NSTimer scheduledTimerWithTimeInterval:0.5 repeats:YES block:^(NSTimer * _Nonnull timer) {
-        NowPlayable *nowPlayable = weakSelf;
-        if (!nowPlayable) {
+        strongify(self);
+        if (!self) {
             return;
         }
 
         NSMutableDictionary *info = [NSMutableDictionary new];
         info[MPNowPlayingInfoPropertyPlaybackRate] = @1.0;
 
-        DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
+        DB_playItem_t *it = deadbeef->streamer_get_playing_track_safe ();
 
         if (it) {
             float duration = deadbeef->pl_get_item_duration (it);
@@ -85,7 +86,7 @@ extern DB_functions_t *deadbeef;
             // song info
             char text[1000];
             deadbeef->pl_get_meta (it, "title", text, sizeof (text));
-            info[MPMediaItemPropertyTitle] = [NSString stringWithUTF8String:text];
+            info[MPMediaItemPropertyTitle] = @(text);
 
             ddb_tf_context_t ctx = {
                 ._size = sizeof (ddb_tf_context_t),
@@ -93,10 +94,10 @@ extern DB_functions_t *deadbeef;
                 .it = it
             };
 
-            deadbeef->tf_eval (&ctx, nowPlayable.artist_tf, text, sizeof (text));
-            info[MPMediaItemPropertyArtist] = [NSString stringWithUTF8String:text];
-            deadbeef->tf_eval (&ctx, nowPlayable.album_tf, text, sizeof (text));
-            info[MPMediaItemPropertyAlbumTitle] = [NSString stringWithUTF8String:text];
+            deadbeef->tf_eval (&ctx, self.artist_tf, text, sizeof (text));
+            info[MPMediaItemPropertyArtist] = @(text);
+            deadbeef->tf_eval (&ctx, self.album_tf, text, sizeof (text));
+            info[MPMediaItemPropertyAlbumTitle] = @(text);
 
             deadbeef->pl_item_unref (it);
         }

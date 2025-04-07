@@ -2,8 +2,8 @@
 //  MediaLibraryOutlineViewController.h
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 7/28/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 7/28/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <AppKit/AppKit.h>
@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface MediaLibraryOutlineViewController : NSObject
 
-- (instancetype)initWithOutlineView:(NSOutlineView *)outlineView NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithOutlineView:(NSOutlineView *)outlineView searchField:(NSSearchField *)searchField NS_DESIGNATED_INITIALIZER;
 - (int)widgetMessage:(int)_id ctx:(uint64_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2;
 
 @end

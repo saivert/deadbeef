@@ -1,6 +1,6 @@
 #import "ScriptableTableDataSource.h"
-#include "deadbeef.h"
-#include "../../../scriptable/scriptable.h"
+#include <deadbeef/deadbeef.h>
+#include "scriptable/scriptable.h"
 
 extern DB_functions_t *deadbeef;
 
@@ -10,7 +10,7 @@ extern DB_functions_t *deadbeef;
 @implementation ScriptableTableDataSource
 
 + (ScriptableTableDataSource *)dataSourceWithScriptable:(scriptableItem_t *)scriptable {
-    if (scriptable->callbacks && scriptable->callbacks->isReorderable) {
+    if (scriptableItemFlags(scriptable) & SCRIPTABLE_FLAG_IS_REORDABLE) {
         return [[ScriptableReorerableTableDataSource alloc] initWithScriptable:scriptable];
     }
     else {
@@ -33,13 +33,13 @@ extern DB_functions_t *deadbeef;
 
 - (void)insertItem:(scriptableItem_t *)item atIndex:(NSInteger)index {
     scriptableItemInsertSubItemAtIndex(_scriptable, item, (unsigned int)index);
-    [self.delegate scriptableItemChanged:_scriptable change:ScriptableItemChangeCreate];
+    [self.delegate scriptableItemDidChange:_scriptable change:ScriptableItemChangeCreate];
 }
 
 - (void)removeItemAtIndex:(NSInteger)index {
     scriptableItem_t *item = scriptableItemChildAtIndex(_scriptable, (unsigned int)index);
     if (item) {
-        [self.delegate scriptableItemChanged:_scriptable change:ScriptableItemChangeDelete];
+        [self.delegate scriptableItemDidChange:_scriptable change:ScriptableItemChangeDelete];
         scriptableItemRemoveSubItem(_scriptable, item);
         scriptableItemFree (item);
     }
@@ -59,7 +59,7 @@ extern DB_functions_t *deadbeef;
 
 - (void)setScriptable:(scriptableItem_t *)scriptable {
     _scriptable = scriptable;
-    [self.delegate scriptableItemChanged:_scriptable change:ScriptableItemChangeUpdate];
+    [self.delegate scriptableItemDidChange:_scriptable change:ScriptableItemChangeUpdate];
 }
 
 #pragma mark NSTableViewDataSource
@@ -75,13 +75,17 @@ extern DB_functions_t *deadbeef;
 @implementation ScriptableReorerableTableDataSource
 
 - (NSString *)pasteboardItemIdentifier {
-    return [NSString stringWithUTF8String:self.scriptable->callbacks->pasteboardItemIdentifier];
+    const char *identifier = scriptableItemPasteboardIdentifier(self.scriptable);
+    if (identifier == NULL) {
+        return nil;
+    }
+    return @(identifier);
 }
 
 #pragma mark NSTableViewDataSource Drag & Drop
 
 - (id <NSPasteboardWriting>)tableView:(NSTableView *)tableView pasteboardWriterForRow:(NSInteger)row {
-    if (!self.scriptable->callbacks || !self.scriptable->callbacks->isReorderable) {
+    if (!(scriptableItemFlags(self.scriptable) & SCRIPTABLE_FLAG_IS_REORDABLE)) {
         return nil;
     }
     scriptableItem_t *item = scriptableItemChildAtIndex(self.scriptable, (unsigned int)row);
@@ -111,7 +115,7 @@ extern DB_functions_t *deadbeef;
 
 - (BOOL)tableView:(NSTableView *)tableView acceptDrop:(id<NSDraggingInfo>)info row:(NSInteger)row dropOperation:(NSTableViewDropOperation)dropOperation {
 
-    NSPasteboard *p = [info draggingPasteboard];
+    NSPasteboard *p = info.draggingPasteboard;
 
     NSDictionary *pboardPList = [p propertyListForType:self.pasteboardItemIdentifier];
     NSNumber *rowIndexNum = pboardPList[@"sourceRowIndex"];
@@ -141,7 +145,7 @@ extern DB_functions_t *deadbeef;
     // reinsert the node at new position
     scriptableItemInsertSubItemAtIndex (self.scriptable, node, (unsigned int)row);
 
-    [self.delegate scriptableItemChanged:self.scriptable change:ScriptableItemChangeCreate];
+    [self.delegate scriptableItemDidChange:self.scriptable change:ScriptableItemChangeCreate];
 
     [tableView beginUpdates];
     [tableView moveRowAtIndex:sourceRowIndex toIndex:row];

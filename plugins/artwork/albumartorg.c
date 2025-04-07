@@ -1,7 +1,6 @@
 /*
-    Album Art plugin for DeaDBeeF
-    Copyright (C) 2009-2011 Viktor Semykin <thesame.ml@gmail.com>
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    DeaDBeeF -- the music player
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -34,8 +33,7 @@
 #define trace(...)
 
 #define AAO_URL "http://www.albumart.org/index.php?searchk=%s+%s&itempage=1&newsearch=1&searchindex=Music"
-int fetch_from_albumart_org (const char *artist, const char *album, const char *dest)
-{
+int fetch_from_albumart_org (const char *artist, const char *album, const char *dest) {
     if (!artist && !album) {
         return -1;
     }

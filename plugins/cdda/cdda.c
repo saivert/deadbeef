@@ -16,7 +16,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-/* screwed/maintained by Alexey Yakovenko <waker@users.sourceforge.net> */
+/* screwed/maintained by Oleksiy Yakovenko <waker@users.sourceforge.net> */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,15 +40,15 @@
 #include <cdio/cdtext.h>
 #include <cddb/cddb.h>
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 //#define trace(...) { fprintf (stderr, __VA_ARGS__); }
 #define trace(fmt,...)
 
 #define CDDA_ALL_TRACKS "all.cda"
 
-#define DEFAULT_SERVER "freedb.org"
-#define DEFAULT_PORT 888
+#define DEFAULT_SERVER "gnudb.gnudb.org"
+#define DEFAULT_PORT 8880
 #define DEFAULT_USE_CDDB 1
 #define DEFAULT_PROTOCOL 1
 #define DEFAULT_PREFER_CDTEXT 1
@@ -516,7 +516,10 @@ read_track_cdtext (CdIo_t *cdio, int track_nr, DB_playItem_t *item)
     int field_type;
     for (field_type = 0; field_type < MAX_CDTEXT_FIELDS; field_type++) {
 #if CDIO_API_VERSION >= 6
-        const char *text = cdtext_get_const (cdtext, field_type, track_nr);
+        const char *text = cdtext_get_const (cdtext, field_type, 0);
+        if (!text) {
+            text = cdtext_get_const (cdtext, field_type, track_nr);
+        }
 #else
         const char *text = cdtext_get_const (field_type, cdtext);
 #endif
@@ -718,7 +721,6 @@ insert_disc (ddb_playlist_t *plt, DB_playItem_t *after, const char *path, const 
         p->got_cdtext = got_cdtext;
         p->prefer_cdtext = prefer_cdtext;
         if (enable_cddb) {
-            trace("cdda: querying freedb...\n");
             tid = deadbeef->thread_start(cddb_thread, p);
             if (tid) {
                 deadbeef->thread_detach(tid);
@@ -847,7 +849,7 @@ get_param (const char *key, char *value, int len, const char *def)
 "property \"CD drive to load\" select[%u] cdda.drive_device 0"
 
 static int
-cda_action_add_cd (DB_plugin_action_t *act, int ctx)
+cda_action_add_cd (DB_plugin_action_t *act, ddb_action_context_t ctx)
 {
     /* Get all devices containg CD audio media */
     cdio_close_tray(NULL, NULL);
@@ -983,7 +985,7 @@ load_cddb_data (ddb_playlist_t *plt, cddb_disc_t *disc, const size_t disc_num)
 }
 
 static int
-action_disc_n (DB_plugin_action_t *act, int ctx)
+action_disc_n (DB_plugin_action_t *act, ddb_action_context_t ctx)
 {
     const int disc_num = atoi(act->name+11);
     int res = -1;
@@ -1109,14 +1111,14 @@ cda_get_actions (DB_playItem_t *it)
 }
 
 static const char settings_dlg[] =
-    "property \"Use CDDB/FreeDB\" checkbox cdda.freedb.enable 1;\n"
+    "property \"Use CDDB/GnuDb\" checkbox cdda.freedb.enable 1;\n"
     "property box hbox[2] height=-1;"
     "property box hbox[0] border=5 height=-1;"
     "property box vbox[4] expand fill height=-1;"
     "property \"Prefer CD-Text over CDDB\" checkbox cdda.prefer_cdtext 1;\n"
-    "property \"CDDB url (e.g. 'freedb.org')\" entry cdda.freedb.host freedb.org;\n"
+    "property \"CDDB url (e.g. 'gnudb.gnudb.org')\" entry cdda.freedb.host gnudb.gnudb.org;\n"
     "property box hbox[1] height=-1;"
-    "property \"CDDB port number (e.g. '888')\" entry cdda.freedb.port 888;\n"
+    "property \"CDDB port number (e.g. '8880')\" entry cdda.freedb.port 8880;\n"
     "property \"Use CDDB protocol\" checkbox cdda.protocol 1;\n"
     "property \"Enable NRG image support\" checkbox cdda.enable_nrg 0;"
     "property box hbox[1] height=-1;"
@@ -1136,7 +1138,7 @@ static DB_decoder_t plugin = {
     .plugin.name = "Audio CD player",
     .plugin.descr = "Audio CD plugin using libcdio and libcddb",
     .plugin.copyright =
-        "Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "Copyright (C) 2009-2011 Viktor Semykin <thesame.ml@gmail.com>\n"
         "\n"
         "This program is free software; you can redistribute it and/or\n"

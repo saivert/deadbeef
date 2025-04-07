@@ -1,7 +1,7 @@
 /*
     PulseAudio output plugin for DeaDBeeF Player
     Copyright (C) 2011 Jan D. Behrens <zykure@web.de>
-    Copyright (C) 2010-2012 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2010-2012 Oleksiy Yakovenko <waker@users.sourceforge.net>
     Copyright (C) 2010 Anton Novikov <tonn.post@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 #define trace(...) { deadbeef->log_detailed (&plugin.plugin, 0, __VA_ARGS__); }
 
@@ -222,9 +222,9 @@ static int pulse_free(void)
     trace("pulse_free\n");
 
     state = DDB_PLAYBACK_STATE_STOPPED;
-
     deadbeef->mutex_lock(mutex);
-    if (!pulse_tid) {
+
+    if (!pulse_tid || pulse_terminate == 1) {
         deadbeef->mutex_unlock(mutex);
         return 0;
     }
@@ -239,6 +239,7 @@ static int pulse_free(void)
     deadbeef->mutex_unlock(mutex);
 
     deadbeef->thread_join(pulse_tid);
+    pulse_terminate = 0;
 
     return 0;
 }
@@ -417,7 +418,7 @@ static DB_output_t plugin =
     .plugin.copyright =
         "PulseAudio output plugin for DeaDBeeF Player\n"
         "Copyright (C) 2011 Jan D. Behrens <zykure@web.de>\n"
-        "Copyright (C) 2010-2012 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2010-2012 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "Copyright (C) 2010 Anton Novikov <tonn.post@gmail.com>\n"
         "\n"
         "This program is free software; you can redistribute it and/or\n"

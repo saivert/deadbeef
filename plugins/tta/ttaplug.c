@@ -1,6 +1,6 @@
 /*
     TTA plugin for DeaDBeeF
-    Copyright (C) 2009-2014 Alexey Yakovenko
+    Copyright (C) 2009-2014 Oleksiy Yakovenko
 
     Based on TTAv1 decoder library for HW players
     Copyright (c) 2004 True Audio Software. All rights reserved.
@@ -34,8 +34,8 @@
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 
 #define min(x,y) ((x)<(y)?(x):(y))
 #define max(x,y) ((x)>(y)?(x):(y))
@@ -61,7 +61,7 @@ typedef struct {
 
 static DB_fileinfo_t *
 tta_open (uint32_t hints) {
-    tta_info_t *info = calloc (sizeof (tta_info_t), 1);
+    tta_info_t *info = calloc (1, sizeof (tta_info_t));
     return &info->info;
 }
 
@@ -221,7 +221,7 @@ tta_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     }
 
     char s[100];
-    snprintf (s, sizeof (s), "%lld", fsize);
+    snprintf (s, sizeof (s), "%lld", (long long)fsize);
     deadbeef->pl_add_meta (it, ":FILE_SIZE", s);
     snprintf (s, sizeof (s), "%d", tta.BPS);
     deadbeef->pl_add_meta (it, ":BPS", s);
@@ -322,7 +322,7 @@ static DB_decoder_t plugin = {
     .plugin.descr = "tta decoder based on TTA Hardware Players Library Version 1.2",
     .plugin.copyright = 
         "TTA plugin for DeaDBeeF\n"
-        "Copyright (C) 2009-2014 Alexey Yakovenko\n"
+        "Copyright (C) 2009-2014 Oleksiy Yakovenko\n"
         "\n"
         "Based on TTAv1 decoder library for HW players\n"
         "Copyright (c) 2004 True Audio Software. All rights reserved.\n"

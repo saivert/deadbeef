@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -30,6 +30,9 @@
 #import "PreferencesWindowController.h"
 #import "SoundPreferencesViewController.h"
 #import "MediaLibraryPreferencesViewController.h"
+#import "KeyboardShortcutManager.h"
+#import "KeyboardShortcutManager+ViewController.h"
+#import "KeyboardShortcutEditorViewController.h"
 
 @interface PreferencesWindowController ()
 
@@ -42,6 +45,7 @@
 @property (strong) IBOutlet NetworkPreferencesViewController *networkViewController;
 @property (strong) IBOutlet PluginsPreferencesViewController *pluginsViewController;
 @property (strong) IBOutlet MediaLibraryPreferencesViewController *mediaLibraryPreferencesViewController;
+@property (strong) IBOutlet KeyboardShortcutEditorViewController *keyboardShortcutsPreferencesViewController;
 @property (weak) IBOutlet NSView *appearancePaneContainerView;
 
 @property (nonatomic) AppearancePreferencesViewController *appearancePreferencesViewController;
@@ -69,23 +73,23 @@
 
     BOOL enableMedialib = NO;
 
-#if ENABLE_MEDIALIB
     enableMedialib = self.mediaLibraryPreferencesViewController.isAvailable;
-#endif
 
     if (!enableMedialib) {
         [self.toolbar removeItemAtIndex:4];
     }
 
-    self.appearancePreferencesViewController = [[AppearancePreferencesViewController alloc] initWithNibName:@"AppearancePreferences" bundle:nil];
+    self.keyboardShortcutsPreferencesViewController.model = KeyboardShortcutManager.shared;
+    KeyboardShortcutViewItem *viewItem = [KeyboardShortcutManager.shared createViewItems];
+    [self.keyboardShortcutsPreferencesViewController updateWithViewItem:viewItem];
+
+    self.appearancePreferencesViewController = [AppearancePreferencesViewController new];
     [self.appearancePaneContainerView addSubview:self.appearancePreferencesViewController.view];
 
     [self.appearancePreferencesViewController.view.leadingAnchor constraintEqualToAnchor:self.appearancePaneContainerView.leadingAnchor].active = YES;
     [self.appearancePreferencesViewController.view.trailingAnchor constraintEqualToAnchor:self.appearancePaneContainerView.trailingAnchor].active = YES;
     [self.appearancePreferencesViewController.view.topAnchor constraintEqualToAnchor:self.appearancePaneContainerView.topAnchor].active = YES;
     [self.appearancePreferencesViewController.view.bottomAnchor constraintEqualToAnchor:self.appearancePaneContainerView.bottomAnchor].active = YES;
-
-
 
     if (self.initialTabIdentifier) {
         _toolbar.selectedItemIdentifier = self.initialTabIdentifier;
@@ -98,21 +102,20 @@
 }
 
 - (NSArray *)toolbarSelectableItemIdentifiers: (NSToolbar *)toolbar {
-    return [NSArray arrayWithObjects:
-            @"Sound",
+    return @[@"Sound",
             @"Playback",
             @"DSP",
             @"GUI",
             @"Medialib",
             @"Network",
-            @"Plugins",
-            nil];
+            @"Hotkeys",
+            @"Plugins"];
 }
 
 - (void)switchToView:(NSView *)view {
     self.window.contentView = nil;
 
-    NSRect oldFrame = [self.window frame];
+    NSRect oldFrame = (self.window).frame;
     NSRect rc = [self.window frameRectForContentRect:view.frame];
     rc.origin.x = oldFrame.origin.x;
     rc.origin.y = oldFrame.origin.y + oldFrame.size.height - rc.size.height;
@@ -148,6 +151,10 @@
     [self switchToView:self.mediaLibraryPreferencesViewController.view];
 }
 
+- (IBAction)hotkeysAction:(id)sender {
+    [self switchToView:self.keyboardShortcutsPreferencesViewController.view];
+}
+
 - (void)outputDeviceChanged {
     [self.soundViewController outputDeviceChanged];
 }
@@ -160,6 +167,10 @@
         _toolbar.selectedItemIdentifier = identifier;
         [self switchToView:self.mediaLibraryPreferencesViewController.view];
     }
+}
+
+- (void)cancel:(id)sender {
+    [self.window close];
 }
 
 @end

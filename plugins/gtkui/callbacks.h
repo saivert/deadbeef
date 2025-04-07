@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -1484,4 +1484,42 @@ on_dsp_remove_toolbtn_clicked          (GtkToolButton   *toolbutton,
 
 void
 on_dsp_add_toolbtn_toggled             (GtkToggleToolButton *toggletoolbutton,
+                                        gpointer         user_data);
+
+void
+on_sortcancel_clicked                  (GtkButton       *button,
+                                        gpointer         user_data);
+
+void
+on_sortok_clicked                      (GtkButton       *button,
+                                        gpointer         user_data);
+
+void
+on_sortfmt_show                        (GtkWidget       *widget,
+                                        gpointer         user_data);
+
+void
+on_use_visualization_background_color_toggled
+                                        (GtkToggleButton *togglebutton,
+                                        gpointer         user_data);
+
+void
+on_visualization_custom_background_color_button_color_set
+                                        (GtkColorButton  *colorbutton,
+                                        gpointer         user_data);
+
+void
+on_combo_bit_override_changed          (GtkComboBox     *combobox,
+                                        gpointer         user_data);
+
+void
+on_mainwin_undo_activate               (GtkMenuItem     *menuitem,
+                                        gpointer         user_data);
+
+void
+on_mainwin_redo_activate               (GtkMenuItem     *menuitem,
+                                        gpointer         user_data);
+
+void
+on_autoopen_button_toggled             (GtkToggleButton *togglebutton,
                                         gpointer         user_data);

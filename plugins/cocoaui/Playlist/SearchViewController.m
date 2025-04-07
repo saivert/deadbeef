@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,7 @@
 */
 #import "DdbShared.h"
 #import "SearchViewController.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -50,10 +50,6 @@ extern DB_functions_t *deadbeef;
     return PL_SEARCH;
 }
 
-- (void)awakeFromNib {
-    [super awakeFromNib];
-}
-
 - (const char *)groupByConfStr {
     return "cocoaui.search.group_by";
 }
@@ -63,11 +59,11 @@ extern DB_functions_t *deadbeef;
 }
 
 - (void)controlTextDidChange:(NSNotification *)notification {
-    NSTextField *textField = [notification object];
-    NSString *val = [textField stringValue];
+    NSTextField *textField = notification.object;
+    NSString *val = textField.stringValue;
     ddb_playlist_t *plt = deadbeef->plt_get_curr ();
     if (plt) {
-        deadbeef->plt_search_process (plt, [val UTF8String]);
+        deadbeef->plt_search_process (plt, val.UTF8String);
         deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_SELECTION, 0);
         deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_SEARCHRESULT, 0);
         deadbeef->plt_unref (plt);
@@ -100,6 +96,7 @@ extern DB_functions_t *deadbeef;
     ddb_playlist_t *plt = deadbeef->plt_get_curr ();
     deadbeef->plt_sort_v2 (plt, PL_SEARCH, c->type, c->format, order-1);
     deadbeef->plt_unref (plt);
+    deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
 }
 
 @end

@@ -2,8 +2,8 @@
 //  WidgetTopLevelView.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 21/02/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 21/02/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <CoreImage/CIFilter.h>
@@ -42,7 +42,7 @@
     CIFilter *blur = (CIFilter<CIGaussianBlur> *)[CIFilter filterWithName:@"CIGaussianBlur"];
     [blur setDefaults];
     [blur setValue:@(1) forKey:kCIInputRadiusKey];
-    _selectionOverlayView.layer.backgroundFilters = [NSArray arrayWithObject:blur];
+    _selectionOverlayView.layer.backgroundFilters = @[blur];
 
     NSColor *viewColor;
     if (@available(macOS 10.14, *)) {

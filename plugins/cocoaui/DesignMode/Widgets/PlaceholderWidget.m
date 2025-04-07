@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2021 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -55,7 +55,7 @@ const NSInteger GRIDSIZE = 16;
 
     [checker unlockFocus];
 
-    _placeholderView = [[NSView alloc] initWithFrame:NSZeroRect];
+    _placeholderView = [NSView new];
     _backgroundLayer = [CALayer new];
     _backgroundLayer.backgroundColor = [NSColor colorWithPatternImage:checker].CGColor;
     _placeholderView.layer = _backgroundLayer;
@@ -85,6 +85,7 @@ const NSInteger GRIDSIZE = 16;
     [child.view.trailingAnchor constraintEqualToAnchor:self.placeholderView.trailingAnchor].active = YES;
     [child.view.topAnchor constraintEqualToAnchor:self.placeholderView.topAnchor].active = YES;
     [child.view.bottomAnchor constraintEqualToAnchor:self.placeholderView.bottomAnchor].active = YES;
+    [self.view layoutSubtreeIfNeeded];
     [super appendChild:child];
 }
 

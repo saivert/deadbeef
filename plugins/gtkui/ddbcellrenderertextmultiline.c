@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -43,6 +43,9 @@ struct _DdbCellRendererTextMultilinePrivate {
     gulong populate_popup_id;
     guint entry_menu_popdown_timeout;
     gboolean in_entry_menu;
+
+    guint is_mult_column;
+    guint value_column;
 };
 
 struct _DdbCellEditableTextViewPrivate {
@@ -63,6 +66,8 @@ DdbCellEditableTextView* ddb_cell_editable_text_view_new (void);
 DdbCellEditableTextView* ddb_cell_editable_text_view_construct (GType object_type);
 static void ddb_cell_editable_text_view_finalize (GObject* obj);
 GType ddb_cell_renderer_text_multiline_get_type (void);
+DdbCellRendererTextMultiline* ddb_cell_renderer_text_multiline_construct (GType object_type);
+
 #define DDB_CELL_RENDERER_TEXT_MULTILINE_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), DDB_TYPE_CELL_RENDERER_TEXT_MULTILINE, DdbCellRendererTextMultilinePrivate))
 #define DDB_CELL_EDITABLE_TEXT_VIEW_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), DDB_TYPE_CELL_EDITABLE_TEXT_VIEW, DdbCellEditableTextViewPrivate))
 enum  {
@@ -118,8 +123,6 @@ static gboolean ddb_cell_editable_text_view_real_key_press_event (GtkWidget* bas
 }
 
 static void ddb_cell_editable_text_view_real_start_editing (GtkCellEditable* base, GdkEvent* event) {
-    DdbCellEditableTextView * self;
-    self = (DdbCellEditableTextView*) base;
 }
 
 DdbCellEditableTextView* ddb_cell_editable_text_view_construct (GType object_type) {
@@ -412,7 +415,7 @@ static GtkCellEditable* ddb_cell_renderer_text_multiline_real_start_editing (
     _g_object_ref0 (store);
     gtk_tree_model_get_iter ((GtkTreeModel*) store, &iter, p);
     G_IS_VALUE (&v) ? ((void)(g_value_unset (&v)), NULL) : NULL;
-    gtk_tree_model_get_value ((GtkTreeModel*) store, &iter, 3, &v);
+    gtk_tree_model_get_value ((GtkTreeModel*) store, &iter, self->priv->is_mult_column, &v);
     mult = g_value_get_int (&v);
     _g_object_unref0 (self->priv->entry);
     self->priv->entry = textview = ddb_cell_editable_text_view_new ();
@@ -421,7 +424,7 @@ static GtkCellEditable* ddb_cell_renderer_text_multiline_real_start_editing (
     buf = gtk_text_buffer_new (NULL);
     if (!mult) {
         GValue full_textv = {0};
-        gtk_tree_model_get_value ((GtkTreeModel*) store, &iter, 4, &full_textv);
+        gtk_tree_model_get_value ((GtkTreeModel*) store, &iter, self->priv->value_column, &full_textv);
         if (G_IS_VALUE (&full_textv)) {
             const char *full_text = g_value_get_string (&full_textv);
             renderer_text = strdup (full_text);
@@ -486,15 +489,27 @@ DdbCellRendererTextMultiline* ddb_cell_renderer_text_multiline_new (void) {
 static void ddb_cell_renderer_text_multiline_class_init (DdbCellRendererTextMultilineClass * klass) {
     ddb_cell_renderer_text_multiline_parent_class = g_type_class_peek_parent (klass);
     g_type_class_add_private (klass, sizeof (DdbCellRendererTextMultilinePrivate));
+#if GTK_CHECK_VERSION(3,0,0)
     GTK_CELL_RENDERER_CLASS (klass)->start_editing = ddb_cell_renderer_text_multiline_real_start_editing;
+#else
+    // GTK2 uses a slightly different, but compatible declaration without const modifiers
+    GTK_CELL_RENDERER_CLASS (klass)->start_editing = (GtkCellEditable *(*) (GtkCellRenderer *, GdkEvent *, GtkWidget *, const gchar *, GdkRectangle *, GdkRectangle *cell_area, GtkCellRendererState))ddb_cell_renderer_text_multiline_real_start_editing;
+#endif
     G_OBJECT_CLASS (klass)->finalize = ddb_cell_renderer_text_multiline_finalize;
 }
 
 
 static void ddb_cell_renderer_text_multiline_instance_init (DdbCellRendererTextMultiline * self) {
     self->priv = DDB_CELL_RENDERER_TEXT_MULTILINE_GET_PRIVATE (self);
+    // Default column indexes for Track Properties
+    self->priv->is_mult_column = 3;
+    self->priv->value_column = 4;
 }
 
+void ddb_cell_renderer_text_multiline_set_columns(DdbCellRendererTextMultiline *self, guint is_mult, guint value) {
+    self->priv->is_mult_column = is_mult;
+    self->priv->value_column = value;
+}
 
 static void ddb_cell_renderer_text_multiline_finalize (GObject* obj) {
     DdbCellRendererTextMultiline * self;

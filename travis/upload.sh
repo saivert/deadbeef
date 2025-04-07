@@ -1,20 +1,18 @@
 #!/bin/bash
-echo Decrypting id_rsa...
+echo Decrypting id_ed25519...
 
 mkdir -p sshconfig
 
-if [ ! -z $gh_rsa_key ]; then
-    openssl aes-256-cbc -K $gh_rsa_key -iv $gh_rsa_iv -in .github/id_rsa.enc -out sshconfig/id_rsa -d || exit 1
-elif [ ! -z $encrypted_b1899526f957_key ]; then
-    openssl aes-256-cbc -K $encrypted_b1899526f957_key -iv $encrypted_b1899526f957_iv -in travis/id_rsa.enc -out sshconfig/id_rsa -d || exit 1
+if [ ! -z $gh_ed25519_key ]; then
+    openssl aes-256-cbc -K $gh_ed25519_key -iv $gh_ed25519_iv -in .github/id_ed25519.enc -out sshconfig/id_ed25519 -d || exit 1
 else
     echo "SSH key is not available, upload cancelled"
     exit 0
 fi
 
 eval "$(ssh-agent -s)"
-chmod 600 sshconfig/id_rsa
-ssh-add sshconfig/id_rsa || exit 1
+chmod 600 sshconfig/id_ed25519
+ssh-add sshconfig/id_ed25519 || exit 1
 
 SSHOPTS="ssh -o StrictHostKeyChecking=no"
 
@@ -37,7 +35,7 @@ case "$TRAVIS_OS_NAME" in
     ;;
     osx)
         echo Uploading mac artifacts...
-        rsync -e "$SSHOPTS" osx/build/Release/deadbeef-$VERSION-osx-x86_64.zip waker,deadbeef@frs.sourceforge.net:/home/frs/project/d/de/deadbeef/travis/osx/$TRAVIS_BRANCH/ || exit 1
+        rsync -e "$SSHOPTS" osx/build/Release/deadbeef-$VERSION-macos-universal.zip waker,deadbeef@frs.sourceforge.net:/home/frs/project/d/de/deadbeef/travis/macOS/$TRAVIS_BRANCH/ || exit 1
     ;;
     windows)
         echo Uploading windows artifacts...

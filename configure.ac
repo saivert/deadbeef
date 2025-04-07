@@ -17,6 +17,7 @@ dnl AC_PROG_LIBTOOL
 AC_CONFIG_MACRO_DIR([m4])
 AC_C_BIGENDIAN
 AM_GNU_GETTEXT
+AM_GNU_GETTEXT_VERSION([0.18])
 PKG_PROG_PKG_CONFIG
 AM_PROG_CC_C_O
 AM_ICONV
@@ -82,11 +83,13 @@ AX_CHECK_COMPILER_FLAGS(-fblocks,[],[AC_MSG_ERROR(Clang is required to build Dea
 AC_ARG_ENABLE(nullout,  [AS_HELP_STRING([--disable-nullout ], [disable NULL output plugin (default: enabled)])], [enable_nullout=$enableval], [enable_nullout=yes])
 AC_ARG_ENABLE(alsa,     [AS_HELP_STRING([--disable-alsa    ], [disable ALSA output plugin (default: enabled)])], [enable_alsa=$enableval], [enable_alsa=yes])
 AC_ARG_ENABLE(oss,      [AS_HELP_STRING([--disable-oss     ], [disable Open Sound System output plugin (default: enabled)])], [enable_oss=$enableval], [enable_oss=yes])
+AC_ARG_ENABLE(pipewire, [AS_HELP_STRING([--disable-pipewire   ], [disable Pipewire output plugin (default: enabled)])], [enable_pipewire=$enableval], [enable_pipewire=yes])
 AC_ARG_ENABLE(pulse,    [AS_HELP_STRING([--disable-pulse   ], [disable PulseAudio output plugin (default: enabled)])], [enable_pulse=$enableval], [enable_pulse=yes])
 AC_ARG_ENABLE(coreaudio,[AS_HELP_STRING([--disable-coreaudio], [disable CoreAudio output plugin (default: enabled)])], [enable_coreaudio=$enableval], [enable_coreaudio=yes])
 AC_ARG_ENABLE(gtk3,     [AS_HELP_STRING([--disable-gtk3     ], [disable GTK3 version of gtkui plugin (default: enabled)])], [enable_gtk3=$enableval], [enable_gtk3=yes])
 AC_ARG_ENABLE(gtk2,     [AS_HELP_STRING([--disable-gtk2     ], [disable GTK2 version of gtkui plugin (default: enabled)])], [enable_gtk2=$enableval], [enable_gtk2=yes])
 AC_ARG_ENABLE(vfs_curl, [AS_HELP_STRING([--disable-vfs-curl], [disable HTTP streaming vfs plugin (default: enabled)])], [enable_vfs_curl=$enableval], [enable_vfs_curl=yes])
+AC_ARG_ENABLE(libretro, [AS_HELP_STRING([--disable-libretro   ], [disable Libretro resampler plugin (default: enabled)])], [enable_libretro=$enableval], [enable_libretro=yes])
 AC_ARG_ENABLE(lfm,      [AS_HELP_STRING([--disable-lfm     ], [disable last.fm/libre.fm scrobbler plugin (default: enabled)])], [enable_lfm=$enableval], [enable_lfm=yes])
 AC_ARG_ENABLE(artwork,  [AS_HELP_STRING([--disable-artwork ], [disable album art loader plugin (default: enabled)])], [enable_artwork=$enableval], [enable_artwork=yes])
 AC_ARG_ENABLE(artwork-network,  [AS_HELP_STRING([--disable-artwork-network ], [disable album art network loading support (default: enabled)])], [enable_artwork_network=$enableval], [enable_artwork_network=yes])
@@ -108,6 +111,7 @@ AC_ARG_ENABLE(wavpack,  [AS_HELP_STRING([--disable-wavpack ], [disable wavpack p
 AC_ARG_ENABLE(cdda,     [AS_HELP_STRING([--disable-cdda    ], [disable CD-Audio plugin (default: enabled)])], [enable_cdda=$enableval], [enable_cdda=yes])
 AC_ARG_ENABLE(cdda-paranoia,     [AS_HELP_STRING([--disable-cdda-paranoia    ], [disable CD-Audio error correction during ripping (default: enabled)])], [enable_cdda_paranoia=$enableval], [enable_cdda_paranoia=yes])
 AC_ARG_ENABLE(gme,      [AS_HELP_STRING([--disable-gme     ], [disable Game Music Emu plugin for NSF, AY, etc (default: enabled)])], [enable_gme=$enableval], [enable_gme=yes])
+AC_ARG_ENABLE(lyrics, [AS_HELP_STRING([--enable-lyrics      ], [build lyrics viewer gui plugin (default: auto)])], [enable_lyrics=$enableval], [enable_lyrics=yes])
 AC_ARG_ENABLE(notify,   [AS_HELP_STRING([--disable-notify  ], [disable notification-daemon support plugin (default: enabled)])], [enable_notify=$enableval], [enable_notify=yes])
 AC_ARG_ENABLE(shellexec, [AS_HELP_STRING([--disable-shellexec], [disable shell commands plugin (default: enabled)])], [enable_shellexec=$enableval], [enable_shellexec=yes])
 AC_ARG_ENABLE(musepack, [AS_HELP_STRING([--disable-musepack], [disable musepack plugin (default: enabled)])], [enable_musepack=$enableval], [enable_musepack=yes])
@@ -122,7 +126,7 @@ AC_ARG_ENABLE(src,      [AS_HELP_STRING([--enable-src      ], [build libsamplera
 AC_ARG_ENABLE(m3u,      [AS_HELP_STRING([--enable-m3u      ], [build m3u plugin (default: auto)])], [enable_m3u=$enableval], [enable_m3u=yes])
 AC_ARG_ENABLE(vfs-zip,      [AS_HELP_STRING([--enable-vfs-zip      ], [build vfs_zip plugin (default: auto)])], [enable_vfs_zip=$enableval], [enable_vfs_zip=yes])
 AC_ARG_ENABLE(converter,      [AS_HELP_STRING([--enable-converter      ], [build converter plugin (default: auto)])], [enable_converter=$enableval], [enable_converter=yes])
-AC_ARG_ENABLE(artwork-imlib2, [AS_HELP_STRING([--enable-artwork-imlib2      ], [use imlib2 in artwork plugin (default: auto)])], [enable_artwork_imlib2=$enableval], [enable_artwork_imlib2=yes])
+AC_ARG_ENABLE(medialib, [AS_HELP_STRING([--enable-medialib      ], [build media library plugin (default: auto)])], [enable_medialib=$enableval], [enable_medialib=yes])
 AC_ARG_ENABLE(dumb,      [AS_HELP_STRING([--enable-dumb      ], [build DUMB plugin (default: auto)])], [enable_dumb=$enableval], [enable_dumb=yes])
 AC_ARG_ENABLE(shn,      [AS_HELP_STRING([--enable-shn      ], [build SHN plugin (default: auto)])], [enable_shn=$enableval], [enable_shn=yes])
 AC_ARG_ENABLE(psf,      [AS_HELP_STRING([--enable-psf      ], [build AOSDK-based PSF(,QSF,SSF,DSF) plugin (default: auto)])], [enable_psf=$enableval], [enable_psf=yes])
@@ -163,6 +167,18 @@ AC_CHECK_PROG(HAVE_YASM, yasm, yes, no)
 
 dnl check for log2
 AC_CHECK_LIB([m], [log2], AC_DEFINE([HAVE_LOG2], [], [Define to 1 if the system has log2 in libm]))
+
+dnl check for mkstemps
+dnl AC_DEFINE_UNQUOTED([HAVE_MKSTEMPS], [0], [Define if mkstemps is available])
+AC_CACHE_CHECK([for mkstemps],
+xpdf_cv_func_mkstemps,
+[AC_TRY_LINK([#include <stdlib.h>
+#include <unistd.h>],
+[mkstemps("foo", 0);],
+xpdf_cv_func_mkstemps=yes, xpdf_cv_func_mkstemps=no)])
+if test "$xpdf_cv_func_mkstemps" = yes; then
+  AC_DEFINE(HAVE_MKSTEMPS, 1, [Define to 1 if you have the `mkstemps' function.])
+fi
 
 dnl check for libdl
 AC_CHECK_LIB([dl], [main], [HAVE_DL=yes;DL_LIBS="-ldl";AC_SUBST(DL_LIBS)])
@@ -322,11 +338,27 @@ AS_IF([test "${enable_pulse}" != "no"], [
         HAVE_PULSE=yes
         PULSE_DEPS_LIBS="-lpulse-simple"
         PULSE_DEPS_CFLAGS="-I../../$LIB/include/"
-        AC_SUBST(DBUS_DEPS_CFLAGS)
-        AC_SUBST(DBUS_DEPS_LIBS)
+        AC_SUBST(PULSE_DEPS_CFLAGS)
+        AC_SUBST(PULSE_DEPS_LIBS)
     ], [
         PKG_CHECK_MODULES(PULSE_DEPS, libpulse-simple, HAVE_PULSE=yes, HAVE_PULSE=no)
     ])
+])
+
+AS_IF([test "${enable_pipewire}" != "no"], [
+    AS_IF([test "${enable_staticlink}" != "no"], [
+        HAVE_PIPEWIRE=yes
+        PIPEWIRE_DEPS_LIBS="-lpipewire-0.3"
+        PIPEWIRE_DEPS_CFLAGS="-D_REENTRANT -I../../$LIB/include/pipewire-0.3 -I../../$LIB/include/spa-0.2"
+        AC_SUBST(PIPEWIRE_DEPS_CFLAGS)
+        AC_SUBST(PIPEWIRE_DEPS_LIBS)
+    ], [
+        PKG_CHECK_MODULES(PIPEWIRE_DEPS, libpipewire-0.3, HAVE_PIPEWIRE=yes, HAVE_PIPEWIRE=no)
+    ])
+])
+
+AS_IF([test "${enable_libretro}" != "no"], [
+    HAVE_LIBRETRO=yes
 ])
 
 AC_CHECK_HEADER([iconv.h],[],[iconv.h not found.])
@@ -341,6 +373,11 @@ AS_IF([test "${have_iconv}" = "yes"], [
 AX_CHECK_COMPILER_FLAGS(-msse2, HAVE_SSE2=1, [], -Werror)
 AS_IF([test "${HAVE_SSE2}"], [
     AC_DEFINE(HAVE_SSE2,1,[Support SSE2 instructions])
+])
+
+AX_CHECK_COMPILER_FLAGS(-msse3, HAVE_SSE3=1, [], -Werror)
+AS_IF([test "${HAVE_SSE3}"], [
+    AC_DEFINE(HAVE_SSE3,1,[Support SSE3 instructions])
 ])
 
 dnl curl lib
@@ -586,7 +623,7 @@ AS_IF([test "${enable_oss}" != "no"], [
         for i in `cat /etc/oss.conf`; do
             t=`echo $i | sed -e 's/OSSLIBDIR=//'`
             AS_IF([test "${i}" != "${t}"], [
-                AS_IF([test -f "${t}/include/sys/soundcard.h" -o -f "${i}/include/soundcard.h"], [
+                AS_IF([test -f "${t}/include/sys/soundcard.h"], [
                     OSS_CFLAGS="-I$t/include/sys"
                     AC_MSG_RESULT([$OSS_CFLAGS])
                     have_oss=yes
@@ -621,6 +658,12 @@ AS_IF([test "${enable_pulseaudio}" != "no"], [
     ])
 ])
 
+AS_IF([test "${enable_pipewire}" != "no"], [
+    AS_IF([test "${HAVE_PIPEWIRE}" = "yes"], [
+        HAVE_PIPEWIRE_PLUGIN=yes
+    ])
+])
+
 dnl lastfm plugin
 AS_IF([test "${enable_lfm}" != "no"], [
     AS_IF([test "${HAVE_CURL}" = "yes" -a "${enable_lastfm}" != "no"], [
@@ -640,37 +683,12 @@ AS_IF([test "${enable_shellexecui}" != "no" -a "${enable_shellexec}" != "no"], [
 ])
 
 AS_IF([test "${enable_artwork}" != "no"], [
-    AS_IF([test "${enable_staticlink}" != "no"], [
-        HAVE_JPEG=yes
-        JPEG_DEPS_LIBS="../../$LIB/lib/libjpeg.a"
-        JPEG_DEPS_CFLAGS="-I../../$LIB/include"
-        AC_SUBST(JPEG_DEPS_CFLAGS)
-        AC_SUBST(JPEG_DEPS_LIBS)
-        HAVE_PNG=yes
-        PNG_DEPS_CFLAGS="-I../../$LIB/include/libpng15"
-        PNG_DEPS_LIBS="../../$LIB/lib/libpng.a ../../$LIB/lib/libz.a"
-        AC_SUBST(PNG_DEPS_CFLAGS)
-        AC_SUBST(PNG_DEPS_LIBS)
-        HAVE_IMLIB2=no
-    ], [
-        AS_IF([test "${enable_artwork_imlib2}" != "no"], [
-            PKG_CHECK_MODULES(IMLIB2_DEPS, imlib2, HAVE_IMLIB2=yes, HAVE_IMLIB2=no)
-        ])
-
-        AS_IF([test "${enable_artwork_imlib2}" = "no" -o "${HAVE_IMLIB2}" = "no"], [
-            AC_CHECK_LIB([jpeg], [main], [HAVE_JPEG=yes;JPEG_DEPS_LIBS="-ljpeg";AC_SUBST(JPEG_DEPS_LIBS)])
-            AC_CHECK_LIB([png], [main], [HAVE_PNG=yes;PNG_DEPS_LIBS="-lpng -lz";AC_SUBST(PNG_DEPS_LIBS)])
-        ])
-    ])
-
     AS_IF([test "${enable_artwork_network}" = "yes"], [
         ARTWORK_USE_VFS_CURL=yes
     ])
 
     AS_IF([test "${HAVE_VFS_CURL}" = "yes" -o "${enable_artwork_network}" = "no" ], [
-        AS_IF([test "${HAVE_JPEG}" = "yes" -o "${HAVE_IMLIB2}" = "yes"], [
-            HAVE_ARTWORK=yes
-        ])
+        HAVE_ARTWORK=yes
     ])
 ])
 
@@ -720,7 +738,16 @@ AS_IF([test "${enable_gme}" != "no" -a "${HAVE_ZLIB}" = "yes"], [
 ])
 
 AS_IF([test "${HAVE_DBUS}" = "yes" -a "${enable_notify}" != "no"], [
-    HAVE_NOTIFY=yes
+    AS_IF([test "${enable_staticlink}" != "no"], [
+        HAVE_NOTIFY=yes
+        NOTIFY_DEPS_CFLAGS="${GTK2_216_CFLAGS}"
+        NOTIFY_DEPS_LIBS="${GDK_PIXBUF_LIBS}"
+        AC_SUBST(NOTIFY_DEPS_CFLAGS)
+        AC_SUBST(NOTIFY_DEPS_LIBS)
+    ], [
+        PKG_CHECK_MODULES(NOTIFY_DEPS, glib-2.0 >= 2.26 gio-2.0 gdk-pixbuf-2.0, HAVE_NOTIFY=yes, HAVE_NOTIFY=no)
+    ])
+
     NOTIFY_LIBS="$DBUS_DEPS_LIBS"
     NOTIFY_CFLAGS="$DBUS_DEPS_CFLAGS"
     AC_SUBST(NOTIFY_LIBS)
@@ -782,6 +809,14 @@ AS_IF([test "${enable_converter}" != "no"], [
     ])
 ])
 
+AS_IF([test "${enable_lyrics}" != "no"], [
+    HAVE_LYRICS=yes
+])
+
+AS_IF([test "${enable_medialib}" != "no"], [
+    HAVE_MEDIALIB=yes
+])
+
 AS_IF([test "${enable_dumb}" != "no"], [
     HAVE_DUMB=yes
 ])
@@ -835,7 +870,7 @@ AS_IF([test "${enable_soundtouch}" != "no"], [
     HAVE_SOUNDTOUCH=yes
 ])
 
-PLUGINS_DIRS="plugins/liboggedit plugins/libparser plugins/lastfm plugins/mp3 plugins/vorbis plugins/opus plugins/flac plugins/wavpack plugins/sndfile plugins/vfs_curl plugins/cdda plugins/gtkui plugins/alsa plugins/ffmpeg plugins/hotkeys plugins/oss plugins/artwork-legacy plugins/adplug plugins/ffap plugins/sid plugins/nullout plugins/supereq plugins/vtx plugins/gme plugins/pulse plugins/notify plugins/musepack plugins/wildmidi plugins/tta plugins/dca plugins/aac plugins/mms plugins/shellexec plugins/shellexecui plugins/dsp_libsrc plugins/m3u plugins/vfs_zip plugins/converter plugins/dumb plugins/shn plugins/psf plugins/mono2stereo plugins/alac plugins/wma plugins/pltbrowser plugins/coreaudio plugins/sc68 plugins/rg_scanner plugins/soundtouch"
+PLUGINS_DIRS="plugins/liboggedit plugins/libparser plugins/lastfm plugins/mp3 plugins/vorbis plugins/opus plugins/flac plugins/wavpack plugins/sndfile plugins/vfs_curl plugins/cdda plugins/gtkui plugins/alsa plugins/ffmpeg plugins/hotkeys plugins/oss plugins/artwork plugins/adplug plugins/ffap plugins/sid plugins/nullout plugins/supereq plugins/vtx plugins/gme plugins/pulse plugins/notify plugins/musepack plugins/wildmidi plugins/tta plugins/dca plugins/aac plugins/mms plugins/shellexec plugins/shellexecui plugins/dsp_libsrc plugins/m3u plugins/vfs_zip plugins/converter plugins/dumb plugins/shn plugins/psf plugins/mono2stereo plugins/alac plugins/wma plugins/pltbrowser plugins/coreaudio plugins/sc68 plugins/rg_scanner plugins/soundtouch plugins/medialib plugins/lyrics"
 
 AM_CONDITIONAL(APE_USE_YASM, test "x$APE_USE_YASM" = "xyes")
 AM_CONDITIONAL(HAVE_VORBIS, test "x$HAVE_VORBISPLUGIN" = "xyes")
@@ -852,6 +887,7 @@ AM_CONDITIONAL(HAVE_GTK3, test "x$HAVE_GTK3" = "xyes")
 AM_CONDITIONAL(HAVE_ALSA, test "x$HAVE_ALSAPLUGIN" = "xyes")
 AM_CONDITIONAL(HAVE_COREAUDIO, test "x$HAVE_COREAUDIO" = "xyes")
 AM_CONDITIONAL(HAVE_FFMPEG, test "x$HAVE_FFMPEGPLUGIN" = "xyes")
+AM_CONDITIONAL(HAVE_PIPEWIRE, test "x$HAVE_PIPEWIRE_PLUGIN" = "xyes")
 AM_CONDITIONAL(HAVE_PULSE, test "x$HAVE_PULSEPLUGIN" = "xyes")
 AM_CONDITIONAL(HAVE_ARTWORK, test "x$HAVE_ARTWORK" = "xyes")
 AM_CONDITIONAL(ARTWORK_USE_VFS_CURL, test "x$ARTWORK_USE_VFS_CURL" = "xyes")
@@ -861,12 +897,14 @@ AM_CONDITIONAL(HAVE_SID, test "x$HAVE_SID" = "xyes")
 AM_CONDITIONAL(HAVE_NULLOUT, test "x$HAVE_NULLOUT" = "xyes")
 AM_CONDITIONAL(HAVE_VTX, test "x$HAVE_VTX" = "xyes")
 AM_CONDITIONAL(HAVE_GME, test "x$HAVE_GME" = "xyes")
+AM_CONDITIONAL(HAVE_LIBRETRO, test "x$HAVE_LIBRETRO" = "xyes")
 AM_CONDITIONAL(HAVE_LASTFM, test "x$HAVE_LASTFM" = "xyes")
 AM_CONDITIONAL(HAVE_VFS_CURL, test "x$HAVE_VFS_CURL" = "xyes")
 AM_CONDITIONAL(HAVE_HOTKEYS, test "x$HAVE_HOTKEYS" = "xyes")
 AM_CONDITIONAL(HAVE_MP3, test "x$HAVE_MP3" = "xyes")
 AM_CONDITIONAL(HAVE_LIBMAD, test "x$HAVE_LIBMAD" = "xyes")
 AM_CONDITIONAL(HAVE_LIBMPG123, test "x$HAVE_LIBMPG123" = "xyes")
+AM_CONDITIONAL(HAVE_LYRICS, test "x$HAVE_LYRICS" = "xyes")
 AM_CONDITIONAL(HAVE_OSS, test "x$HAVE_OSS" = "xyes")
 AM_CONDITIONAL(HAVE_SUPEREQ, test "x$HAVE_SUPEREQ" = "xyes")
 AM_CONDITIONAL(HAVE_NOTIFY, test "x$HAVE_NOTIFY" = "xyes")
@@ -882,10 +920,8 @@ AM_CONDITIONAL(HAVE_DSP_SRC, test "x$HAVE_DSP_SRC" = "xyes")
 AM_CONDITIONAL(HAVE_M3U, test "x$HAVE_M3U" = "xyes")
 AM_CONDITIONAL(HAVE_VFS_ZIP, test "x$HAVE_VFS_ZIP" = "xyes")
 AM_CONDITIONAL(HAVE_CONVERTER, test "x$HAVE_CONVERTER" = "xyes")
-AM_CONDITIONAL(HAVE_IMLIB2, test "x$HAVE_IMLIB2" = "xyes")
-AM_CONDITIONAL(HAVE_JPEG, test "x$HAVE_JPEG" = "xyes")
-AM_CONDITIONAL(HAVE_PNG, test "x$HAVE_PNG" = "xyes")
 AM_CONDITIONAL(HAVE_YASM, test "x$HAVE_YASM" = "xyes")
+AM_CONDITIONAL(HAVE_MEDIALIB, test "x$HAVE_MEDIALIB" = "xyes")
 AM_CONDITIONAL(HAVE_DUMB, test "x$HAVE_DUMB" = "xyes")
 AM_CONDITIONAL(HAVE_PSF, test "x$HAVE_PSF" = "xyes")
 AM_CONDITIONAL(HAVE_SHN, test "x$HAVE_SHN" = "xyes")
@@ -901,6 +937,7 @@ AM_CONDITIONAL(PORTABLE, test "x$PORTABLE" = "xyes")
 AM_CONDITIONAL(PORTABLE_FULL, test "x$PORTABLE_FULL" = "xyes")
 AM_CONDITIONAL(USE_ABSTRACT_SOCKET_NAME, test "x$USE_ABSTRACT_SOCKET_NAME" = "xyes")
 AM_CONDITIONAL(HAVE_SSE2, test "${HAVE_SSE2}")
+AM_CONDITIONAL(HAVE_SSE3, test "${HAVE_SSE3}")
 dnl AM_CONDITIONAL(HAVE_STATUSNOTIFIER, test "x$HAVE_STATUSNOTIFIER" = "xyes")
 AM_CONDITIONAL(HAVE_RGSCANNER, test "x$HAVE_RGSCANNER" = "xyes")
 AM_CONDITIONAL(HAVE_SOUNDTOUCH, test "x$HAVE_SOUNDTOUCH" = "xyes")
@@ -909,10 +946,16 @@ AC_SUBST(PLUGINS_DIRS)
 
 AC_CONFIG_FILES([
 Makefile
-external/Makefile
+src/Makefile
 shared/Makefile
-analyzer/Makefile
-scope/Makefile
+shared/analyzer/Makefile
+shared/scope/Makefile
+shared/scriptable/Makefile
+shared/undo/Makefile
+shared/filereader/Makefile
+external/Makefile
+external/ddb_dsp_libretro/Makefile
+external/ddb_output_pw/Makefile
 pixmaps/Makefile
 icons/Makefile
 plugins/liboggedit/Makefile
@@ -938,7 +981,7 @@ plugins/ffmpeg/Makefile
 plugins/sid/Makefile
 plugins/oss/Makefile
 plugins/pulse/Makefile
-plugins/artwork-legacy/Makefile
+plugins/artwork/Makefile
 plugins/supereq/Makefile
 plugins/notify/Makefile
 plugins/shellexec/Makefile
@@ -964,6 +1007,8 @@ plugins/sc68/Makefile
 plugins/coreaudio/Makefile
 plugins/rg_scanner/Makefile
 plugins/soundtouch/Makefile
+plugins/medialib/Makefile
+plugins/lyrics/Makefile
 po/Makefile.in
 intl/Makefile
 deadbeef.desktop
@@ -1012,7 +1057,10 @@ PRINT_PLUGIN_INFO([gtkui3],[GTK3 user interface],[test "x$HAVE_GTK3" = "xyes"])
 PRINT_PLUGIN_INFO([gtkui],[GTK2 user interface],[test "x$HAVE_GTK2" = "xyes"])
 PRINT_PLUGIN_INFO([hotkeys],[Local and global hotkeys support],[test "x$HAVE_HOTKEYS" = "xyes"])
 PRINT_PLUGIN_INFO([lastfm],[last.fm scrobbler],[test "x$HAVE_LASTFM" = "xyes"])
+PRINT_PLUGIN_INFO([libretro],[Libretro resampler plugin],[test "x$HAVE_LIBRETRO" = "xyes"])
+PRINT_PLUGIN_INFO([lyrics],[lyrics viewer gui plugin],[test "x$HAVE_LYRICS" = "xyes"])
 PRINT_PLUGIN_INFO([m3u],[M3U and PLS playlist support],[test "x$HAVE_M3U" = "xyes"])
+PRINT_PLUGIN_INFO([medialib],[Media library],[test "x$HAVE_MEDIALIB" = "xyes"])
 PRINT_PLUGIN_INFO([mms],[mms streaming support],[test "x$HAVE_MMS" = "xyes"])
 PRINT_PLUGIN_INFO([mono2stereo],[mono2stereo DSP plugin],[test "x$HAVE_MONO2STEREO" = "xyes"])
 PRINT_PLUGIN_INFO([mp3],[mp3 plugin],[test "x$HAVE_MP3" = "xyes"])
@@ -1025,6 +1073,7 @@ PRINT_PLUGIN_INFO([opus],[ogg opus player],[test "x$HAVE_OPUSPLUGIN" = "xyes"])
 PRINT_PLUGIN_INFO([oss],[oss output plugin],[test "x$HAVE_OSS" = "xyes"])
 PRINT_PLUGIN_INFO([pltbrowser],[playlist browser gui plugin],[test "x$HAVE_PLTBROWSER" = "xyes"])
 PRINT_PLUGIN_INFO([psf],[PSF player, using Audio Overload SDK],[test "x$HAVE_PSF" = "xyes"])
+PRINT_PLUGIN_INFO([pipewire],[Pipewire output plugin],[test "x$HAVE_PIPEWIRE_PLUGIN" = "xyes"])
 PRINT_PLUGIN_INFO([pulse],[PulseAudio output plugin],[test "x$HAVE_PULSEPLUGIN" = "xyes"])
 PRINT_PLUGIN_INFO([rgscanner],[plugin for ReplayGain scanner support],[test "x$HAVE_RGSCANNER" = "xyes"])
 PRINT_PLUGIN_INFO([sc68],[sc68 Atari ST And Amiga player],[test "x$HAVE_SC68" = "xyes"])

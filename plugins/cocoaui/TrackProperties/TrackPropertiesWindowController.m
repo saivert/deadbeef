@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,7 @@
 */
 #import "MediaLibraryItem.h"
 #import "TrackPropertiesWindowController.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "utf8.h"
 #include "trkproperties_shared.h"
 
@@ -41,7 +41,7 @@ extern DB_functions_t *deadbeef;
     if ([anObject isKindOfClass:[NSString class]]) {
         NSString *str = anObject;
         NSRange range = [str rangeOfString:@"\n"];
-        if ([str length] >= MAX_GUI_FIELD_LEN && (range.location == NSNotFound || range.location >= MAX_GUI_FIELD_LEN)) {
+        if (str.length >= MAX_GUI_FIELD_LEN && (range.location == NSNotFound || range.location >= MAX_GUI_FIELD_LEN)) {
             range.location = MAX_GUI_FIELD_LEN;
         }
         if (range.location != NSNotFound ) {
@@ -100,9 +100,9 @@ extern DB_functions_t *deadbeef;
 }
 
 - (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
-    NSUserInterfaceItemIdentifier ident = [tableColumn identifier];
+    NSUserInterfaceItemIdentifier ident = tableColumn.identifier;
     NSTableCellView *view = [tableView makeViewWithIdentifier:ident owner:self];
-    NSTextField *textView = [view textField];
+    NSTextField *textView = view.textField;
     if ([ident isEqualToString:@"Index"]) {
         textView.stringValue = [NSString stringWithFormat:@"%d", (int)row+1];
     }
@@ -121,7 +121,7 @@ extern DB_functions_t *deadbeef;
 
 - (void)fieldEditedAction:(NSTextField *)sender {
     NSString *value = sender.stringValue;
-    int row = [[sender identifier] intValue];
+    int row = sender.identifier.intValue;
     self.fields[row] = value;
     // FIXME: add modified flag
 }
@@ -216,7 +216,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
             const char *end = p + meta->valuesize;
 
             while (p < end) {
-                value = [value stringByAppendingString:[NSString stringWithUTF8String:p]];
+                value = [value stringByAppendingString:@(p)];
                 p += strlen (p) + 1;
                 if (p < end) {
                     value = [value stringByAppendingString:p < end-1 ? @"; " : @";"];
@@ -227,9 +227,31 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
     }
     deadbeef->pl_unlock ();
 
-    [store addObject:[NSMutableDictionary dictionaryWithObjectsAndKeys:[NSString stringWithUTF8String:title], @"title", [NSString stringWithUTF8String:key], @"key", values, @"values", nil]];
+    [store addObject:@{
+        @"title": @(title),
+        @"key": @(key),
+        @"values": values
+    }.mutableCopy];
 }
 
+static char *
+_formatted_title_for_unknown_key(const char *key) {
+    size_t l = strlen (key);
+    char *title = malloc(l*4);
+    title[0] = '<';
+    char *t = title + 1;
+    const char *p = key;
+    while (*p) {
+        int32_t size = 0;
+        u8_nextchar (p, &size);
+        int outsize = u8_toupper((const signed char *)p, size, t);
+        t += outsize;
+        p += size;
+    }
+    *t++ = '>';
+    *t++ = 0;
+    return title;
+}
 
 - (void)fillMeta {
     [self.store removeAllObjects];
@@ -257,10 +279,10 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
             continue;
         }
 
-        size_t l = strlen (keys[k]);
-        char title[l + 3];
-        snprintf (title, sizeof (title), "<%s>", keys[k]);
+        char *title = _formatted_title_for_unknown_key(keys[k]);
         add_field (self.store, keys[k], title, 0, self.tracks, self.numtracks);
+        free (title);
+        title = NULL;
     }
     if (keys) {
         free (keys);
@@ -292,10 +314,10 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
         if (trkproperties_hc_props[i]) {
             continue;
         }
-        size_t l = strlen (keys[k]) + 2;
-        char title[l];
-        snprintf (title, sizeof (title), "<%s>", keys[k]+1);
+        char *title = _formatted_title_for_unknown_key(keys[k]);
         add_field (self.propstore, keys[k], title, 1, self.tracks, self.numtracks);
+        free (title);
+        title = NULL;
     }
     if (keys) {
         free (keys);
@@ -333,7 +355,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
 
     if (self.numtracks == 1) {
         deadbeef->pl_lock ();
-        fname = [NSString stringWithUTF8String:deadbeef->pl_find_meta_raw (self.tracks[0], ":URI")];
+        fname = @(deadbeef->pl_find_meta_raw (self.tracks[0], ":URI"));
 
         deadbeef->pl_unlock ();
     }
@@ -384,9 +406,30 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
         return;
     }
 
-    if([[aTableColumn identifier] isEqualToString:@"value"]){
+    if([aTableColumn.identifier isEqualToString:@"value"]){
         ((NSTextFieldCell *)aCell).formatter = [SingleLineFormatter new];
     }
+}
+
+- (NSString *)fieldValueForIndex:(NSInteger)rowIndex store:(NSMutableArray *)store isMult:(nullable BOOL *)isMult {
+    NSMutableArray<NSString *> *values = store[rowIndex][@"values"];
+    // get uniq values
+    NSArray *uniq = [NSOrderedSet orderedSetWithArray:values].array;
+    NSInteger n = uniq.count;
+
+    NSString *val = n > 1 ? @"[Multiple Values] " : @"";
+    for (NSUInteger i = 0; i < uniq.count; i++) {
+        val = [val stringByAppendingString:uniq[i]];
+        if (i < uniq.count - 1) {
+            val = [val stringByAppendingString:@"; "];
+        }
+    }
+
+    if (isMult != NULL) {
+        *isMult = n > 1;
+    }
+
+    return val;
 }
 
 - (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
@@ -395,25 +438,12 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
         return nil;
     }
 
-    if ([[aTableColumn identifier] isEqualToString:@"name"]) {
+    if ([aTableColumn.identifier isEqualToString:@"name"]) {
         NSString *title = store[rowIndex][@"title"];
         return title;
     }
-    else if ([[aTableColumn identifier] isEqualToString:@"value"]) {
-        NSMutableArray<NSString *> *values = store[rowIndex][@"values"];
-        // get uniq values
-        NSArray *uniq = [[NSOrderedSet orderedSetWithArray:values] array];
-        NSInteger n = uniq.count;
-
-        NSString *val = n > 1 ? @"[Multiple Values] " : @"";
-        for (NSUInteger i = 0; i < uniq.count; i++) {
-            val = [val stringByAppendingString:uniq[i]];
-            if (i < uniq.count - 1) {
-                val = [val stringByAppendingString:@"; "];
-            }
-        }
-
-        return val;
+    else if ([aTableColumn.identifier isEqualToString:@"value"]) {
+        return [self fieldValueForIndex:rowIndex store:store isMult:NULL];
     }
     return nil;
 }
@@ -435,13 +465,35 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
     }
 }
 
+- (NSSet<NSString *> *)specialFields {
+    static NSSet<NSString *> *specialFields;
+
+    if (specialFields == nil) {
+        specialFields = [[NSSet alloc] initWithArray:@[
+            @"comment",
+            @"lyrics",
+        ]];
+    }
+
+    return specialFields;
+}
+
 - (void)setMetadataForSelectedTracks:(NSDictionary *)dict {
-    const char *skey = ((NSString *)dict[@"key"]).UTF8String;
+    NSString *key = dict[@"key"];
+    const char *skey = key.UTF8String;
     NSMutableArray<NSString *> *values = dict[@"values"];
 
     for (int i = 0; i < self.numtracks; i++) {
         NSString *value = values[i];
-        NSArray *components = [value componentsSeparatedByString:@";"];
+        NSArray *components;
+
+        // Don't split up special fields, which are not supposed to be multi-value
+        if (![[self specialFields] containsObject:key.lowercaseString]) {
+            components = [value componentsSeparatedByString:@";"];
+        }
+        else {
+            components = @[value];
+        }
 
         NSMutableArray *transformedValues = [NSMutableArray new];
         for (NSString *val in components) {
@@ -451,7 +503,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
                 j++;
             }
             // whitespace-only?
-            if (j > 0 && j == [val length]-1) {
+            if (j > 0 && j == val.length-1) {
                 continue;
             }
             [transformedValues addObject: (j == 0 ? val : [val substringFromIndex:j])];
@@ -459,7 +511,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
 
         deadbeef->pl_delete_meta (self.tracks[i], skey);
         for (NSString *val in transformedValues) {
-            if ([val length]) {
+            if (val.length) {
                 deadbeef->pl_append_meta (self.tracks[i], skey, val.UTF8String);
             }
         }
@@ -480,7 +532,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
             strncpy (decoder_id, dec, sizeof (decoder_id));
         }
         int match = track && dec;
-        NSString *uri = [NSString stringWithUTF8String:deadbeef->pl_find_meta (track, ":URI")];
+        NSString *uri = @(deadbeef->pl_find_meta (track, ":URI"));
         deadbeef->pl_unlock ();
         if (match) {
             int is_subtrack = deadbeef->pl_get_item_flags (track) & DDB_IS_SUBTRACK;
@@ -527,6 +579,9 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
 
 - (IBAction)applyTrackPropertiesAction:(id)sender {
     if (!self.modified) {
+        if (self.close_after_writing) {
+            [self close];
+        }
         return;
     }
     deadbeef->pl_lock ();
@@ -634,7 +689,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
     self.mp3StripID3v1.state = strip_id3v1;
     self.mp3StripAPEv2.state = strip_apev2;
     [self.mp3ID3v2Version selectItemAtIndex:id3v2_version-3];
-    self.mp3ID3v1Charset.stringValue = [NSString stringWithUTF8String:id3v1_encoding];
+    self.mp3ID3v1Charset.stringValue = @(id3v1_encoding);
     self.apeWriteID3v2.state = ape_write_id3v2;
     self.apeWriteAPEv2.state = ape_write_apev2;
     self.apeStripID3v2.state = ape_strip_id3v2;
@@ -663,8 +718,8 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
 }
 
 - (IBAction)okTrackPropertiesAction:(id)sender {
+    self.close_after_writing = YES;
     [self applyTrackPropertiesAction:sender];
-    [self close];
 }
 
 
@@ -762,6 +817,16 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
     NSInteger idx = ind.firstIndex;
 
     if (self.numtracks != 1) {
+        // Allow editing the previous value, if all tracks have the same
+        BOOL isMult;
+        NSString *value = [self fieldValueForIndex:idx store:self.store isMult:&isMult];
+        if (!isMult) {
+            self.multiValueSingle.string = value;
+        }
+        else {
+            self.multiValueSingle.string = @"";
+        }
+
         NSString *key = self.store[idx][@"key"];
         self.multiValueFieldName.stringValue =  key.uppercaseString;
 
@@ -786,7 +851,7 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
             char item[1000];
             ctx.it = self.tracks[i];
             deadbeef->tf_eval(&ctx, item_tf, item, sizeof (item));
-            [items addObject:[NSString stringWithUTF8String:item]];
+            [items addObject:@(item)];
         }
         deadbeef->pl_unlock ();
         deadbeef->tf_free (item_tf);
@@ -798,8 +863,8 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
         self.multiValueTableView.dataSource = self.multipleFieldsTableData;
         [self.window beginSheet:self.editMultipleValuesPanel completionHandler:^(NSModalResponse returnCode) {
             if (returnCode == NSModalResponseOK) {
-                if ([[[self.multiValueTabView selectedTabViewItem] identifier] isEqualToString:@"singleValue"]) {
-                    [self setSameValuesForIndex:(int)idx value:[[self.multiValueSingle textStorage] string]];
+                if ([(self.multiValueTabView).selectedTabViewItem.identifier isEqualToString:@"singleValue"]) {
+                    [self setSameValuesForIndex:(int)idx value:(self.multiValueSingle).textStorage.string];
                 }
                 else {
                     for (int i = 0; i < self.numtracks; i++) {
@@ -838,8 +903,8 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
 - (IBAction)okEditValuePanelAction:(id)sender {
     NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
     NSInteger idx = ind.firstIndex;
-    if (![self.store[idx][@"values"][0] isEqualToString:[self.fieldValue string]]) {
-        self.store[idx][@"values"][0] = [self.fieldValue string];
+    if (![self.store[idx][@"values"][0] isEqualToString:(self.fieldValue).string]) {
+        self.store[idx][@"values"][0] = (self.fieldValue).string;
         [self.metadataTableView reloadData];
         self.modified = YES;
     }
@@ -916,8 +981,10 @@ add_field (NSMutableArray *store, const char *key, const char *title, int is_pro
             }
         }
 
-        NSString *title = [NSString stringWithFormat:@"<%@>", key];
-        add_field (self.store, key.UTF8String, title.UTF8String, 0, self.tracks, self.numtracks);
+        char *title = _formatted_title_for_unknown_key(key.UTF8String);
+        add_field (self.store, key.UTF8String, title, 0, self.tracks, self.numtracks);
+        free (title);
+        title = NULL;
         self.modified = YES;
         [self.metadataTableView reloadData];
     }];

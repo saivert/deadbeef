@@ -1,6 +1,6 @@
 /*
     DeaDBeeF - The Ultimate Music Player
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "st.h"
 
 enum {
@@ -243,7 +243,7 @@ static DB_dsp_t plugin = {
     .plugin.name = "Soundtouch",
     .plugin.descr = "Tempo/Pitch/Rate changer using SoundTouch Library (http://www.surina.net/soundtouch)",
     .plugin.copyright = 
-        "Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "\n"
         "Uses SoundTouch Library 2.1.2, (C) Olli Parviainen"
         "\n"

@@ -2,8 +2,8 @@
 //  PlaylistContentView.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/1/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/1/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "PinnedGroupTitleView.h"
@@ -11,9 +11,10 @@
 #import "PlaylistGroup.h"
 #import "PlaylistView.h"
 #import "DdbShared.h"
-#import "MedialibItemDragDropHolder.h"
+#import "DdbPlayItemPasteboardSerializer.h"
 #import "PlaylistLocalDragDropHolder.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
+#import "UndoIntegration.h"
 
 extern DB_functions_t *deadbeef;
 
@@ -41,8 +42,7 @@ static int grouptitleheight = 22;
 @property (nonatomic) NSMutableArray<PlaylistGroup *> *groups;
 @property (nonatomic,readwrite) int grouptitle_height;
 @property (nonatomic) int groups_build_idx;
-@property (nonatomic) int fullwidth;
-@property (nonatomic) int fullheight;
+@property (nonatomic) CGSize contentSize;
 @property (nonatomic) int scroll_direction;
 @property (nonatomic) int scroll_pointer_y;
 
@@ -62,7 +62,7 @@ static int grouptitleheight = 22;
 
     self.groups_build_idx = -1;
 
-    [self registerForDraggedTypes:[NSArray arrayWithObjects:ddbPlaylistItemsUTIType, ddbMedialibItemUTIType, NSFilenamesPboardType, nil]];
+    [self registerForDraggedTypes:@[ddbPlaylistItemsUTIType, ddbPlaylistDataUTIType, NSFilenamesPboardType]];
 
     _pinnedGroupTitleView = [PinnedGroupTitleView new];
     _pinnedGroupTitleView.hidden = YES;
@@ -79,6 +79,13 @@ static int grouptitleheight = 22;
 - (void)cleanup
 {
     [self freeGroups];
+}
+
+- (void)coverManagerDidReset {
+    for (PlaylistGroup *group in self.groups) {
+        group->cachedImage = nil;
+    }
+    self.needsDisplay = YES;
 }
 
 - (void)dealloc
@@ -124,7 +131,7 @@ static int grouptitleheight = 22;
 
 - (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
 
-    _lastDragLocation = [self convertPoint:[sender draggingLocation] fromView:nil];
+    _lastDragLocation = [self convertPoint:sender.draggingLocation fromView:nil];
     self.needsDisplay = YES;
 
     NSUInteger modifiers = (NSEvent.modifierFlags & NSEventModifierFlagDeviceIndependentFlagsMask);
@@ -144,26 +151,29 @@ static int grouptitleheight = 22;
 
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
 
-    NSPasteboard *pboard = [sender draggingPasteboard];
+    NSPasteboard *pboard = sender.draggingPasteboard;
 
     int sel;
 
-    NSPoint draggingLocation = [self convertPoint:[sender draggingLocation] fromView:nil];
+    NSPoint draggingLocation = [self convertPoint:sender.draggingLocation fromView:nil];
 
-    DdbListviewRow_t row = [self.dataModel invalidRow];
+    DdbListviewRow_t row = (self.dataModel).invalidRow;
     sel = [self dragInsertPointForYPos:draggingLocation.y];
     if (-1 != sel) {
         row = [self.dataModel rowForIndex:sel];
     }
 
+
+    ddb_undo->set_action_name ("Drag & drop");
+
     if ([pboard.types containsObject:ddbPlaylistItemsUTIType]) {
-        NSArray *classes = [[NSArray alloc] initWithObjects:[PlaylistLocalDragDropHolder class], nil];
-        NSDictionary *options = [NSDictionary dictionary];
+        NSArray *classes = @[[PlaylistLocalDragDropHolder class]];
+        NSDictionary *options = @{};
         NSArray<PlaylistLocalDragDropHolder *> *draggedItems = [pboard readObjectsForClasses:classes options:options];
 
         for (PlaylistLocalDragDropHolder *holder in draggedItems) {
             NSInteger from_playlist = holder.playlistIdx;
-            uint32_t *indices = calloc (sizeof (uint32_t), holder.itemsIndices.count);
+            uint32_t *indices = calloc (holder.itemsIndices.count, sizeof (uint32_t));
             int i = 0;
             for (NSNumber * number in holder.itemsIndices) {
                 indices[i] = (uint32_t)number.unsignedIntValue;
@@ -176,42 +186,45 @@ static int grouptitleheight = 22;
             [self.delegate dropItems:(int)from_playlist before:row indices:indices count:(int)length copy:op==NSDragOperationCopy];
             free(indices);
         }
-    }
-    if ([pboard.types containsObject:ddbMedialibItemUTIType]) {
-        NSArray *classes = [[NSArray alloc] initWithObjects:[MedialibItemDragDropHolder class], nil];
-        NSDictionary *options = [NSDictionary dictionary];
-        NSArray<MedialibItemDragDropHolder *> *draggedItems = [pboard readObjectsForClasses:classes options:options];
+   }
+    if ([pboard.types containsObject:ddbPlaylistDataUTIType]) {
+        NSArray *classes = @[[DdbPlayItemPasteboardSerializer class]];
+        NSDictionary *options = @{};
+        NSArray<DdbPlayItemPasteboardSerializer *> *draggedItems = [pboard readObjectsForClasses:classes options:options];
 
-        NSInteger count = 0;
-        for (MedialibItemDragDropHolder *holder in draggedItems) {
-            count += holder.count;
-        }
-        DdbListviewRow_t *items = calloc (count, sizeof (DdbListviewRow_t));
-        size_t itemCount = 0;
-        for (MedialibItemDragDropHolder *holder in draggedItems) {
-            for (NSInteger i = 0; i < holder.count; i++) {
-                ddb_playItem_t *item = holder.items[i];
-                items[itemCount++] = (DdbListviewRow_t)item;
+        for (DdbPlayItemPasteboardSerializer *holder in draggedItems) {
+            if (holder.plt == NULL) {
+                continue;
             }
+
+            ddb_playItem_t **items;
+            ssize_t count = deadbeef->plt_get_items(holder.plt, &items);
+
+            [self.delegate dropPlayItems:(DdbListviewRow_t *)items before:row count:(int)count];
+
+            for (ssize_t i = 0; i < count; i++) {
+                deadbeef->pl_item_unref(items[i]);
+            }
+            free (items);
         }
-        [self.delegate dropPlayItems:items before:row count:(int)itemCount];
-        free (items);
     }
     else if ([pboard.types containsObject:NSFilenamesPboardType]) {
 
         NSArray *paths = [pboard propertyListForType:NSFilenamesPboardType];
-        if (row != [self.dataModel invalidRow]) {
+        if (row != (self.dataModel).invalidRow) {
             // add before selected row
-            [self.delegate externalDropItems:paths after: [self.dataModel rowForIndex:sel-1] ];
+            [self.delegate externalDropItems:paths after: [self.dataModel rowForIndex:sel-1] completionBlock:^{
+            }];
         }
         else {
             // no selected row, add to end
-            DdbListviewRow_t lastRow = [self.dataModel rowForIndex:([self.dataModel rowCount]-1)];
-            [self.delegate externalDropItems:paths after:lastRow];
+            DdbListviewRow_t lastRow = [self.dataModel rowForIndex:((self.dataModel).rowCount-1)];
+            [self.delegate externalDropItems:paths after:lastRow completionBlock:^{
+            }];
         }
     }
 
-    if (row != [self.dataModel invalidRow]) {
+    if (row != (self.dataModel).invalidRow) {
         [self.dataModel unrefRow:row];
     }
     _draggingInView = NO;
@@ -242,15 +255,15 @@ static int grouptitleheight = 22;
                     clipRegion:(NSRect)clip {
     int x = 0;
 
-    int title_height = [self grouptitle_height];
-    for (DdbListviewCol_t col = [self.delegate firstColumn];
-         col != [self.delegate invalidColumn];
+    int title_height = self.grouptitle_height;
+    for (DdbListviewCol_t col = (self.delegate).firstColumn;
+         col != (self.delegate).invalidColumn;
          col = [self.delegate nextColumn:col]) {
 
         int w = [self.delegate columnWidth:col];
 
         if ([self.delegate isAlbumArtColumn:col] && x + w > clip.origin.x) {
-            NSColor *clr = [NSColor.controlAlternatingRowBackgroundColors objectAtIndex:0];
+            NSColor *clr = (NSColor.controlAlternatingRowBackgroundColors)[0];
             [clr set];
             [NSBezierPath fillRect:NSMakeRect (x, y, w, grp_next_y - y)];
             if (title_height > 0) {
@@ -265,7 +278,7 @@ static int grouptitleheight = 22;
 
 - (void)drawGroupTitle:(PlaylistGroup *)grp grp_y:(int)grp_y title_height:(int)title_height {
     NSRect groupRect = NSMakeRect(0, grp_y, self.frame.size.width, title_height);
-    NSColor *clr = [NSColor.controlAlternatingRowBackgroundColors objectAtIndex:0];
+    NSColor *clr = (NSColor.controlAlternatingRowBackgroundColors)[0];
     [clr set];
 #if DEBUG_DRAW_GROUP_TITLES
     [NSColor.greenColor set];
@@ -304,7 +317,7 @@ static int grouptitleheight = 22;
 
 - (void)updatePinnedGroup {
     NSScrollView *scrollView = self.enclosingScrollView;
-    NSRect visibleRect = [scrollView documentVisibleRect];
+    NSRect visibleRect = scrollView.documentVisibleRect;
 
     CGFloat scrollPos = visibleRect.origin.y;
 
@@ -351,8 +364,6 @@ static int grouptitleheight = 22;
 }
 
 - (void)drawListView:(NSRect)dirtyRect {
-    [self groupCheck];
-
     CGFloat clip_y = dirtyRect.origin.y;
     CGFloat clip_h = dirtyRect.size.height;
 
@@ -361,13 +372,13 @@ static int grouptitleheight = 22;
     NSUInteger idx = 0;
     PlaylistGroup *grp = [self firstVisibleGroupWithScrollPos:dirtyRect.origin.y groupPosition:&grp_y groupIndex:&groupIndex trackCount:&idx];
 
-    int cursor = [self.dataModel cursor];
-    DdbListviewRow_t cursor_it = [self.dataModel invalidRow];
+    int cursor = (self.dataModel).cursor;
+    DdbListviewRow_t cursor_it = (self.dataModel).invalidRow;
     if (cursor != -1) {
         cursor_it = [self.dataModel rowForIndex:cursor];
     }
 
-    int title_height = [self grouptitle_height];
+    int title_height = self.grouptitle_height;
 
     BOOL focused = self == self.window.firstResponder;
 
@@ -395,12 +406,12 @@ static int grouptitleheight = 22;
 
             if (yy + rowheight >= clip_y) {
                 // draw row
-                NSColor *clr = [NSColor.controlAlternatingRowBackgroundColors objectAtIndex:ii % 2];
+                NSColor *clr = (NSColor.controlAlternatingRowBackgroundColors)[ii % 2];
                 [clr set];
                 [NSBezierPath fillRect:NSMakeRect(dirtyRect.origin.x, yy, dirtyRect.size.width, rowheight)];
 
                 int x = 0;
-                for (DdbListviewCol_t col = [self.delegate firstColumn]; col != [self.delegate invalidColumn]; col = [self.delegate nextColumn:col]) {
+                for (DdbListviewCol_t col = (self.delegate).firstColumn; col != (self.delegate).invalidColumn; col = [self.delegate nextColumn:col]) {
                     int w = [self.delegate columnWidth:col];
                     if (CGRectIntersectsRect(dirtyRect, NSMakeRect(x, yy, w, rowheight))) {
                         [self.delegate drawCell:idx+i forRow: it forColumn:col inRect:NSMakeRect(x, yy, w, rowheight-1) focused:focused];
@@ -409,7 +420,7 @@ static int grouptitleheight = 22;
                 }
 
                 if (x < dirtyRect.size.width) {
-                    [self.delegate drawCell:idx+i forRow:it forColumn:[self.delegate invalidColumn] inRect:NSMakeRect(x, yy, dirtyRect.size.width-x, rowheight-1) focused:focused];
+                    [self.delegate drawCell:idx+i forRow:it forColumn:(self.delegate).invalidColumn inRect:NSMakeRect(x, yy, dirtyRect.size.width-x, rowheight-1) focused:focused];
                 }
 
                 if (it == cursor_it) {
@@ -430,11 +441,11 @@ static int grouptitleheight = 22;
             DdbListviewRow_t next = [self.dataModel nextRow:it];
             [self.dataModel unrefRow:it];
             it = next;
-            if (it == [self.dataModel invalidRow]) {
+            if (it == (self.dataModel).invalidRow) {
                 break; // sanity check, in case groups were not rebuilt yet
             }
         }
-        if (it != [self.dataModel invalidRow]) {
+        if (it != (self.dataModel).invalidRow) {
             [self.dataModel unrefRow:it];
         }
 
@@ -455,7 +466,7 @@ static int grouptitleheight = 22;
 //    }
 //        [self drawGroupTitle:pin_grp grp_y:pinnedGrpPos title_height:title_height];
 
-    if (cursor_it != [self.dataModel invalidRow]) {
+    if (cursor_it != (self.dataModel).invalidRow) {
         [self.dataModel unrefRow:cursor_it];
     }
 }
@@ -470,12 +481,12 @@ static int grouptitleheight = 22;
     [self drawListView:dirtyRect];
 
     // draw rows below the real list
-    if ([self fullheight] < dirtyRect.origin.y + dirtyRect.size.height) {
-        int y = [self fullheight];
-        int ii = [self.dataModel rowCount]+1;
+    if (_contentSize.height < dirtyRect.origin.y + dirtyRect.size.height) {
+        int y = _contentSize.height;
+        int ii = (self.dataModel).rowCount+1;
         while (y < dirtyRect.origin.y + dirtyRect.size.height) {
             if (y + rowheight >= dirtyRect.origin.y) {
-                NSColor *clr = [NSColor.controlAlternatingRowBackgroundColors objectAtIndex:ii % 2];
+                NSColor *clr = (NSColor.controlAlternatingRowBackgroundColors)[ii % 2];
                 [clr set];
                 [NSBezierPath fillRect:NSMakeRect(dirtyRect.origin.x, y, dirtyRect.size.width, rowheight)];
             }
@@ -526,14 +537,14 @@ static int grouptitleheight = 22;
 
     [self groupCheck];
 
-    if (![self.dataModel rowCount]) {
+    if (!(self.dataModel).rowCount) {
         return;
     }
 
     PlaylistGroup *grp;
     int grp_index;
     int sel;
-    NSPoint convPt = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSPoint convPt = [self convertPoint:event.locationInWindow fromView:nil];
     self.lastpos = convPt;
 
     if (-1 == [self pickPoint:convPt.y group:&grp groupIndex:&grp_index index:&sel]) {
@@ -541,7 +552,7 @@ static int grouptitleheight = 22;
         return;
     }
 
-    int cursor = [self.dataModel cursor];
+    int cursor = (self.dataModel).cursor;
 
     if (event.clickCount == 2 && event.buttonNumber == 0) {
         if (sel != -1 && cursor != -1) {
@@ -558,7 +569,7 @@ static int grouptitleheight = 22;
             [self drawRow:sel];
             [self.dataModel unrefRow:it];
         }
-        self.shift_sel_anchor = [self.dataModel cursor];
+        self.shift_sel_anchor = (self.dataModel).cursor;
     }
 
     // single selection
@@ -569,7 +580,7 @@ static int grouptitleheight = 22;
         // toggle selection
         if (sel != -1) {
             DdbListviewRow_t it = [self.dataModel rowForIndex:sel];
-            if (it != [self.dataModel invalidRow]) {
+            if (it != (self.dataModel).invalidRow) {
                 [self.dataModel selectRow:it withState:![self.dataModel rowSelected:it]];
                 [self drawRow:sel];
                 [self.delegate selectionChanged:it];
@@ -593,7 +604,7 @@ static int grouptitleheight = 22;
         int start = MIN (prev, sel_cursor);
         int end = MAX (prev, sel_cursor);
         int idx = 0;
-        for (DdbListviewRow_t it = [self.dataModel firstRow]; it != [self.dataModel invalidRow]; idx++) {
+        for (DdbListviewRow_t it = (self.dataModel).firstRow; it != (self.dataModel).invalidRow; idx++) {
             if (idx >= start && idx <= end) {
                 if (![self.dataModel rowSelected:it]) {
                     [self.dataModel selectRow:it withState:YES];
@@ -613,7 +624,7 @@ static int grouptitleheight = 22;
             it = next;
         }
     }
-    cursor = [self.dataModel cursor];
+    cursor = (self.dataModel).cursor;
     if (cursor != -1 && sel == -1) {
         [self drawRow:cursor];
     }
@@ -629,16 +640,16 @@ static int grouptitleheight = 22;
         PlaylistGroup *grp;
         int grp_index;
         int sel;
-        NSPoint convPt = [self convertPoint:[event locationInWindow] fromView:nil];
+        NSPoint convPt = [self convertPoint:event.locationInWindow fromView:nil];
         if (![self pickPoint:convPt.y group:&grp groupIndex:&grp_index index:&sel]) {
             [self selectSingle:sel];
             self.needsDisplay = YES;
         }
         else {
             self.dataModel.cursor = -1;
-            DdbListviewRow_t it = [self.dataModel firstRow];
+            DdbListviewRow_t it = (self.dataModel).firstRow;
             int idx = 0;
-            while (it != [self.dataModel invalidRow]) {
+            while (it != (self.dataModel).invalidRow) {
                 if ([self.dataModel rowSelected:it]) {
                     [self.dataModel selectRow:it withState:NO];
                     [self drawRow:idx];
@@ -660,10 +671,6 @@ static int grouptitleheight = 22;
 
 - (void)mouseDragged:(NSEvent *)event
 {
-    NSPoint dragLocation;
-    dragLocation=[self convertPoint:[event locationInWindow]
-                           fromView:nil];
-
     [self listMouseDragged:event];
 
     // support automatic scrolling during a drag
@@ -674,7 +681,7 @@ static int grouptitleheight = 22;
 }
 
 - (void)listMouseDragged:(NSEvent *)event {
-    NSPoint pt = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSPoint pt = [self convertPoint:event.locationInWindow fromView:nil];
     if (_dragwait) {
         if (fabs (_lastpos.x - pt.x) > 3 || fabs (_lastpos.y - pt.y) > 3) {
             // begin dnd
@@ -687,16 +694,16 @@ static int grouptitleheight = 22;
             ddb_playlist_t *plt = deadbeef->plt_get_curr ();
             PlaylistLocalDragDropHolder *data = [[PlaylistLocalDragDropHolder alloc] initWithSelectedItemsOfPlaylist:plt];
             deadbeef->plt_unref (plt);
-            [pboard declareTypes:[NSArray arrayWithObject:ddbPlaylistItemsUTIType]  owner:self];
+            [pboard declareTypes:@[ddbPlaylistItemsUTIType]  owner:self];
             [pboard clearContents];
-            if (![pboard writeObjects:[NSArray arrayWithObject:data]])
+            if (![pboard writeObjects:@[data]])
                 NSLog(@"Unable to write to pasteboard.");
 
             NSImage *img = [NSImage imageNamed:NSImageNameMultipleDocuments];
 
             NSPoint dpt = pt;
-            dpt.x -= [img size].width/2;
-            dpt.y += [img size].height;
+            dpt.x -= img.size.width/2;
+            dpt.y += img.size.height;
 
             [self dragImage:img at:dpt offset:NSMakeSize(0.0, 0.0) event:event pasteboard:pboard source:self slideBack:YES];
             _dragwait = NO;
@@ -713,7 +720,7 @@ static int grouptitleheight = 22;
                 sel = 0;
             }
             else {
-                sel = [self.dataModel rowCount] - 1;
+                sel = (self.dataModel).rowCount - 1;
             }
         }
         else if (sel == -1) {
@@ -746,7 +753,7 @@ static int grouptitleheight = 22;
                 }
             }
         }
-        int prev = [self.dataModel cursor];
+        int prev = (self.dataModel).cursor;
         if (sel != -1) {
             self.dataModel.cursor = sel;
         }
@@ -800,7 +807,7 @@ static int grouptitleheight = 22;
                 [self.dataModel unrefRow:it];
                 it = next;
             }
-            if (it != [self.dataModel invalidRow]) {
+            if (it != (self.dataModel).invalidRow) {
                 [self.dataModel unrefRow:it];
             }
             if (nchanged >= NUM_CHANGED_ROWS_BEFORE_FULL_REDRAW) {
@@ -813,13 +820,13 @@ static int grouptitleheight = 22;
         if (sel != -1 && sel != prev) {
             if (prev != -1) {
                 DdbListviewRow_t it = [self.dataModel rowForIndex:prev];
-                if (it != [self.dataModel invalidRow]) {
+                if (it != (self.dataModel).invalidRow) {
                     [self drawRow:prev];
                     [self.dataModel unrefRow:it];
                 }
             }
             DdbListviewRow_t it = [self.dataModel rowForIndex:sel];
-            if (it != [self.dataModel invalidRow]) {
+            if (it != (self.dataModel).invalidRow) {
                 [self drawRow:sel];
                 [self.dataModel unrefRow:it];
             }
@@ -835,19 +842,19 @@ static int grouptitleheight = 22;
     // clicked album art column?
     int album_art_column = 0; // FIXME
 
-    NSScrollView *sv = [self enclosingScrollView];
-    NSRect vis = [sv documentVisibleRect];
+    NSScrollView *sv = self.enclosingScrollView;
+    NSRect vis = sv.documentVisibleRect;
 
     if (sel == -1 && !album_art_column && (!grp || (pt.y > _grouptitle_height && grp_index >= grp->num_items))) {
         // clicked empty space, deselect everything
         [self deselectAll];
     }
-    else if ((sel != -1 && grp && grp_index == -1) || (pt.y <= _grouptitle_height + vis.origin.y && [self.delegate pinGroups]) || album_art_column) {
+    else if ((sel != -1 && grp && grp_index == -1) || (pt.y <= _grouptitle_height + vis.origin.y && (self.delegate).pinGroups) || album_art_column) {
         // clicked group title, select group
         DdbListviewRow_t it;
         int idx = 0;
         int cnt = -1;
-        for (it = [self.dataModel firstRow]; it != [self.dataModel invalidRow]; idx++) {
+        for (it = (self.dataModel).firstRow; it != (self.dataModel).invalidRow; idx++) {
             if (it == grp->head) {
                 cnt = grp->num_items;
                 cnt = grp->num_items;
@@ -875,8 +882,8 @@ static int grouptitleheight = 22;
     else {
         // clicked specific item - select, or start drag-n-drop
         DdbListviewRow_t it = [self.dataModel rowForIndex:sel];
-        if (it == [self.dataModel invalidRow] || ![self.dataModel rowSelected:it]
-            || (![self.delegate hasDND] && button == 1)) // HACK: don't reset selection by right click in search window
+        if (it == (self.dataModel).invalidRow || ![self.dataModel rowSelected:it]
+            || (!(self.delegate).hasDND && button == 1)) // HACK: don't reset selection by right click in search window
         {
             // reset selection, and set it to single item
             [self selectSingle:sel];
@@ -884,7 +891,7 @@ static int grouptitleheight = 22;
             if (dnd) {
                 _areaselect = 1;
                 _areaselect_y = pt.y;
-                _shift_sel_anchor = [self.dataModel cursor];
+                _shift_sel_anchor = (self.dataModel).cursor;
             }
         }
         else if (dnd) {
@@ -897,7 +904,7 @@ static int grouptitleheight = 22;
 - (void)selectSingle:(int)sel {
 
     DdbListviewRow_t sel_it = [self.dataModel rowForIndex:sel];
-    if (sel_it == [self.dataModel invalidRow]) {
+    if (sel_it == (self.dataModel).invalidRow) {
         return;
     }
 
@@ -905,7 +912,7 @@ static int grouptitleheight = 22;
     [self.dataModel selectRow:sel_it withState:YES];
     [self.dataModel unrefRow:sel_it];
 
-    [self.delegate selectionChanged:[self.dataModel invalidRow]];
+    [self.delegate selectionChanged:(self.dataModel).invalidRow];
 
     _area_selection_start = sel;
     _area_selection_end = sel;
@@ -977,7 +984,7 @@ static int grouptitleheight = 22;
     if (eventCharacters.length == 0 )
         return;            // reject dead keys
     if (eventCharacters.length == 1 ) {
-        int prev = [self.dataModel cursor];
+        int prev = (self.dataModel).cursor;
         int cursor = prev;
 
         NSScrollView *sv = self.enclosingScrollView;
@@ -1043,7 +1050,7 @@ static int grouptitleheight = 22;
                 int nchanged = 0;
                 int idx = 0;
                 DdbListviewRow_t it;
-                for (it = [self.dataModel firstRow]; it != [self.dataModel invalidRow]; idx++) {
+                for (it = (self.dataModel).firstRow; it != (self.dataModel).invalidRow; idx++) {
                     if (idx >= start && idx <= end) {
                         [self.dataModel selectRow:it withState:YES];
                         if (nchanged < NUM_CHANGED_ROWS_BEFORE_FULL_REDRAW) {
@@ -1063,7 +1070,7 @@ static int grouptitleheight = 22;
                     it = next;
                 }
                 if (nchanged >= NUM_CHANGED_ROWS_BEFORE_FULL_REDRAW) {
-                    [self.delegate selectionChanged:[self.dataModel invalidRow]];
+                    [self.delegate selectionChanged:(self.dataModel).invalidRow];
                 }
             }
         }
@@ -1077,7 +1084,7 @@ static int grouptitleheight = 22;
 - (void)deselectAll {
     DdbListviewRow_t it;
     int idx = 0;
-    for (it = [self.dataModel firstRow]; it != [self.dataModel invalidRow]; idx++) {
+    for (it = (self.dataModel).firstRow; it != (self.dataModel).invalidRow; idx++) {
         if ([self.dataModel rowSelected:it]) {
             [self.dataModel selectRow:it withState:NO];
             [self drawRow:idx];
@@ -1120,10 +1127,10 @@ static int grouptitleheight = 22;
     self.dataModel.cursor = cursor;
 
     DdbListviewRow_t row = [self.dataModel rowForIndex:cursor];
-    if (row != [self.dataModel invalidRow] && ![self.dataModel rowSelected:row]) {
+    if (row != (self.dataModel).invalidRow && ![self.dataModel rowSelected:row]) {
         [self selectSingle:cursor];
     }
-    if (row != [self.dataModel invalidRow]) {
+    if (row != (self.dataModel).invalidRow) {
         [self.dataModel unrefRow:row];
     }
 
@@ -1156,31 +1163,31 @@ static int grouptitleheight = 22;
 }
 
 - (void)initGroups {
-    self.groups_build_idx = [self.dataModel modificationIdx];
+    self.groups_build_idx = (self.dataModel).modificationIdx;
 
     [self freeGroups];
 
-    _fullwidth = 0;
-    _fullheight = 0;
+    CGSize contentSize = CGSizeZero;
+
     PlaylistGroup *grp = NULL;
 
     NSString *str;
     NSString *curr;
 
     int min_height= 0;
-    for (DdbListviewCol_t c = [self.delegate firstColumn]; c != [self.delegate invalidColumn]; c = [self.delegate nextColumn:c]) {
+    for (DdbListviewCol_t c = (self.delegate).firstColumn; c != (self.delegate).invalidColumn; c = [self.delegate nextColumn:c]) {
         if ([self.delegate columnMinHeight:c] && [self.delegate columnWidth:c] > min_height) {
             min_height = [self.delegate columnGroupHeight:c];
         }
-        _fullwidth += [self.delegate columnWidth:c];
+        contentSize.width += [self.delegate columnWidth:c];
     }
 
     _grouptitle_height = grouptitleheight;
 
     deadbeef->pl_lock ();
     int idx = 0;
-    DdbListviewRow_t it = [self.dataModel firstRow];
-    while (it != [self.dataModel invalidRow]) {
+    DdbListviewRow_t it = (self.dataModel).firstRow;
+    while (it != (self.dataModel).invalidRow) {
         curr = [self.delegate rowGroupStr:it];
 
         if (!curr) {
@@ -1194,7 +1201,7 @@ static int grouptitleheight = 22;
                 if (grp->height - _grouptitle_height < min_height) {
                     grp->height = min_height + _grouptitle_height;
                 }
-                _fullheight += grp->height;
+                contentSize.height += grp->height;
             }
 
             [self.groups addObject:newgroup];
@@ -1215,20 +1222,21 @@ static int grouptitleheight = 22;
         idx++;
     }
     deadbeef->pl_unlock ();
-    if (it != [self.dataModel invalidRow]) {
+    if (it != (self.dataModel).invalidRow) {
         [self.dataModel unrefRow:it];
     }
     if (grp) {
         if (grp->height - _grouptitle_height < min_height) {
             grp->height = min_height + _grouptitle_height;
         }
-        _fullheight += grp->height;
+        contentSize.height += grp->height;
     }
-    [self updateContentFrame];
+
+    [self updateContentFrame:contentSize];
 }
 
 - (void)groupCheck {
-    if ([self.dataModel modificationIdx] != self.groups_build_idx) {
+    if ((self.dataModel).modificationIdx != self.groups_build_idx) {
         [self initGroups];
     }
 }
@@ -1247,7 +1255,7 @@ static int grouptitleheight = 22;
     rect->origin.y = 0;
 
     int totalwidth = 0;
-    for (DdbListviewCol_t col = [self.delegate firstColumn]; col != [self.delegate invalidColumn]; col = [self.delegate nextColumn:col]) {
+    for (DdbListviewCol_t col = (self.delegate).firstColumn; col != (self.delegate).invalidColumn; col = [self.delegate nextColumn:col]) {
         totalwidth += [self.delegate columnWidth:col];
     }
 
@@ -1258,7 +1266,7 @@ static int grouptitleheight = 22;
             int idx_in_group = row - idx;
             *pgrp = grp;
             *even = (idx2 + 1 + idx_in_group) & 1;
-            *cursor = (row == [self.dataModel cursor]) ? 1 : 0;
+            *cursor = (row == (self.dataModel).cursor) ? 1 : 0;
             *group_y = idx_in_group * rowheight;
             rect->origin.x = 0;
             rect->origin.y += _grouptitle_height + (row - idx) * rowheight;
@@ -1293,7 +1301,7 @@ static int grouptitleheight = 22;
     }
 
     NSScrollView *sv = self.enclosingScrollView;
-    NSRect vis = [sv documentVisibleRect];
+    NSRect vis = sv.documentVisibleRect;
     rect.origin.x = vis.origin.x;
     rect.size.width = vis.size.width;
 
@@ -1310,7 +1318,7 @@ static int grouptitleheight = 22;
     }
 
     NSScrollView *sv = self.enclosingScrollView;
-    NSRect vis = [sv documentVisibleRect];
+    NSRect vis = sv.documentVisibleRect;
     NSRect rect = NSMakeRect(vis.origin.x, y, vis.size.width, group->height);
     self.needsDisplayInRect = rect;
 }
@@ -1319,15 +1327,15 @@ static int grouptitleheight = 22;
 
 // returns YES if scroll has occured as result of changing the cursor position
 - (BOOL)setScrollForPos:(int)pos {
-    NSScrollView *sv = [self enclosingScrollView];
-    NSRect vis = [sv documentVisibleRect];
+    NSScrollView *sv = self.enclosingScrollView;
+    NSRect vis = sv.documentVisibleRect;
     CGFloat scrollpos = vis.origin.y;
     CGFloat newscroll = scrollpos;
 
-    if (![self.delegate pinGroups] && pos < scrollpos) {
+    if (!(self.delegate).pinGroups && pos < scrollpos) {
         newscroll = pos;
     }
-    else if ([self.delegate pinGroups] && pos < scrollpos + _grouptitle_height) {
+    else if ((self.delegate).pinGroups && pos < scrollpos + _grouptitle_height) {
         newscroll = pos - _grouptitle_height;
     }
     else if (pos + rowheight >= scrollpos + vis.size.height) {
@@ -1360,8 +1368,8 @@ static int grouptitleheight = 22;
 
 - (void)scrollToRowWithIndex:(int)idx {
     int pos = [self rowPosForIndex:idx];
-    NSScrollView *sv = [self enclosingScrollView];
-    NSRect vis = [sv documentVisibleRect];
+    NSScrollView *sv = self.enclosingScrollView;
+    NSRect vis = sv.documentVisibleRect;
 
     if (pos < vis.origin.y || pos + rowheight >= vis.origin.y + vis.size.height) {
         [self scrollPoint:NSMakePoint(vis.origin.x, pos - vis.size.height/2)];
@@ -1369,31 +1377,39 @@ static int grouptitleheight = 22;
 }
 
 - (void)scrollVerticalPosition:(CGFloat)verticalPosition {
-    NSScrollView *sv = [self enclosingScrollView];
-    NSRect vis = [sv documentVisibleRect];
+    NSScrollView *sv = self.enclosingScrollView;
+    NSRect vis = sv.documentVisibleRect;
     [self scrollPoint:NSMakePoint(vis.origin.x, verticalPosition)];
 }
 
-- (void)updateContentFrame {
-    _fullwidth = 0;
-    for (DdbListviewCol_t c = [self.delegate firstColumn]; c != [self.delegate invalidColumn]; c = [self.delegate nextColumn:c]) {
-        _fullwidth += [self.delegate columnWidth:c];
-    }
-
+- (void)updateContentFrame:(CGSize)size {
     if (!self.widthConstraint) {
-        self.widthConstraint = [self.widthAnchor constraintGreaterThanOrEqualToConstant:_fullwidth];
-        self.heightConstraint = [self.heightAnchor constraintGreaterThanOrEqualToConstant:_fullheight];
+        self.widthConstraint = [self.widthAnchor constraintGreaterThanOrEqualToConstant:size.width];
+        self.heightConstraint = [self.heightAnchor constraintGreaterThanOrEqualToConstant:size.height];
         self.widthConstraint.priority = NSLayoutPriorityDefaultHigh;
         self.heightConstraint.priority = NSLayoutPriorityDefaultHigh;
         self.widthConstraint.active = YES;
         self.heightConstraint.active = YES;
     }
     else {
-        self.widthConstraint.constant = _fullwidth;
-        self.heightConstraint.constant = _fullheight;
+        if (_contentSize.width != size.width) {
+            self.widthConstraint.constant = size.width;
+        }
+        if (_contentSize.height != size.height) {
+            self.heightConstraint.constant = size.height;
+        }
     }
 
+    _contentSize = size;
     [self updatePinnedGroup];
+}
+
+- (void)columnsDidChange {
+    CGSize contentSize = _contentSize;
+    contentSize.width = 0;
+    for (DdbListviewCol_t c = (self.delegate).firstColumn; c != (self.delegate).invalidColumn; c = [self.delegate nextColumn:c]) {
+        contentSize.width += [self.delegate columnWidth:c];
+    }
 }
 
 - (NSInteger)getScrollFocusGroupAndOffset:(CGFloat *)offset {
@@ -1405,14 +1421,12 @@ static int grouptitleheight = 22;
     NSRect rect = self.enclosingScrollView.documentVisibleRect;
     CGFloat clip_y = rect.origin.y;
 
-    int idx = 0;
     int grp_y = 0;
     NSUInteger groupIndex = 0;
 
     while (groupIndex < self.groups.count && grp_y < clip_y) {
         PlaylistGroup *grp = self.groups[groupIndex];
         grp_y += grp->height;
-        idx += grp->num_items;
         groupIndex++;
     }
 
@@ -1454,6 +1468,10 @@ static int grouptitleheight = 22;
         group->cachedImage = nil;
     }
     self.needsDisplay = YES;
+}
+
+- (void)configChanged {
+    // TODO: react to events which require to fully rebuild the playlist view data
 }
 
 @end

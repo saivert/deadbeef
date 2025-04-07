@@ -1,6 +1,6 @@
 /*
     VTX plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko
+    Copyright (C) 2009-2014 Oleksiy Yakovenko
 
     Based on libayemu (C) 2005-2008 Alexander Sashnov
 
@@ -25,8 +25,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 #include "ayemu.h"
 
 #define min(x,y) ((x)<(y)?(x):(y))
@@ -55,7 +55,7 @@ typedef struct {
 
 static DB_fileinfo_t *
 vtx_open (uint32_t hints) {
-    vtx_info_t *info = calloc (sizeof (vtx_info_t), 1);
+    vtx_info_t *info = calloc (1, sizeof (vtx_info_t));
     return &info->info;
 }
 
@@ -322,7 +322,7 @@ static DB_decoder_t plugin = {
     .plugin.descr = "AY8910/12 chip emulator and vtx file player",
     .plugin.copyright = 
         "VTX plugin for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2014 Alexey Yakovenko\n"
+        "Copyright (C) 2009-2014 Oleksiy Yakovenko\n"
         "\n"
         "Based on libayemu (C) 2005-2008 Alexander Sashnov\n"
         "\n"

@@ -2,23 +2,25 @@
 //  AlbumArtWidget.m
 //  deadbeef
 //
-//  Created by Alexey Yakovenko on 21/03/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 21/03/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "AlbumArtImageView.h"
 #import "AlbumArtWidget.h"
 #import "CoverManager.h"
-#import "deadbeef.h"
-#import "artwork.h"
+#include <deadbeef/deadbeef.h>
+#include "artwork.h"
 
 extern DB_functions_t *deadbeef;
 
-@interface AlbumArtWidget()
+@interface AlbumArtWidget() <CoverManagerListener>
 
 @property (nonatomic) NSImageView *imageView;
 @property (nonatomic) ddb_playItem_t *track;
 @property (nonatomic) ddb_artwork_plugin_t *artwork_plugin;
+
+@property (nonatomic) int64_t sourceId;
 
 @property (nonatomic) dispatch_block_t throttleBlock;
 @property (nonatomic) NSInteger requestIndex;
@@ -43,6 +45,7 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
 
 - (void)dealloc
 {
+    [CoverManager.shared removeListener:self];
     if (_artwork_plugin != NULL) {
         _artwork_plugin->remove_listener (artwork_listener, (__bridge void *)self);
         _artwork_plugin = NULL;
@@ -66,6 +69,8 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
     _artwork_plugin = (ddb_artwork_plugin_t *)deadbeef->plug_get_for_id ("artwork2");
     _artwork_plugin->add_listener (artwork_listener, (__bridge void *)self);
 
+    self.sourceId = _artwork_plugin->allocate_source_id();
+
     // create view
     self.imageView = [AlbumArtImageView new];
     self.imageView.imageAlignment = NSImageAlignCenter;
@@ -82,6 +87,8 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
     [self.imageView.bottomAnchor constraintEqualToAnchor:self.topLevelView.bottomAnchor].active = YES;
 
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(frameDidChange:) name:NSViewFrameDidChangeNotification object:self.imageView];
+
+    [CoverManager.shared addListener:self];
 
     return self;
 }
@@ -122,17 +129,19 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
             if (it) {
                 self.track = it;
 
-                CGFloat albumArtSpaceWidth = self.imageView.frame.size.width;
+                self.artwork_plugin->cancel_queries_with_source_id(self.sourceId);
+
+                CGSize availableSize = [self.view convertSizeToBacking:self.imageView.frame.size];
 
                 NSImageView *imageView = self.imageView;
                 NSInteger currentIndex = self.requestIndex++;
-                NSImage *image = [CoverManager.defaultCoverManager coverForTrack:it completionBlock:^(NSImage *img) {
+                NSImage *image = [CoverManager.shared coverForTrack:it sourceId:self.sourceId completionBlock:^(NSImage *img) {
                     if (currentIndex != self.requestIndex-1) {
                         return;
                     }
                     if (img != nil) {
-                        NSSize desiredSize = [CoverManager.defaultCoverManager artworkDesiredSizeForImageSize:img.size albumArtSpaceWidth:albumArtSpaceWidth];
-                        imageView.image = [CoverManager.defaultCoverManager createCachedImage:img size:desiredSize];
+                        NSSize desiredSize = [CoverManager.shared desiredSizeForImageSize:img.size availableSize:availableSize];
+                        imageView.image = [CoverManager.shared createScaledImage:img newSize:desiredSize];
                     }
                     else {
                         imageView.image = nil;
@@ -140,8 +149,8 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
                 }];
 
                 if (image != nil) {
-                    NSSize desiredSize = [CoverManager.defaultCoverManager artworkDesiredSizeForImageSize:image.size albumArtSpaceWidth:albumArtSpaceWidth];
-                    imageView.image = [CoverManager.defaultCoverManager createCachedImage:image size:desiredSize];
+                    NSSize desiredSize = [CoverManager.shared desiredSizeForImageSize:image.size availableSize:availableSize];
+                    imageView.image = [CoverManager.shared createScaledImage:image newSize:desiredSize];
                 }
             }
 
@@ -160,6 +169,12 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
     }
         break;
     }
+}
+
+#pragma mark - CoverManagerListener
+
+- (void)coverManagerDidReset {
+    [self throttledUpdate];
 }
 
 @end

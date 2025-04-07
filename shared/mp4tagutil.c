@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2017 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2017 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include "mp4tagutil.h"
 #include <mp4p/mp4p.h>
-#include "../strdupa.h"
+#include <deadbeef/strdupa.h>
 
 #ifndef __linux__
 #define off64_t off_t
@@ -392,9 +392,7 @@ mp4tagutil_modify_meta (mp4p_atom_t *mp4file, DB_playItem_t *it) {
 
     // calculate padding size, and find the end of padding (eop)
     mp4p_atom_t *eop = moov->next;
-    size_t padding_size = 0;
     for (mp4p_atom_t *curr = padding; curr && !mp4p_atom_type_compare(curr, "free"); curr = curr->next) {
-        padding_size += curr->size;
         eop = curr->next;
     }
 
@@ -649,9 +647,9 @@ _file_seek (mp4p_file_callbacks_t *stream, off_t offset, int whence) {
     return deadbeef->fseek ((DB_FILE *)stream->ptrhandle, offset, whence);
 }
 
-static int64_t
+static off_t
 _file_tell (mp4p_file_callbacks_t *stream) {
-    return deadbeef->ftell ((DB_FILE *)stream->ptrhandle);
+    return (off_t)deadbeef->ftell ((DB_FILE *)stream->ptrhandle);
 }
 
 void

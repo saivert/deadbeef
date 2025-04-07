@@ -1,6 +1,6 @@
 /*
     OSS output plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko and contributors
+    Copyright (C) 2009-2014 Oleksiy Yakovenko and contributors
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,15 +25,11 @@
 #endif
 #include <stdio.h>
 #include <string.h>
-#if HAVE_SYS_SOUNDCARD_H
 #include <sys/soundcard.h>
-#else
-#include <soundcard.h>
-#endif
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <stdlib.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 //#define trace(...) { fprintf(stderr, __VA_ARGS__); }
 #define trace(fmt,...)
@@ -377,7 +373,7 @@ static DB_output_t plugin = {
     .plugin.descr = "plays sound via OSS API",
     .plugin.copyright = 
         "OSS output plugin for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2014 Alexey Yakovenko and contributors\n"
+        "Copyright (C) 2009-2014 Oleksiy Yakovenko and contributors\n"
         "\n"
         "This program is free software; you can redistribute it and/or\n"
         "modify it under the terms of the GNU General Public License\n"

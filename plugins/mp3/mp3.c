@@ -1,6 +1,6 @@
 /*
     MPEG decoder plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko
+    Copyright (C) 2009-2014 Oleksiy Yakovenko
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -28,8 +28,8 @@
 #include <limits.h>
 #include <unistd.h>
 #include <sys/time.h>
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 #include "mp3.h"
 #ifdef USE_LIBMAD
 #include "mp3_mad.h"
@@ -38,7 +38,7 @@
 #include "mp3_mpg123.h"
 #endif
 
-#define trace(...) { deadbeef->log_detailed (&plugin.plugin, 0, __VA_ARGS__); }
+#define trace(...) { deadbeef->log_detailed (&plugin.decoder.plugin, 0, __VA_ARGS__); }
 
 //#define WRITE_DUMP 1
 
@@ -54,11 +54,14 @@ FILE *out;
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
 
-static DB_decoder_t plugin;
+static ddb_decoder2_t plugin;
 DB_functions_t *deadbeef;
 
+static int
+cmp3_seek_sample64 (DB_fileinfo_t *_info, int64_t sample);
+
 int
-cmp3_seek_stream (DB_fileinfo_t *_info, int sample) {
+cmp3_seek_stream (DB_fileinfo_t *_info, int64_t sample) {
     mp3_info_t *info = (mp3_info_t *)_info;
 
 #if WRITE_DUMP
@@ -89,7 +92,7 @@ cmp3_seek_stream (DB_fileinfo_t *_info, int sample) {
 
 static DB_fileinfo_t *
 cmp3_open (uint32_t hints) {
-    mp3_info_t *info = calloc (sizeof (mp3_info_t), 1);
+    mp3_info_t *info = calloc (1, sizeof (mp3_info_t));
 
     if (hints & DDB_DECODER_HINT_RAW_SIGNAL) {
         info->raw_signal = 1;
@@ -113,7 +116,7 @@ cmp3_set_extra_properties (DB_playItem_t *it, mp3info_t *mp3info, int fake) {
     char s[100];
     int64_t size = mp3info->fsize;
     if (size >= 0) {
-        snprintf (s, sizeof (s), "%lld", size);
+        snprintf (s, sizeof (s), "%lld", (long long)size);
         deadbeef->pl_replace_meta (it, ":FILE_SIZE", s);
     }
     else {
@@ -213,6 +216,24 @@ cmp3_set_extra_properties (DB_playItem_t *it, mp3info_t *mp3info, int fake) {
 }
 
 static int
+_mp3_parse_and_validate (mp3info_t *info, uint32_t flags, DB_FILE *fp, int64_t fsize, int startoffs, int endoffs, int64_t seek_to_sample) {
+    int res = mp3_parse_file(info, flags, fp, fsize, startoffs, endoffs, seek_to_sample);
+    if (res < 0) {
+        return res;
+    }
+
+    if (info->valid_packets == 0) {
+        return -1;
+    }
+
+    if (info->ref_packet.samplerate == 0 || info->ref_packet.nchannels == 0) {
+        return -1;
+    }
+
+    return res;
+}
+
+static int
 cmp3_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     mp3_info_t *info = (mp3_info_t *)_info;
 
@@ -237,7 +258,7 @@ cmp3_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
 #endif
 #endif
 
-    _info->plugin = &plugin;
+    _info->plugin = &plugin.decoder;
     deadbeef->pl_lock ();
     const char *uri = strdupa (deadbeef->pl_find_meta (it, ":URI"));
     deadbeef->pl_unlock ();
@@ -255,7 +276,7 @@ cmp3_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
         if (info->startoffs > 0) {
             trace ("mp3: skipping %d(%xH) bytes of junk\n", info->startoffs, info->endoffs);
         }
-        int res = mp3_parse_file(&info->mp3info, info->mp3flags, info->file, deadbeef->fgetlength(info->file), info->startoffs, info->endoffs, -1);
+        int res = _mp3_parse_and_validate(&info->mp3info, info->mp3flags, info->file, deadbeef->fgetlength(info->file), info->startoffs, info->endoffs, -1);
         if (res < 0) {
             trace ("mp3: cmp3_init: initial mp3_parse_file failed\n");
             return -1;
@@ -283,15 +304,9 @@ cmp3_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     else {
         info->startoffs = (uint32_t)deadbeef->junk_get_leading_size(info->file);
         deadbeef->pl_add_meta (it, "title", NULL);
-        int res = mp3_parse_file(&info->mp3info, info->mp3flags, info->file, deadbeef->fgetlength(info->file), info->startoffs, 0, -1);
+        int res = _mp3_parse_and_validate(&info->mp3info, info->mp3flags, info->file, deadbeef->fgetlength(info->file), info->startoffs, 0, -1);
         if (res < 0) {
             trace ("mp3: cmp3_init: initial mp3_parse_file failed\n");
-            return -1;
-        }
-
-        // FIXME: this case should cause res=-1 from mp3_parse_file
-        if (info->mp3info.ref_packet.samplerate == 0) {
-            trace ("bad mpeg file: %s\n", deadbeef->pl_find_meta (it, ":URI"));
             return -1;
         }
 
@@ -335,7 +350,7 @@ cmp3_init (DB_fileinfo_t *_info, DB_playItem_t *it) {
     }
 
     info->dec->init (info);
-    plugin.seek_sample (_info, 0);
+    cmp3_seek_sample64 (_info, 0);
     return 0;
 }
 
@@ -500,7 +515,7 @@ cmp3_read (DB_fileinfo_t *_info, char *bytes, int size) {
 }
 
 static int
-cmp3_seek_sample (DB_fileinfo_t *_info, int sample) {
+cmp3_seek_sample64 (DB_fileinfo_t *_info, int64_t sample) {
     mp3_info_t *info = (mp3_info_t *)_info;
     if (!info->file) {
         return -1;
@@ -508,7 +523,7 @@ cmp3_seek_sample (DB_fileinfo_t *_info, int sample) {
 
     sample += info->startsample;
     if (sample > info->endsample) {
-        sample = (int)info->endsample;
+        sample = info->endsample;
     }
 
 
@@ -528,10 +543,10 @@ cmp3_seek_sample (DB_fileinfo_t *_info, int sample) {
                 return -1;
             }
 
-            info->skipsamples = (int)(sample - frm * info->mp3info.avg_samples_per_frame);
+            info->skipsamples = sample - frm * info->mp3info.avg_samples_per_frame;
 
             info->currentsample = sample;
-            _info->readpos = (float)(info->currentsample - info->startsample) / info->mp3info.ref_packet.samplerate;
+            _info->readpos = (float)((double)(info->currentsample - info->startsample) / info->mp3info.ref_packet.samplerate);
 
             info->dec->free (info);
             info->decoded_samples_remaining = 0;
@@ -569,10 +584,15 @@ cmp3_seek_sample (DB_fileinfo_t *_info, int sample) {
 }
 
 static int
+cmp3_seek_sample (DB_fileinfo_t *_info, int sample) {
+    return cmp3_seek_sample64(_info, sample);
+}
+
+static int
 cmp3_seek (DB_fileinfo_t *_info, float time) {
     mp3_info_t *info = (mp3_info_t *)_info;
-    int sample = time * info->mp3info.ref_packet.samplerate;
-    return cmp3_seek_sample (_info, sample);
+    int64_t sample = (double)time * (int64_t)info->mp3info.ref_packet.samplerate;
+    return cmp3_seek_sample64 (_info, sample);
 }
 
 static DB_playItem_t *
@@ -584,7 +604,7 @@ cmp3_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
         return NULL;
     }
     if (fp->vfs->is_streaming ()) {
-        DB_playItem_t *it = deadbeef->pl_item_alloc_init (fname, plugin.plugin.id);
+        DB_playItem_t *it = deadbeef->pl_item_alloc_init (fname, plugin.decoder.plugin.id);
         deadbeef->fclose (fp);
         deadbeef->pl_add_meta (it, "title", NULL);
         deadbeef->plt_set_item_duration (plt, it, -1);
@@ -605,7 +625,7 @@ cmp3_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
         mp3flags = MP3_PARSE_ESTIMATE_DURATION;
     }
 
-    int res = mp3_parse_file(&mp3info, mp3flags, fp, fsize, start, end, -1);
+    int res = _mp3_parse_and_validate(&mp3info, mp3flags, fp, fsize, start, end, -1);
 
     if (res < 0) {
         trace ("mp3: mp3_parse_file returned error\n");
@@ -613,7 +633,7 @@ cmp3_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
         return NULL;
     }
 
-    DB_playItem_t *it = deadbeef->pl_item_alloc_init (fname, plugin.plugin.id);
+    DB_playItem_t *it = deadbeef->pl_item_alloc_init (fname, plugin.decoder.plugin.id);
 
     deadbeef->rewind (fp);
     // reset tags
@@ -714,15 +734,16 @@ static const char settings_dlg[] =
 ;
 
 // define plugin interface
-static DB_decoder_t plugin = {
-    DDB_PLUGIN_SET_API_VERSION
-    .plugin.version_major = 1,
-    .plugin.version_minor = 0,
-    .plugin.type = DB_PLUGIN_DECODER,
-    .plugin.flags = DDB_PLUGIN_FLAG_REPLAYGAIN,
-    .plugin.id = "stdmpg",
-    .plugin.name = "MP3 player",
-    .plugin.descr = "MPEG v1/2 layer1/2/3 decoder\n\n"
+static ddb_decoder2_t plugin = {
+    .decoder.plugin.api_vmajor = DB_API_VERSION_MAJOR,
+    .decoder.plugin.api_vminor = DB_API_VERSION_MINOR,
+    .decoder.plugin.version_major = 1,
+    .decoder.plugin.version_minor = 0,
+    .decoder.plugin.type = DB_PLUGIN_DECODER,
+    .decoder.plugin.flags = DDB_PLUGIN_FLAG_REPLAYGAIN|DDB_PLUGIN_FLAG_IMPLEMENTS_DECODER2,
+    .decoder.plugin.id = "stdmpg",
+    .decoder.plugin.name = "MP3 player",
+    .decoder.plugin.descr = "MPEG v1/2 layer1/2/3 decoder\n\n"
 #if defined(USE_LIBMPG123) && defined(USE_LIBMAD)
     "Can use libmad and libmpg123 backends.\n"
     "Changing the backend will take effect when the next track starts.\n"
@@ -732,9 +753,9 @@ static DB_decoder_t plugin = {
     "Using libmpg123 backend.\n"
 #endif
     ,
-    .plugin.copyright = 
+    .decoder.plugin.copyright =
         "MPEG decoder plugin for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2014 Alexey Yakovenko\n"
+        "Copyright (C) 2009-2014 Oleksiy Yakovenko\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"
@@ -754,18 +775,19 @@ static DB_decoder_t plugin = {
         "\n"
         "3. This notice may not be removed or altered from any source distribution.\n"
     ,
-    .plugin.website = "http://deadbeef.sf.net",
-    .plugin.configdialog = settings_dlg,
-    .open = cmp3_open,
-    .init = cmp3_init,
-    .free = cmp3_free,
-    .read = cmp3_read,
-    .seek = cmp3_seek,
-    .seek_sample = cmp3_seek_sample,
-    .insert = cmp3_insert,
-    .read_metadata = cmp3_read_metadata,
-    .write_metadata = cmp3_write_metadata,
-    .exts = exts,
+    .decoder.plugin.website = "http://deadbeef.sf.net",
+    .decoder.plugin.configdialog = settings_dlg,
+    .decoder.open = cmp3_open,
+    .decoder.init = cmp3_init,
+    .decoder.free = cmp3_free,
+    .decoder.read = cmp3_read,
+    .decoder.seek = cmp3_seek,
+    .decoder.seek_sample = cmp3_seek_sample,
+    .decoder.insert = cmp3_insert,
+    .decoder.read_metadata = cmp3_read_metadata,
+    .decoder.write_metadata = cmp3_write_metadata,
+    .decoder.exts = exts,
+    .seek_sample64 = cmp3_seek_sample64,
 };
 
 DB_plugin_t *

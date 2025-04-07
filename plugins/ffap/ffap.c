@@ -1,6 +1,6 @@
 /*
     DeaDBeeF - The Ultimate Music Player
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>
     based on apedec from FFMpeg Copyright (c) 2007 Benjamin Zores <ben@geexbox.org>
     based upon libdemac from Dave Chapman.
 
@@ -37,8 +37,8 @@
 //#include <alloca.h>
 #include <assert.h>
 #include <math.h>
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 
 #ifdef TARGET_ANDROID
 int posix_memalign (void **memptr, size_t alignment, size_t size) {
@@ -670,7 +670,7 @@ ffap_free (DB_fileinfo_t *_info)
 
 static DB_fileinfo_t *
 ffap_open (uint32_t hints) {
-    ape_info_t *info = calloc (sizeof (ape_info_t), 1);
+    ape_info_t *info = calloc (1, sizeof (ape_info_t));
     return &info->info;
 }
 
@@ -1671,7 +1671,7 @@ ffap_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
     fp = NULL;
 
     char s[100];
-    snprintf (s, sizeof (s), "%lld", fsize);
+    snprintf (s, sizeof (s), "%lld", (long long)fsize);
     deadbeef->pl_add_meta (it, ":FILE_SIZE", s);
     snprintf (s, sizeof (s), "%d", ape_ctx.bps);
     deadbeef->pl_add_meta (it, ":BPS", s);
@@ -1877,7 +1877,7 @@ static DB_decoder_t plugin = {
     .plugin.name = "Monkey's Audio (APE) decoder",
     .plugin.descr = "APE player based on code from libavc and rockbox",
     .plugin.copyright = 
-        "Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "\n"
         "based on apedec from FFMpeg Copyright (c) 2007 Benjamin Zores <ben@geexbox.org>\n"
         "based upon libdemac from Dave Chapman.\n"

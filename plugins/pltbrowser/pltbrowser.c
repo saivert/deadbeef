@@ -1,6 +1,6 @@
 /*
     Playlist browser widget plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko
+    Copyright (C) 2009-2014 Oleksiy Yakovenko
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -20,7 +20,7 @@
 
     3. This notice may not be removed or altered from any source distribution.
 */
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include <gtk/gtk.h>
 #include <stdlib.h>
 #include <string.h>
@@ -187,10 +187,14 @@ fill_pltbrowser_rows (gpointer user_data)
                     playing_pixbuf = gtk_icon_theme_load_icon (icon_theme, "media-playback-pause", 16, 0, NULL);
                 }
                 else if (playback_state == DDB_PLAYBACK_STATE_STOPPED) {
-                    playing_pixbuf = gtk_icon_theme_load_icon (icon_theme, "media-playback-stop", 16, 0, NULL);
+                    playing_pixbuf = NULL;
                 }
                 else {
+#if GTK_CHECK_VERSION(3,0,0)
                     playing_pixbuf = gtk_icon_theme_load_icon (icon_theme, "media-playback-start", 16, 0, NULL);
+#else
+                    playing_pixbuf = gtk_icon_theme_load_icon (icon_theme, "media-playback-start-ltr", 16, 0, NULL);
+#endif
                 }
             }
         }
@@ -786,8 +790,10 @@ on_pltbrowser_popup_menu (GtkWidget *widget, gpointer user_data) {
 
 static void
 on_pltbrowser_row_activated (GtkTreeView *tree_view, GtkTreePath *path, GtkTreeViewColumn *column, gpointer user_data) {
-    if (deadbeef->conf_get_int ("gtkui.pltbrowser.play_on_double_click", 1))
-        deadbeef->sendmessage (DB_EV_PLAY_NUM, 0, 0, 0);
+    if (deadbeef->conf_get_int ("gtkui.pltbrowser.play_on_double_click", 1)) {
+        deadbeef->sendmessage (DB_EV_STOP, 0, 0, 0);
+        deadbeef->sendmessage (DB_EV_NEXT, 0, 0, 0);
+    }
 }
 
 static void
@@ -939,7 +945,7 @@ static DB_misc_t plugin = {
     .plugin.descr = "Use View -> Design Mode to add playlist browser into main window",
     .plugin.copyright = 
         "Playlist browser widget plugin for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2014 Alexey Yakovenko\n"
+        "Copyright (C) 2009-2014 Oleksiy Yakovenko\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"

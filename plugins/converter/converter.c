@@ -1,6 +1,6 @@
 /*
     Converter for DeaDBeeF Player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -40,9 +40,9 @@
 #include <unistd.h>
 #include <inttypes.h>
 #include <errno.h>
+#include <deadbeef/deadbeef.h>
 #include "converter.h"
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/strdupa.h>
 #include "../../shared/mp4tagutil.h"
 
 static ddb_converter_t plugin;
@@ -202,7 +202,7 @@ encoder_preset_save (ddb_encoder_preset_t *p, int overwrite) {
         FILE *fp = fopen (path, "rb");
         if (fp) {
             fclose (fp);
-            return -2; 
+            return -2;
         }
     }
 
@@ -408,7 +408,7 @@ dsp_preset_save (ddb_dsp_preset_t *p, int overwrite) {
         FILE *fp = fopen (path, "rb");
         if (fp) {
             fclose (fp);
-            return -2; 
+            return -2;
         }
     }
 
@@ -660,10 +660,19 @@ get_output_field (DB_playItem_t *it, const char *field, char *out, int sz)
 }
 
 static void
-get_output_field2 (DB_playItem_t *it, ddb_playlist_t *plt, const char *field, char *out, int sz)
+_metadata_transform(ddb_tf_context_t *ctx, char *data, size_t size) {
+    const char *filter = "/\\:*?\"<>|";
+    for (int i = 0; i < size; i++) {
+        if (strchr (filter, data[i])) {
+            data[i] = '-';
+        }
+    }
+}
+
+static void
+get_output_path_tf (DB_playItem_t *it, ddb_playlist_t *plt, const char *field, char *out, int sz)
 {
     int idx = deadbeef->pl_get_idx_of (it);
-    char temp[PATH_MAX];
 
     char *tf = deadbeef->tf_compile (field);
     if (!tf) {
@@ -678,26 +687,11 @@ get_output_field2 (DB_playItem_t *it, ddb_playlist_t *plt, const char *field, ch
         .idx = idx,
         .iter = PL_MAIN,
         .plt = plt,
+        .metadata_transformer = _metadata_transform
     };
 
-    deadbeef->tf_eval (&ctx, tf, temp, sizeof (temp));
+    deadbeef->tf_eval (&ctx, tf, out, sz);
     deadbeef->tf_free (tf);
-
-    char *o = out;
-    for (char *p = temp; *p && sz > 0; p++) {
-        if (*p == '/') {
-            *o++ = '-';
-        }
-        else
-        {
-            *o++ = *p;
-        }
-        sz--;
-    }
-
-    *o = 0;
-
-    //trace ("field '%s' expanded to '%s'\n", field, out);
 }
 
 
@@ -737,42 +731,37 @@ get_output_path_int (DB_playItem_t *it, ddb_playlist_t *plt, const char *outfold
         outfolder = preserve_folder_structure ? outfolder_preserve : outfolder_user;
     }
 
-    size_t l;
     char fname[PATH_MAX];
-    char *pattern = strdupa (outfile);
 
     snprintf (out, sz, "%s/", outfolder);
 
-    // split path, and expand each path component using get_output_field
-    char *field = pattern;
-    char *s = pattern;
-    while (*s) {
-        if ((*s == '/') || (*s == '\\')) {
-            *s = '\0';
-            if (use_new_tf) {
-                get_output_field2(it, plt, field, fname, sizeof (fname));
-            }
-            else {
-                get_output_field (it, field, fname, sizeof (fname));
-            }
-
-            l = strlen (out);
-            snprintf (out+l, sz-l, "%s/", fname);
-
-            field = s+1;
-        }
-        s++;
-    }
-
-    // last part of outfile is the filename
     if (use_new_tf) {
-        get_output_field2(it, plt, field, fname, sizeof (fname));
+        get_output_path_tf(it, plt, outfile, fname, sizeof (fname));
     }
     else {
+        // split path, and expand each path component using get_output_field
+        size_t l;
+        char *pattern = strdupa (outfile);
+        char *field = pattern;
+        char *s = pattern;
+        while (*s) {
+            if ((*s == '/') || (*s == '\\')) {
+                *s = '\0';
+                get_output_field (it, field, fname, sizeof (fname));
+
+                l = strlen (out);
+                snprintf (out+l, sz-l, "%s/", fname);
+
+                field = s+1;
+            }
+            s++;
+        }
+
+        // last part of outfile is the filename
         get_output_field (it, field, fname, sizeof(fname));
     }
 
-    l = strlen (out);
+    size_t l = strlen (out);
     if (encoder_preset->ext && encoder_preset->ext[0]) {
         snprintf (out+l, sz-l, "%s.%s", fname, encoder_preset->ext);
     }
@@ -815,9 +804,9 @@ check_dir (const char *dir, mode_t mode)
         slash = strstr (slash+1, "/");
         if (slash)
             *slash = 0;
-        if (-1 == stat (tmp, &stat_buf))
+        if (0 != mkdir (tmp, mode))
         {
-            if (0 != mkdir (tmp, mode))
+            if ( (errno == EEXIST && (-1 == stat (tmp, &stat_buf))) || errno != EEXIST)
             {
                 trace ("Failed to create %s\n", tmp);
                 free (tmp);
@@ -1323,6 +1312,26 @@ _converter_write_tags (ddb_encoder_preset_t *encoder_preset, DB_playItem_t *it, 
 }
 
 static int
+ddb_mktemp(char *template, size_t template_size, char *suffix) {
+#if PORTABLE || defined(_WIN32) || !HAVE_MKSTEMPS
+    // This codepath should only be used when building with older LIBC
+    // which doesn't support mkstemps,
+    // such as glibc < 2.19 or MSVCRT.
+    (void)mktemp (template);
+    strncat(template, suffix, template_size);
+    return open(template,
+                O_LARGEFILE | O_WRONLY | O_CREAT | O_TRUNC | _O_BINARY,
+                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+#else
+    // Here, we would like to use mkstemp for better compatibility,
+    // but we want to have the file extension,
+    // to avoid confusing external command line encoders.
+    strncat(template, suffix, template_size);
+    return mkstemps(template, (int)strlen (suffix));
+#endif
+}
+
+static int
 convert2 (ddb_converter_settings_t *settings, DB_playItem_t *it, const char *out, int *pabort) {
     int output_bps = settings->output_bps;
     int output_is_float = settings->output_is_float;
@@ -1370,6 +1379,25 @@ convert2 (ddb_converter_settings_t *settings, DB_playItem_t *it, const char *out
     DB_fileinfo_t *fileinfo = NULL;
     char input_file_name[PATH_MAX] = "";
 
+#ifdef __APPLE__
+    // Remember/copy the original PATH variable.
+    char *pathenvorig = getenv("PATH");
+    if (pathenvorig == NULL) {
+        return -1;
+    }
+    char *pathenvcopy = strdup(pathenvorig);
+
+    // Add homebrew and macports paths.
+    size_t bufsize = strlen(pathenvcopy) + 100;
+    char *modifiedpath = malloc(bufsize);
+    snprintf(modifiedpath, bufsize, "%s:/opt/homebrew/bin:/opt/local/bin", pathenvcopy);
+    setenv("PATH", modifiedpath, 1);
+    free (modifiedpath);
+    modifiedpath = NULL;
+
+    // Note: the original value of PATH env variable is restored at the end of this function.
+#endif
+
     char *final_path = strdupa (out);
     char *sep = strrchr (final_path, '/');
     if (sep) {
@@ -1408,8 +1436,11 @@ convert2 (ddb_converter_settings_t *settings, DB_playItem_t *it, const char *out
                             tmp = "/tmp";
                         }
                         snprintf (input_file_name, sizeof (input_file_name), "%s/ddbconvXXXXXX", tmp);
-                        (void)mktemp (input_file_name);
-                        strcat (input_file_name, ".wav");
+                        temp_file = ddb_mktemp(input_file_name, sizeof(input_file_name), ".wav");
+                        if (temp_file == -1) {
+                            trace ("Failed to open temp file %s\n", input_file_name);
+                            goto error;
+                        }
                     }
                         break;
                     case DDB_ENCODER_METHOD_PIPE:
@@ -1435,7 +1466,10 @@ convert2 (ddb_converter_settings_t *settings, DB_playItem_t *it, const char *out
                     }
                 }
                 else if (encoder_preset->method == DDB_ENCODER_METHOD_FILE) {
-                    temp_file = open (input_file_name, O_LARGEFILE | O_WRONLY | O_CREAT | O_TRUNC | _O_BINARY, wrmode);
+                    // File should have been opened already
+                    if (temp_file == -1) {
+                        temp_file = open (input_file_name, O_LARGEFILE | O_WRONLY | O_CREAT | O_TRUNC | _O_BINARY, wrmode);
+                    }
                     if (temp_file == -1) {
                         trace ("Failed to open temp file %s\n", input_file_name);
                         goto error;
@@ -1488,6 +1522,12 @@ convert2 (ddb_converter_settings_t *settings, DB_playItem_t *it, const char *out
 
     err = 0;
 error:
+
+#ifdef __APPLE__
+    setenv("PATH", pathenvcopy, 1);
+    free(pathenvcopy);
+    pathenvcopy = NULL;
+#endif
     if (temp_file != -1 && (!enc_pipe || temp_file != fileno (enc_pipe))) {
         close (temp_file);
         temp_file = -1;
@@ -1571,9 +1611,9 @@ static ddb_converter_t plugin = {
     .misc.plugin.id = "converter",
     .misc.plugin.descr = "Converts any supported formats to other formats.\n"
         "Requires separate GUI plugin, e.g. Converter GTK UI\n",
-    .misc.plugin.copyright = 
+    .misc.plugin.copyright =
         "Converter for DeaDBeeF Player\n"
-        "Copyright (C) 2009-2015 Alexey Yakovenko and other contributors\n"
+        "Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"

@@ -1,6 +1,6 @@
 /*
     DeaDBeeF - The Ultimate Music Player
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -18,8 +18,8 @@
 */
 #include <stdlib.h>
 #include <string.h>
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 #include "ao.h"
 #include "eng_protos.h"
 
@@ -48,7 +48,7 @@ typedef struct {
 
 static DB_fileinfo_t *
 psfplug_open (uint32_t hints) {
-    psfplug_info_t *info = calloc (sizeof (psfplug_info_t), 1);
+    psfplug_info_t *info = calloc (1, sizeof (psfplug_info_t));
     return &info->info;
 }
 
@@ -346,10 +346,12 @@ psfplug_insert (ddb_playlist_t *plt, DB_playItem_t *after, const char *fname) {
             }
             else {
                 char *colon = strchr (info.title[i], ':');
-                char name[colon-info.title[i]+1];
-                memcpy (name, info.title[i], colon-info.title[i]);
-                name[colon-info.title[i]] = 0;
-                psfplug_add_meta (it, name, info.info[i], info.title[i]);
+                if (colon != NULL) {
+                    char name[colon-info.title[i]+1];
+                    memcpy (name, info.title[i], colon-info.title[i]);
+                    name[colon-info.title[i]] = 0;
+                    psfplug_add_meta (it, name, info.info[i], info.title[i]);
+                }
             }
         }
     }
@@ -380,7 +382,7 @@ static DB_decoder_t plugin = {
     .plugin.name = "PSF player using Audio Overload SDK",
     .plugin.descr = "plays psf, psf2, spu, ssf, dsf, qsf file formats",
     .plugin.copyright = 
-        "Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>\n"
+        "Copyright (C) 2009-2013 Oleksiy Yakovenko <waker@users.sourceforge.net>\n"
         "\n"
         "Uses modified aosdk-1.4.8 - library for playing .PSF (Sony PlayStation), .SPU (Sony PlayStation), .PSF2 (Sony PlayStation 2), .SSF (Sega Saturn), .DSF (Sega Dreamcast), and .QSF (Capcom QSound) audio file formats,\n"
         "http://rbelmont.mameworld.info/?page_id=221\n"

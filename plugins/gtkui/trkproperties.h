@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,18 @@
 #ifndef __TRKPROPERTIES_H
 #define __TRKPROPERTIES_H
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
+
+// list store column meanings (for Metadata and Properties, also used by Selection properties widget)
+enum {
+    META_COL_TITLE = 0,
+    META_COL_DISPLAY_VAL = 1,
+    META_COL_KEY = 2,
+    META_COL_IS_MULT = 3,
+    META_COL_VALUE = 4,
+    META_COL_PANGO_WEIGHT = 5,
+    META_COL_COUNT
+};
 
 struct DB_playItem_s;
 
@@ -54,6 +65,12 @@ build_key_list (const char ***pkeys, int props, DB_playItem_t **tracks, int numt
 
 void
 trkproperties_fill_meta (GtkListStore *store, DB_playItem_t **tracks, int numtracks);
+
+void
+trkproperties_fill_prop (GtkListStore *propstore, DB_playItem_t **tracks, int numtracks);
+
+void
+add_field_section(GtkListStore *store, const char *title, const char *value);
 
 void
 show_track_properties_dlg_with_track_list (ddb_playItem_t **track_list, int count);

@@ -74,6 +74,8 @@ tar jcvf ../../portable_out/build/$OUTNAME\
     $PLUGDIR/converter_gtk3.so\
     $PLUGDIR/convpresets\
     $PLUGDIR/pulse.so\
+    $PLUGDIR/ddb_out_pw.so\
+    $PLUGDIR/ddb_dsp_libretro.so\
     $PLUGDIR/dsp_libsrc.so\
     $PLUGDIR/ddb_mono2stereo.so\
     $PLUGDIR/alac.so\
@@ -84,6 +86,9 @@ tar jcvf ../../portable_out/build/$OUTNAME\
     $PLUGDIR/in_sc68.so\
     $PLUGDIR/ddb_soundtouch.so\
     $PLUGDIR/data68\
+    $PLUGDIR/medialib.so\
+    $PLUGDIR/lyrics_gtk2.so\
+    $PLUGDIR/lyrics_gtk3.so\
     $PIXMAPDIR\
     $SRCDIR/locale\
     || exit 1

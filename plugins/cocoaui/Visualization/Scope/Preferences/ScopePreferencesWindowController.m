@@ -2,8 +2,8 @@
 //  ScopePreferencesWindowController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 14/11/2021.
-//  Copyright © 2021 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 14/11/2021.
+//  Copyright © 2021 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "ScopePreferencesViewController.h"
@@ -20,7 +20,7 @@
 - (void)windowDidLoad {
     [super windowDidLoad];
 
-    self.viewController = [[ScopePreferencesViewController alloc] initWithNibName:@"ScopePreferencesViewController" bundle:nil];
+    self.viewController = [ScopePreferencesViewController new];
     self.viewController.settings = self.settings;
 
     self.contentViewController = self.viewController;

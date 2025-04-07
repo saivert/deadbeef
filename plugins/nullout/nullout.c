@@ -1,6 +1,6 @@
 /*
     Null output plugin for DeaDBeeF Player
-    Copyright (C) 2009-2014 Alexey Yakovenko
+    Copyright (C) 2009-2014 Oleksiy Yakovenko
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,7 @@
 #endif
 #include <stdio.h>
 #include <string.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 //#define trace(...) { fprintf(stderr, __VA_ARGS__); }
 #define trace(fmt,...)
@@ -197,7 +197,7 @@ static DB_output_t plugin = {
     .plugin.descr = "This plugin takes the audio data, and discards it,\nso nothing will play.\nThis is useful for testing.",
     .plugin.copyright = 
     "Null output plugin for DeaDBeeF Player\n"
-    "Copyright (C) 2009-2014 Alexey Yakovenko\n"
+    "Copyright (C) 2009-2014 Oleksiy Yakovenko\n"
     "\n"
     "This software is provided 'as-is', without any express or implied\n"
     "warranty.  In no event will the authors be held liable for any damages\n"

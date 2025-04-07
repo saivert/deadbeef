@@ -2,8 +2,8 @@
 //  growableBuffer.c
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 3/31/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 3/31/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #include <string.h>
@@ -13,7 +13,7 @@
 
 growableBuffer_t *
 growableBufferAlloc (void) {
-    return calloc (sizeof (growableBuffer_t), 1);
+    return calloc (1, sizeof (growableBuffer_t));
 }
 
 void

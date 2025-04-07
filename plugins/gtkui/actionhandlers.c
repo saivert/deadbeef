@@ -1,6 +1,6 @@
 /*
     gtkui hotkey handlers
-    Copyright (C) 2009-2013 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2013 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -30,11 +30,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "../../gettext.h"
 #include "../../shared/deletefromdisk.h"
 #include "callbacks.h"
-#include "ddblistview.h"
+#include "playlist/ddblistview.h"
 #include "gtkui.h"
 #include "gtkui_api.h"
 #include "gtkui_deletefromdisk.h"
@@ -45,6 +45,7 @@
 #include "support.h"
 #include "trkproperties.h"
 #include "wingeom.h"
+#include "undostack.h"
 
 // disable custom title function, until we have new title formatting (0.7)
 #define DISABLE_CUSTOM_TITLE
@@ -166,7 +167,7 @@ int
 action_remove_current_playlist_handler (struct DB_plugin_action_s *action, ddb_action_context_t ctx) {
     int idx = deadbeef->plt_get_curr_idx ();
     if (idx != -1) {
-        deadbeef->plt_remove (idx);
+        gtkui_remove_playlist_at_index (idx);
     }
     return 0;
 }
@@ -275,26 +276,18 @@ action_add_location_handler_cb (void *user_data) {
         if (entry) {
             const char *text = gtk_entry_get_text (entry);
             if (text) {
-                ddb_playlist_t *plt = deadbeef->plt_get_curr ();
-                if (!deadbeef->plt_add_files_begin (plt, 0)) {
-                    DB_playItem_t *tail = deadbeef->plt_get_last (plt, PL_MAIN);
-                    DB_playItem_t *it = deadbeef->plt_insert_file2 (0, plt, tail, text, NULL, NULL, NULL);
+                char *text_copy = strdup(text);
+                char *trimmed_text = gtkui_trim_whitespace(text_copy, strlen(text_copy));
+
+                const char *custom_title = NULL;
 #ifndef DISABLE_CUSTOM_TITLE
-                    if (it && deadbeef->conf_get_int ("gtkui.location_set_custom_title", 0)) {
-                        deadbeef->pl_replace_meta (it, ":CUSTOM_TITLE", gtk_entry_get_text (GTK_ENTRY (ct)));
-                    }
-#else
-#   pragma unused(it)
+                if (deadbeef->conf_get_int ("gtkui.location_set_custom_title", 0)) {
+                    custom_title = gtk_entry_get_text (GTK_ENTRY (ct));
+                }
 #endif
-                    if (tail) {
-                        deadbeef->pl_item_unref (tail);
-                    }
-                    deadbeef->plt_add_files_end (plt, 0);
-                    deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
-                }
-                if (plt) {
-                    deadbeef->plt_unref (plt);
-                }
+                gtkui_add_location(trimmed_text, custom_title);
+
+                free (text_copy);
             }
         }
     }
@@ -354,9 +347,9 @@ action_remove_from_playlist_handler (DB_plugin_action_t *act, ddb_action_context
         deadbeef->plt_unref (plt_curr);
     }
     else if (ctx == DDB_ACTION_CTX_NOWPLAYING) {
-        deadbeef->pl_lock ();
-        DB_playItem_t *it = deadbeef->streamer_get_playing_track ();
+        DB_playItem_t *it = deadbeef->streamer_get_playing_track_safe ();
         if (it) {
+            deadbeef->pl_lock ();
             ddb_playlist_t *plt = deadbeef->plt_get_curr ();
             if (plt) {
                 int idx = deadbeef->plt_get_item_idx (plt, it, PL_MAIN);
@@ -367,9 +360,9 @@ action_remove_from_playlist_handler (DB_plugin_action_t *act, ddb_action_context
                 }
                 deadbeef->plt_unref (plt);
             }
+            deadbeef->pl_unlock ();
             deadbeef->pl_item_unref (it);
         }
-        deadbeef->pl_unlock ();
     }
     return 0;
 }
@@ -619,28 +612,37 @@ action_sort_custom_handler_cb (void *data) {
     gtk_dialog_set_default_response (GTK_DIALOG (dlg), GTK_RESPONSE_OK);
 
     GtkComboBox *combo = GTK_COMBO_BOX (lookup_widget (dlg, "sortorder"));
-    GtkEntry *entry = GTK_ENTRY (lookup_widget (dlg, "sortfmt"));
+    GtkTextView *sortfmt = GTK_TEXT_VIEW (lookup_widget (dlg, "sortfmt"));
+    GtkTextBuffer *sortbuffer = gtk_text_view_get_buffer(sortfmt);
 
     gtk_combo_box_set_active (combo, deadbeef->conf_get_int ("gtkui.sortby_order", 0));
     deadbeef->conf_lock ();
-    gtk_entry_set_text (entry, deadbeef->conf_get_str_fast ("gtkui.sortby_fmt_v2", ""));
+    const char* fmt = deadbeef->conf_get_str_fast ("gtkui.sortby_fmt_v2", "");
+    gtk_text_buffer_set_text (sortbuffer, fmt, (gint)strlen(fmt));
     deadbeef->conf_unlock ();
 
     int r = gtk_dialog_run (GTK_DIALOG (dlg));
 
     if (r == GTK_RESPONSE_OK) {
         GtkComboBox *combo = GTK_COMBO_BOX (lookup_widget (dlg, "sortorder"));
-        GtkEntry *entry = GTK_ENTRY (lookup_widget (dlg, "sortfmt"));
+        GtkTextView *sortfmt = GTK_TEXT_VIEW (lookup_widget (dlg, "sortfmt"));
+        GtkTextBuffer *sortbuffer = gtk_text_view_get_buffer(sortfmt);
         int order = gtk_combo_box_get_active (combo);
-        const char *fmt = gtk_entry_get_text (entry);
+        GtkTextIter start, end;
+        gtk_text_buffer_get_start_iter(sortbuffer, &start);
+        gtk_text_buffer_get_end_iter(sortbuffer, &end);
+        char *fmt = gtk_text_buffer_get_text (sortbuffer, &start, &end, FALSE);
 
         deadbeef->conf_set_int ("gtkui.sortby_order", order);
         deadbeef->conf_set_str ("gtkui.sortby_fmt_v2", fmt);
+
 
         ddb_playlist_t *plt = deadbeef->plt_get_curr ();
         deadbeef->plt_sort_v2 (plt, PL_MAIN, -1, fmt, order == 0 ? DDB_SORT_ASCENDING : DDB_SORT_DESCENDING);
         deadbeef->plt_save_config (plt);
         deadbeef->plt_unref (plt);
+
+        free( fmt);
 
         deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
     }
@@ -853,5 +855,17 @@ action_toggle_logwindow_handler_cb (void *data) {
 int
 action_toggle_logwindow_handler(DB_plugin_action_t *act, ddb_action_context_t ctx) {
     g_idle_add (action_toggle_logwindow_handler_cb, NULL);
+    return 0;
+}
+
+int
+action_undo(DB_plugin_action_t *act, ddb_action_context_t ctx) {
+    gtkui_undostack_perform_undo();
+    return 0;
+}
+
+int
+action_redo(DB_plugin_action_t *act, ddb_action_context_t ctx) {
+    gtkui_undostack_perform_redo();
     return 0;
 }

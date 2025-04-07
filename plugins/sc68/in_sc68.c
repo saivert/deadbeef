@@ -1,6 +1,6 @@
 /*
     in_sc68 (Atari ST SNDH YM2149) input plugin for deadbeef
-    Copyright (C) 2015 Alexey Yakovenko
+    Copyright (C) 2015 Oleksiy Yakovenko
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,8 +24,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
-#include "../../deadbeef.h"
-#include "../../strdupa.h"
+#include <deadbeef/deadbeef.h>
+#include <deadbeef/strdupa.h>
 #include "sc68/sc68.h"
 
 #define trace(...) { fprintf(stderr, __VA_ARGS__); }
@@ -49,7 +49,7 @@ static const char * exts[] = { "sndh", "snd", "sc68", NULL };
 // allocate codec control structure
 static DB_fileinfo_t *
 in_sc68_open (uint32_t hints) {
-    in_sc68_info_t *info = calloc (sizeof (in_sc68_info_t), 1);
+    in_sc68_info_t *info = calloc (1, sizeof (in_sc68_info_t));
     return &info->info;
 }
 
@@ -365,7 +365,7 @@ static DB_decoder_t plugin = {
     .plugin.descr = "SC68 player (Atari ST SNDH YM2149)",
     .plugin.copyright = 
         "in_sc68 (Atari ST SNDH YM2149) input plugin for deadbeef\n"
-        "Copyright (C) 2015 Alexey Yakovenko\n"
+        "Copyright (C) 2015 Oleksiy Yakovenko\n"
         "based on sc68 library, see below for more information\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"

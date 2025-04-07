@@ -1,6 +1,6 @@
 /*
     DUMB Plugin for DeaDBeeF Player
-    Copyright (C) 2009-2016 Alexey Yakovenko <waker@users.sourceforge.net>
+    Copyright (C) 2009-2016 Oleksiy Yakovenko <waker@users.sourceforge.net>
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@
 #include "umr.h"
 #include "cdumb.h"
 #include "modloader.h"
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 // FIXME: config
 static int cfg_dumb_count_patterns = 1; // MOD - Count patterns from the order list

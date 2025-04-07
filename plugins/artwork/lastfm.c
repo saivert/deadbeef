@@ -1,7 +1,6 @@
 /*
-    Album Art plugin for DeaDBeeF
-    Copyright (C) 2009-2011 Viktor Semykin <thesame.ml@gmail.com>
-    Copyright (C) 2009-2013 Alexey Yakovenko <waker@users.sourceforge.net>
+    DeaDBeeF -- the music player
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -21,23 +20,30 @@
 
     3. This notice may not be removed or altered from any source distribution.
 */
+
 #ifdef HAVE_CONFIG_H
 #  include <config.h>
 #endif
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <deadbeef/deadbeef.h>
+#include "artwork.h"
 #include "artwork_internal.h"
 #include "escape.h"
 
-//#define trace(...) { fprintf(stderr, __VA_ARGS__); }
-#define trace(...)
+extern DB_functions_t *deadbeef;
+extern ddb_artwork_plugin_t plugin;
 
-#define LFM_URL "http://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=%s&artist=%s&album=%s"
-#define API_KEY "6b33c8ae4d598a9aff8fe63e334e6e86"
-#define MEGA_IMAGE_TAG "<image size=\"mega\">"
-#define XL_IMAGE_TAG "<image size=\"extralarge\">"
-#define IMAGE_END_TAG "</image>"
+#define trace(...) { deadbeef->log_detailed (&plugin.plugin.plugin, 0, __VA_ARGS__); }
+#define trace_err(...) { deadbeef->log_detailed (&plugin.plugin.plugin, DDB_LOG_LAYER_DEFAULT, __VA_ARGS__); }
+
+static const char LFM_URL[] = "http://ws.audioscrobbler.com/2.0/?method=album.getinfo&api_key=%s&artist=%s&album=%s";
+static const char API_KEY[] = "6b33c8ae4d598a9aff8fe63e334e6e86";
+static const char MEGA_IMAGE_TAG[] = "<image size=\"mega\">";
+static const char XL_IMAGE_TAG[] = "<image size=\"extralarge\">";
+static const char IMAGE_END_TAG[] = "</image>";
+
 int fetch_from_lastfm (const char *artist, const char *album, const char *dest) {
     struct stat stat_struct;
     int stat_err = stat (dest, &stat_struct);
@@ -58,19 +64,23 @@ int fetch_from_lastfm (const char *artist, const char *album, const char *dest) 
 
     char *artist_url = uri_escape(artist, 0);
     char *album_url = uri_escape(album, 0);
-    char *url = malloc(strlen(artist_url) + strlen(album_url) + sizeof(LFM_URL API_KEY));
-    if (url) {
-        sprintf(url, LFM_URL, API_KEY, artist_url, album_url);
-    }
+    size_t url_size = strlen(artist_url) + strlen(album_url) + strlen(LFM_URL) + strlen(API_KEY) + 1;
+    char *url = malloc(url_size);
+
+    snprintf(url, url_size, LFM_URL, API_KEY, artist_url, album_url);
     free(artist_url);
     free(album_url);
-    if (!url) {
-        return -1;
-    }
+    artist_url = NULL;
+    album_url = NULL;
 
     trace("fetch_from_lastfm: query: %s\n", url);
-    char buffer[1000];
-    /*const size_t size = */artwork_http_request(url, buffer, sizeof(buffer));
+    size_t buffer_size = 1000;
+    char *buffer = malloc(buffer_size);
+    /*const size_t size = */artwork_http_request(url, buffer, buffer_size);
+
+    free (url);
+    url = NULL;
+
     char *img = strstr(buffer, MEGA_IMAGE_TAG);
     if (img) {
         img += sizeof(MEGA_IMAGE_TAG)-1;

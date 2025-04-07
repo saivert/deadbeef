@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -22,14 +22,18 @@
 */
 
 #import "LogWindowController.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
+
+static const char conf_autoopen_key[] = "cocoaui.log.autoopen";
+static const int conf_autoopen_default = 1;
 
 @interface LogWindowController()
 
 @property (nonatomic) BOOL wasShown;
 @property (nonatomic) NSDictionary *attributes;
+@property (weak) IBOutlet NSButton *autoOpenButton;
 
 @end
 
@@ -51,6 +55,8 @@ extern DB_functions_t *deadbeef;
         NSFontAttributeName: font
     };
 
+    self.autoOpenButton.state = deadbeef->conf_get_int(conf_autoopen_key, conf_autoopen_default) ? NSControlStateValueOn : NSControlStateValueOff;
+
     deadbeef->log_viewer_register (_cocoaui_logger_callback, (__bridge void *)(self));
 }
 
@@ -68,7 +74,7 @@ extern DB_functions_t *deadbeef;
 - (void)appendText:(NSString *)text {
     NSAttributedString* attr = [[NSAttributedString alloc] initWithString:text attributes:self.attributes];
 
-    NSRect visibleRect = [_clipView documentVisibleRect];
+    NSRect visibleRect = _clipView.documentVisibleRect;
     NSRect docRect = _textView.frame;
 
     BOOL scroll = NO;
@@ -93,7 +99,7 @@ _cocoaui_logger_callback (DB_plugin_t *plugin, uint32 layers, const char *text, 
 }
 
 - (void)appendLoggerText:(const char *)text forPlugin:(DB_plugin_t *)plugin onLayers:(uint32_t)layers {
-    NSString *str = [NSString stringWithUTF8String:text];
+    NSString *str = @(text);
     if (!str) {
         return; // may happen in case of invalid UTF8 and such
     }
@@ -101,13 +107,19 @@ _cocoaui_logger_callback (DB_plugin_t *plugin, uint32 layers, const char *text, 
     dispatch_async(dispatch_get_main_queue(), ^{
         [self appendText:str];
 
-        if (layers == DDB_LOG_LAYER_DEFAULT) {
-            if (![self.window isVisible]) {
+        int autoopen = deadbeef->conf_get_int(conf_autoopen_key, conf_autoopen_default);
+
+        if (autoopen && layers == DDB_LOG_LAYER_DEFAULT) {
+            if (!(self.window).visible) {
                 [self showWindow:self];
             }
         }
     });
 }
 
+- (IBAction)autoOpenButtonAction:(NSButton *)sender {
+    deadbeef->conf_set_int(conf_autoopen_key, sender.state == NSControlStateValueOn);
+    deadbeef->conf_save();
+}
 
 @end

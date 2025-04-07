@@ -1,6 +1,6 @@
 /*
     deadbeef-opus
-    Copyright (C) 2009-2017 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2017 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -25,10 +25,10 @@
 #include <string.h>
 #include <limits.h>
 #include <opusfile.h>
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include <stdbool.h>
 #include "../liboggedit/oggedit.h"
-#include "../../strdupa.h"
+#include <deadbeef/strdupa.h>
 
 #define trace(...) { deadbeef->log_detailed (&plugin.decoder.plugin, 0, __VA_ARGS__); }
 
@@ -98,7 +98,7 @@ opus_file_open(DB_FILE *fp)
 
 static DB_fileinfo_t *
 opusdec_open (uint32_t hints) {
-    opusdec_info_t *info = calloc (sizeof (opusdec_info_t), 1);
+    opusdec_info_t *info = calloc (1, sizeof (opusdec_info_t));
     return &info->info;
 }
 
@@ -113,7 +113,7 @@ opusdec_open2 (uint32_t hints, DB_playItem_t *it) {
         return NULL;
     }
 
-    opusdec_info_t *info = calloc (sizeof (opusdec_info_t), 1);
+    opusdec_info_t *info = calloc (1, sizeof (opusdec_info_t));
 
     info->info.file = fp;
     info->it = it;
@@ -226,7 +226,7 @@ static void
 set_meta_ll(DB_playItem_t *it, const char *key, const int64_t value)
 {
     char string[11];
-    sprintf(string, "%lld", value);
+    sprintf(string, "%lld", (long long)value);
     deadbeef->pl_replace_meta(it, key, string);
 }
 
@@ -411,7 +411,7 @@ new_streaming_link(opusdec_info_t *info, const int new_link)
 static bool
 is_playing_track(const DB_playItem_t *it)
 {
-    DB_playItem_t *track = deadbeef->streamer_get_playing_track();
+    DB_playItem_t *track = deadbeef->streamer_get_playing_track_safe();
     if (track)
         deadbeef->pl_item_unref(track);
     return track == it;
@@ -488,7 +488,7 @@ opusdec_read (DB_fileinfo_t *_info, char *bytes, int size) {
 
 static int
 opusdec_seek (DB_fileinfo_t *_info, float time) {
-    return opusdec_seek_sample64 (_info, time * _info->fmt.samplerate);
+    return opusdec_seek_sample64 (_info, (int64_t)((double)time * (int64_t)_info->fmt.samplerate));
 }
 
 static off_t
@@ -785,7 +785,7 @@ static ddb_decoder2_t plugin = {
     .decoder.plugin.descr = "Opus player based on libogg, libopus and libopusfile.",
     .decoder.plugin.copyright =
         "deadbeef-opus\n"
-        "Copyright (C) 2009-2017 Alexey Yakovenko and other contributors\n"
+        "Copyright (C) 2009-2017 Oleksiy Yakovenko and other contributors\n"
         "\n"
         "This software is provided 'as-is', without any express or implied\n"
         "warranty.  In no event will the authors be held liable for any damages\n"

@@ -1,7 +1,7 @@
 /*
  * ReplayGain Scanner plugin for DeaDBeeF Player
  *
- * Copyright (c) 2016 Alexey Yakovenko
+ * Copyright (c) 2016 Oleksiy Yakovenko
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,7 +26,7 @@
 #ifndef __RG_SCANNER_H
 #define __RG_SCANNER_H
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 enum {
     DDB_RG_SCAN_MODE_TRACK = 1,
@@ -83,9 +83,6 @@ typedef struct {
     // How many 44.1kHz samples of PCM data have been processed.
     // Set by the scanner, can be used in the progress callback, to calculate scanning speed.
     uint64_t cd_samples_processed;
-
-    // Internal mutex, used for thread syncronization
-    uintptr_t sync_mutex;
 } ddb_rg_scanner_settings_t;
 
 typedef struct {

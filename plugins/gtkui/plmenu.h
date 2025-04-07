@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2021 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 #ifndef plmenu_h
 #define plmenu_h
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include "trkproperties.h"
 
 /// This must be called before terminating the app, to ensure global variables are freed.

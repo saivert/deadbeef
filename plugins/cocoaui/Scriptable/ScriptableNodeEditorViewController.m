@@ -2,8 +2,8 @@
 //  ScriptableNodeEditorViewController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 4/24/19.
-//  Copyright © 2019 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 4/24/19.
+//  Copyright © 2019 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "ScriptableNodeEditorViewController.h"
@@ -39,7 +39,6 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    // Do view setup here.
     self.dataSource.delegate = self;
     self.nodeList.dataSource = self.dataSource;
 
@@ -48,8 +47,8 @@
         self.customButtonsSegmentedControl.hidden = NO;
     }
 
-    if (self.dataSource.scriptable->callbacks && self.dataSource.scriptable->callbacks->isReorderable) {
-        [self.nodeList registerForDraggedTypes: [NSArray arrayWithObjects: _dataSource.pasteboardItemIdentifier, nil]];
+    if (scriptableItemFlags(self.dataSource.scriptable) & SCRIPTABLE_FLAG_IS_REORDABLE) {
+        [self.nodeList registerForDraggedTypes: @[_dataSource.pasteboardItemIdentifier]];
     }
 
     [self updateButtons];
@@ -73,7 +72,7 @@
     NSInteger index = 0;
     scriptableStringListItem_t *n = names;
     while (n) {
-        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:[NSString stringWithUTF8String:n->str] action:@selector(createNode:) keyEquivalent:@""];
+        NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:@(n->str) action:@selector(createNode:) keyEquivalent:@""];
         item.tag = index;
         [menu addItem:item];
         n = n->next;
@@ -87,7 +86,7 @@
 
 - (NSInteger)insertionIndex {
     NSInteger cnt = [_dataSource numberOfRowsInTableView:_nodeList];
-    NSInteger index = [_nodeList selectedRow];
+    NSInteger index = _nodeList.selectedRow;
     if (cnt == 0) {
         index = 0;
     }
@@ -164,12 +163,12 @@
 
     NSMenu *menu = [self getCreateItemMenu];
     if (menu) {
-        [NSMenu popUpContextMenu:menu withEvent:[NSApp currentEvent] forView:sender];
+        [NSMenu popUpContextMenu:menu withEvent:NSApp.currentEvent forView:sender];
     }
 }
 
 - (IBAction)removeAction:(id)sender {
-    NSInteger index = [_nodeList selectedRow];
+    NSInteger index = _nodeList.selectedRow;
     if (index < 0) {
         return;
     }
@@ -180,30 +179,30 @@
     [_nodeList endUpdates];
     [_dataSource removeItemAtIndex:(int)index];
 
-    if (index >= [_nodeList numberOfRows]) {
+    if (index >= _nodeList.numberOfRows) {
         index--;
     }
     if (index >= 0) {
         [_nodeList selectRowIndexes:[NSIndexSet indexSetWithIndex:index] byExtendingSelection:NO];
     }
     [self updateButtons];
-    [self.delegate scriptableItemChanged:self.dataSource.scriptable change:ScriptableItemChangeUpdate];
+    [self.delegate scriptableItemDidChange:self.dataSource.scriptable change:ScriptableItemChangeUpdate];
 }
 
 - (IBAction)configureAction:(id)sender {
-    NSInteger index = [_nodeList selectedRow];
+    NSInteger index = _nodeList.selectedRow;
     if (index < 0) {
         return;
     }
     scriptableItem_t *item = scriptableItemChildAtIndex(_dataSource.scriptable, (unsigned int)index);
 
-    if (item->callbacks && item->callbacks->isList) {
+    if (scriptableItemFlags(item) & SCRIPTABLE_FLAG_IS_LIST) {
         // recurse!
         self.nodeEditorWindowController = [[ScriptableNodeEditorWindowController alloc] initWithWindowNibName:@"ScriptableNodeEditorWindow"];
         self.nodeDataSource = [ScriptableTableDataSource dataSourceWithScriptable:item];
         self.nodeEditorWindowController.dataSource = self.nodeDataSource;
         self.nodeEditorWindowController.delegate = self.delegate;
-        self.nodeEditorWindowController.window.title = [NSString stringWithUTF8String:scriptableItemPropertyValueForKey(item, "name")]; // preset name
+        self.nodeEditorWindowController.window.title = @(scriptableItemPropertyValueForKey(item, "name")); // preset name
         NSWindow *window = self.view.window;
         [window beginSheet:self.nodeEditorWindowController.window completionHandler:^(NSModalResponse returnCode) {
         }];
@@ -219,14 +218,14 @@
         self.propertiesDataSource = [[ScriptablePropertySheetDataSource alloc] initWithScriptable:item];
 
         self.propertiesViewController.dataSource = self.propertiesDataSource;
-        self.propertiesPanelResetButton.enabled = !item->isReadonly;
+        self.propertiesPanelResetButton.enabled = !(scriptableItemFlags(item) & SCRIPTABLE_FLAG_IS_READONLY);
         [self.view.window beginSheet:_propertiesPanel completionHandler:^(NSModalResponse returnCode) {
         }];
     }
 }
 
 - (void)duplicateAction:(id)sender {
-    NSInteger selectedIndex = [_nodeList selectedRow];
+    NSInteger selectedIndex = _nodeList.selectedRow;
     if (selectedIndex == -1) {
         return;
     }
@@ -270,7 +269,7 @@
 }
 
 - (scriptableItem_t *)selectedItem {
-    NSInteger selectedIndex = [_nodeList selectedRow];
+    NSInteger selectedIndex = _nodeList.selectedRow;
     if (selectedIndex == -1) {
         return NULL;
     }
@@ -278,7 +277,7 @@
 }
 
 - (BOOL)addEnabled {
-    return !self.dataSource.scriptable->isReadonly;
+    return !(scriptableItemFlags(self.dataSource.scriptable) & SCRIPTABLE_FLAG_IS_READONLY);
 }
 
 - (BOOL)removeEnabled {
@@ -286,11 +285,21 @@
     if (!item) {
         return NO;
     }
-    return !item->isReadonly;
+    return !(scriptableItemFlags(item) & SCRIPTABLE_FLAG_IS_READONLY);
 }
 
 - (BOOL)configureEnabled {
-    return [self selectedItem] != NULL;
+    scriptableItem_t *selectedItem = [self selectedItem];
+    if (selectedItem == NULL) {
+        return NO;
+    }
+
+    if (!(scriptableItemFlags(selectedItem) & SCRIPTABLE_FLAG_IS_LIST)
+        && scriptableItemConfigDialog(selectedItem) == NULL) {
+        return NO;
+    }
+
+    return YES;
 }
 
 - (BOOL)duplicateEnabled {
@@ -306,8 +315,8 @@
 
 #pragma mark - ScriptableItemDelegate
 
-- (void)scriptableItemChanged:(scriptableItem_t *)scriptable change:(ScriptableItemChange)change {
-    [self.delegate scriptableItemChanged:scriptable change:change];
+- (void)scriptableItemDidChange:(scriptableItem_t *)scriptable change:(ScriptableItemChange)change {
+    [self.delegate scriptableItemDidChange:scriptable change:change];
 }
 
 #pragma mark - NSTableViewDelegate
@@ -319,8 +328,8 @@
     scriptableItem_t *item = scriptableItemChildAtIndex(self.dataSource.scriptable, (unsigned int)row);
     char *name = scriptableItemFormattedName(item);
 
-    view.textField.enabled = !item->isReadonly;
-    if (self.dataSource.scriptable->callbacks && self.dataSource.scriptable->callbacks->allowRenaming) {
+    view.textField.enabled = !(scriptableItemFlags(item) & SCRIPTABLE_FLAG_IS_READONLY);
+    if (scriptableItemFlags(self.dataSource.scriptable) & SCRIPTABLE_FLAG_CAN_RENAME) {
         view.textField.selectable = NO;
         view.textField.editable = YES;
     }
@@ -329,7 +338,7 @@
         view.textField.selectable = YES;
     }
 
-    view.textField.stringValue = [NSString stringWithUTF8String:name];
+    view.textField.stringValue = @(name);
 
     free (name);
 
@@ -353,20 +362,30 @@
             return; // name unchanged
         }
 
-        if (scriptableItemContainsSubItemWithName (item->parent, value)) {
+        if (!(scriptableItemFlags(scriptableItemParent(item)) & SCRIPTABLE_FLAG_ALLOW_NON_UNIQUE_KEYS)
+            && scriptableItemContainsSubItemWithName (scriptableItemParent(item), value)) {
             [self.errorViewer scriptableErrorViewer:self duplicateNameErrorForItem:item];
             [textField becomeFirstResponder];
         }
-        else if (!scriptableItemIsSubItemNameAllowed (item->parent, value)) {
+        else if (!scriptableItemIsSubItemNameAllowed (scriptableItemParent(item), value)) {
             [self.errorViewer scriptableErrorViewer:self invalidNameErrorForItem:item];
             [textField becomeFirstResponder];
         }
         else {
             scriptableItemSetPropertyValueForKey(item, value, "name");
-            [self.delegate scriptableItemChanged:self.dataSource.scriptable change:ScriptableItemChangeUpdate];
+            [self.delegate scriptableItemDidChange:self.dataSource.scriptable change:ScriptableItemChangeUpdate];
         }
     }
 }
 
+- (BOOL)canReset {
+    return scriptableItemFlags(self.dataSource.scriptable) & SCRIPTABLE_FLAG_CAN_RESET;
+}
+
+- (void)reset {
+    scriptableItemReset(self.dataSource.scriptable);
+    [self reloadData];
+    [self.delegate scriptableItemDidChange:self.dataSource.scriptable  change:ScriptableItemChangeUpdate];
+}
 
 @end

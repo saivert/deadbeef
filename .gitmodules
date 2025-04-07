@@ -7,3 +7,12 @@
 [submodule "external/apbuild"]
 	path = external/apbuild
 	url = https://github.com/DeaDBeeF-Player/apbuild.git
+[submodule "external/googletest"]
+	path = external/googletest
+	url = https://github.com/DeaDBeeF-Player/googletest.git
+[submodule "external/ddb_output_pw"]
+	path = external/ddb_output_pw
+	url = https://github.com/DeaDBeeF-Player/ddb_output_pw.git
+[submodule "external/ddb_dsp_libretro"]
+	path = external/ddb_dsp_libretro
+	url = https://github.com/DeaDBeeF-Player/ddb_dsp_libretro.git

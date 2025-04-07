@@ -1,6 +1,6 @@
 /*
-    Album Art plugin Cache Cleaner for DeaDBeeF
-    Copyright (C) 2014 Ian Nartowicz <deadbeef@nartowicz.co.uk>
+    DeaDBeeF -- the music player
+    Copyright (C) 2009-2021 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -21,14 +21,6 @@
     3. This notice may not be removed or altered from any source distribution.
 */
 
-#ifdef HAVE_CONFIG_H
-    #include "../../config.h"
-#endif
-#include "../../deadbeef.h"
-#ifdef __APPLE__
-#include "applesupport.h"
-#endif
-#include "artwork_internal.h"
 #include <dirent.h>
 #include <dispatch/dispatch.h>
 #include <libgen.h>
@@ -38,9 +30,18 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef HAVE_CONFIG_H
+#include "../../config.h"
+#endif
+#include <deadbeef/deadbeef.h>
+#include "artwork.h"
+#include "artwork_internal.h"
 
-//#define trace(...) { fprintf(stderr, __VA_ARGS__); }
-#define trace(...)
+extern DB_functions_t *deadbeef;
+extern ddb_artwork_plugin_t plugin;
+
+#define trace(...) { deadbeef->log_detailed (&plugin.plugin.plugin, 0, __VA_ARGS__); }
+#define trace_err(...) { deadbeef->log_detailed (&plugin.plugin.plugin, DDB_LOG_LAYER_DEFAULT, __VA_ARGS__); }
 
 extern DB_functions_t *deadbeef;
 
@@ -51,18 +52,13 @@ static int32_t _file_expiration_time; // Seconds since the file creation, until 
 
 int
 make_cache_root_path (char *path, const size_t size) {
-#ifdef __APPLE__
-    apple_get_artwork_cache_path(path, size);
-    size_t remaining_size = size - strlen(path);
-    strncat(path, "/Deadbeef/Covers", remaining_size-1);
-#else
-    const char *xdg_cache = getenv ("XDG_CACHE_HOME");
-    const char *cache_root = xdg_cache ? xdg_cache : getenv ("HOME");
-    if (snprintf (path, size, xdg_cache ? "%s/deadbeef/covers2" : "%s/.cache/deadbeef/covers2", cache_root) >= size) {
-        trace ("Cache root path truncated at %d bytes\n", (int)size);
+    const char *cache_root_path = deadbeef->get_system_dir(DDB_SYS_DIR_CACHE);
+    size_t res;
+    res = snprintf(path, size, "%s/covers2", cache_root_path);
+    if (res >= size) {
+        trace ("artwork: cache root path truncated at %d bytes\n", (int)size);
         return -1;
     }
-#endif
     return 0;
 }
 
@@ -101,10 +97,15 @@ cache_cleaner_worker (void) {
         return;
     }
     struct dirent *entry;
+    char entry_path[PATH_MAX];
+
     while (!should_terminate() && (entry = readdir (covers_dir))) {
-        char entry_path[PATH_MAX];
-        sprintf (entry_path, "%s/%s", covers_path, entry->d_name);
         if (path_ok (entry->d_name)) {
+            if (sizeof (entry_path) < snprintf (entry_path, sizeof(entry_path), "%s/%s", covers_path, entry->d_name)) {
+                trace("artwork: cache cleaner entry_path buffer too small for path:\n%s/%s\n", covers_path, entry->d_name);
+                continue; // buffer too small
+            }
+
             // Test against the cache expiry time
             struct stat stat_buf;
             if (!stat (entry_path, &stat_buf)) {

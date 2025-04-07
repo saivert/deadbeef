@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -29,17 +29,20 @@
 
 @protocol WidgetProtocol;
 
+@class MediaLibraryManager;
+
 @interface MainWindowController : NSWindowController
 
 @property (unsafe_unretained) IBOutlet NSTextField *statusBar;
 @property (unsafe_unretained) IBOutlet DdbSeekBar *seekBar;
 @property (unsafe_unretained) IBOutlet NSSlider *volumeBar;
 @property (strong) IBOutlet MainWindowSidebarViewController *sidebarOutlineViewController;
+@property (unsafe_unretained) IBOutlet NSSegmentedControl *buttonBar;
 
+@property (nonatomic) MediaLibraryManager *mediaLibraryManager;
 
 - (IBAction)seekBarAction:(id)sender;
 - (IBAction)volumeBarAction:(id)sender;
-@property (unsafe_unretained) IBOutlet NSSegmentedControl *buttonBar;
 
 - (IBAction)tbClicked:(id)sender;
 
@@ -48,4 +51,9 @@
 - (void)updateTitleBar;
 
 - (void)cleanup;
+
+- (void)message:(int)_id ctx:(uint64_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2;
+
+- (BOOL)setupInitialFirstResponder:(id<WidgetProtocol>)widget;
+
 @end

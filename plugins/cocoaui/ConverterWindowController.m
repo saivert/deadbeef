@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2015 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2015 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -27,13 +27,13 @@
 #import "ScriptableSelectViewController.h"
 #import "scriptable_dsp.h"
 #import "scriptable_encoder.h"
-#include "converter.h"
-#include "deadbeef.h"
+#include "../converter/converter.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 static NSString *default_format = @"[%tracknumber%. ][%artist% - ]%title%";
 
-@interface ConverterWindowController () <ScriptableSelectDelegate,ScriptableItemDelegate,NSControlTextEditingDelegate>
+@interface ConverterWindowController () <ScriptableSelectDelegate,NSControlTextEditingDelegate>
 
 @property (nonatomic) ddb_converter_t *converter_plugin;
 
@@ -115,37 +115,35 @@ static NSMutableArray *g_converterControllers;
     [self initializeWidgets];
     self.window.delegate = self;
 
-    self.dspPresetsDataSource = [ScriptableTableDataSource dataSourceWithScriptable:scriptableDspRoot()];
+    self.dspPresetsDataSource = [ScriptableTableDataSource dataSourceWithScriptable:scriptableDspRoot(scriptableRootShared())];
     self.dspSelectViewController.dataSource = self.dspPresetsDataSource;
-    self.dspSelectViewController = [[ScriptableSelectViewController alloc] initWithNibName:@"ScriptableSelectView" bundle:nil];
+    self.dspSelectViewController = [ScriptableSelectViewController new];
     self.dspSelectViewController.view.frame = self.dspPresetSelectorContainer.bounds;
     [_dspPresetSelectorContainer addSubview:self.dspSelectViewController.view];
     self.dspSelectViewController.dataSource = self.dspPresetsDataSource;
-    self.dspSelectViewController.scriptableItemDelegate = self;
-    self.dspSelectViewController.scriptableSelectDelegate = self;
+    self.dspSelectViewController.delegate = self;
     self.dspSelectViewController.errorViewer = ScriptableErrorViewer.sharedInstance;
 
     char dsp_preset_name[100];
     deadbeef->conf_get_str ("converter.dsp_preset_name", "", dsp_preset_name, sizeof(dsp_preset_name));
-    scriptableItem_t *dspPreset = scriptableItemSubItemForName(scriptableDspRoot(), dsp_preset_name);
+    scriptableItem_t *dspPreset = scriptableItemSubItemForName(scriptableDspRoot(scriptableRootShared()), dsp_preset_name);
     if (dspPreset) {
         [self.dspSelectViewController selectItem:dspPreset];
     }
 
-    self.encoderPresetsDataSource = [ScriptableTableDataSource dataSourceWithScriptable:scriptableEncoderRoot()];
+    self.encoderPresetsDataSource = [ScriptableTableDataSource dataSourceWithScriptable:scriptableEncoderRoot(scriptableRootShared())];
     self.encoderSelectViewController.dataSource = self.dspPresetsDataSource;
 
-    self.encoderSelectViewController = [[ScriptableSelectViewController alloc] initWithNibName:@"ScriptableSelectView" bundle:nil];
+    self.encoderSelectViewController = [ScriptableSelectViewController new];
     self.encoderSelectViewController.view.frame = self.encoderPresetSelectorContainer.bounds;
     [self.encoderPresetSelectorContainer addSubview:self.encoderSelectViewController.view];
     self.encoderSelectViewController.dataSource = self.encoderPresetsDataSource;
-    self.encoderSelectViewController.scriptableItemDelegate = self;
-    self.encoderSelectViewController.scriptableSelectDelegate = self;
+    self.encoderSelectViewController.delegate = self;
     self.encoderSelectViewController.errorViewer = ScriptableErrorViewer.sharedInstance;
 
     char enc_preset_name[100];
     deadbeef->conf_get_str ("converter.encoder_preset_name", "", enc_preset_name, sizeof(enc_preset_name));
-    scriptableItem_t *encPreset = scriptableItemSubItemForName(scriptableEncoderRoot(), enc_preset_name);
+    scriptableItem_t *encPreset = scriptableItemSubItemForName(scriptableEncoderRoot(scriptableRootShared()), enc_preset_name);
     if (encPreset) {
         [self.encoderSelectViewController selectItem:encPreset];
     }
@@ -163,8 +161,8 @@ static NSMutableArray *g_converterControllers;
         out_folder = getenv("HOME");
     }
 
-    self.outputFolder.stringValue = [NSString stringWithUTF8String:out_folder];
-    self.outputFileName.stringValue = [NSString stringWithUTF8String:deadbeef->conf_get_str_fast ("converter.output_file", "")];
+    self.outputFolder.stringValue = @(out_folder);
+    self.outputFileName.stringValue = @(deadbeef->conf_get_str_fast ("converter.output_file", ""));
     self.preserveFolderStructure.state = deadbeef->conf_get_int ("converter.preserve_folder_structure", 0) ? NSControlStateValueOn : NSControlStateValueOff;
     self.bypassSameFormat.state = deadbeef->conf_get_int ("converter.bypass_same_format", 0);
     self.retagAfterCopy.state = deadbeef->conf_get_int ("converter.retag_after_copy", 0);
@@ -183,15 +181,15 @@ static NSMutableArray *g_converterControllers;
 }
 
 - (void)controlTextDidChange:(NSNotification *)notification {
-    NSTextField *textField = [notification object];
+    NSTextField *textField = notification.object;
     if (textField == self.outputFolder) {
         [self updateFilenamesPreview];
-        deadbeef->conf_set_str ("converter.output_folder", [[_outputFolder stringValue] UTF8String]);
+        deadbeef->conf_set_str ("converter.output_folder", _outputFolder.stringValue.UTF8String);
         deadbeef->conf_save ();
     }
     else if (textField == self.outputFileName) {
         [self updateFilenamesPreview];
-        deadbeef->conf_set_str ("converter.output_file", [[_outputFileName stringValue] UTF8String]);
+        deadbeef->conf_set_str ("converter.output_file", _outputFileName.stringValue.UTF8String);
         deadbeef->conf_save ();
     }
 }
@@ -222,11 +220,11 @@ static NSMutableArray *g_converterControllers;
     if (selectedEncoderPreset == -1) {
         return;
     }
-    scriptableItem_t *preset = scriptableItemChildAtIndex(scriptableEncoderRoot(), (unsigned int)selectedEncoderPreset);
+    scriptableItem_t *preset = scriptableItemChildAtIndex(scriptableEncoderRoot(scriptableRootShared()), (unsigned int)selectedEncoderPreset);
     ddb_encoder_preset_t *encoder_preset = self.converter_plugin->encoder_preset_alloc();
     scriptableEncoderPresetToConverterEncoderPreset(preset, encoder_preset);
 
-    NSString *outfile = [_outputFileName stringValue];
+    NSString *outfile = _outputFileName.stringValue;
 
     if ([outfile isEqual:@""]) {
         outfile = default_format;
@@ -237,9 +235,9 @@ static NSMutableArray *g_converterControllers;
         if (it) {
             char outpath[PATH_MAX];
 
-            self.converter_plugin->get_output_path2 (it, self.convert_playlist, [[_outputFolder stringValue] UTF8String], [outfile UTF8String], encoder_preset, self.preserveFolderStructure.state == NSControlStateValueOn, "", self.writeToSourceFolder.state == NSControlStateValueOn, outpath, sizeof (outpath));
+            self.converter_plugin->get_output_path2 (it, self.convert_playlist, _outputFolder.stringValue.UTF8String, outfile.UTF8String, encoder_preset, self.preserveFolderStructure.state == NSControlStateValueOn, "", self.writeToSourceFolder.state == NSControlStateValueOn, outpath, sizeof (outpath));
 
-            [convert_items_preview addObject:[NSString stringWithUTF8String:outpath]];
+            [convert_items_preview addObject:@(outpath)];
         }
     }
 
@@ -257,12 +255,12 @@ static NSMutableArray *g_converterControllers;
 
 
 - (IBAction)overwritePromptChanged:(id)sender {
-    deadbeef->conf_set_int ("converter.overwrite_action", (int)[_fileExistsAction indexOfSelectedItem]);
+    deadbeef->conf_set_int ("converter.overwrite_action", (int)_fileExistsAction.indexOfSelectedItem);
     deadbeef->conf_save ();
 }
 
 - (IBAction)outputFormatChanged:(id)sender {
-    deadbeef->conf_set_int ("converter.output_format", (int)[_outputFormat indexOfSelectedItem]);
+    deadbeef->conf_set_int ("converter.output_format", (int)_outputFormat.indexOfSelectedItem);
     deadbeef->conf_save ();
 }
 
@@ -313,7 +311,7 @@ static NSMutableArray *g_converterControllers;
 
     // store list of tracks
     self.convert_items_count = count;
-    self.convert_items = calloc (sizeof (ddb_playItem_t *), count);
+    self.convert_items = calloc (count, sizeof (ddb_playItem_t *));
 
     for (NSInteger i = 0; i < count; i++) {
         ddb_playItem_t *it = tracks[i];
@@ -352,8 +350,8 @@ static NSMutableArray *g_converterControllers;
     // Display the panel attached to the document's window.
     [panel beginSheetModalForWindow:self.window completionHandler:^(NSInteger result){
         if (result == NSModalResponseOK) {
-            NSURL * url = [panel URL];
-            self.outputFolder.stringValue =  [url path];
+            NSURL * url = panel.URL;
+            self.outputFolder.stringValue =  url.path;
         }
     }];
 }
@@ -373,9 +371,9 @@ static NSMutableArray *g_converterControllers;
 }
 
 - (IBAction)okAction:(id)sender {
-    self.outfolder = [_outputFolder stringValue];
+    self.outfolder = _outputFolder.stringValue;
 
-    self.outfile = [_outputFileName stringValue];
+    self.outfile = _outputFileName.stringValue;
 
     if ([self.outfile isEqual:@""]) {
         self.outfile = default_format;
@@ -385,9 +383,9 @@ static NSMutableArray *g_converterControllers;
 
     self.write_to_source_folder = self.writeToSourceFolder.state == NSControlStateValueOn;
 
-    self.overwrite_action = (int)[_fileExistsAction indexOfSelectedItem];
+    self.overwrite_action = (int)_fileExistsAction.indexOfSelectedItem;
 
-    int selected_format = (int)[_outputFormat indexOfSelectedItem];
+    int selected_format = (int)_outputFormat.indexOfSelectedItem;
     switch (selected_format) {
         case 1 ... 4:
             self.output_bps = selected_format * 8;
@@ -404,7 +402,7 @@ static NSMutableArray *g_converterControllers;
 
     NSInteger selectedEncoderPreset = self.encoderSelectViewController.indexOfSelectedItem;
     if (selectedEncoderPreset != -1) {
-        scriptableItem_t *preset = scriptableItemChildAtIndex(scriptableEncoderRoot(), (unsigned int)selectedEncoderPreset);
+        scriptableItem_t *preset = scriptableItemChildAtIndex(scriptableEncoderRoot(scriptableRootShared()), (unsigned int)selectedEncoderPreset);
         self.encoder_preset = self.converter_plugin->encoder_preset_alloc();
         scriptableEncoderPresetToConverterEncoderPreset(preset, self.encoder_preset);
     }
@@ -424,7 +422,7 @@ static NSMutableArray *g_converterControllers;
 
     NSInteger selectedDspPreset = self.dspSelectViewController.indexOfSelectedItem;
     if (selectedDspPreset != -1) {
-        scriptableItem_t *preset = scriptableItemChildAtIndex(scriptableDspRoot(), (unsigned int)selectedDspPreset);
+        scriptableItem_t *preset = scriptableItemChildAtIndex(scriptableDspRoot(scriptableRootShared()), (unsigned int)selectedDspPreset);
         ddb_dsp_context_t *chain = scriptableDspConfigToDspChain(preset);
         if (chain) {
             self.dsp_preset = self.converter_plugin->dsp_preset_alloc ();
@@ -504,11 +502,11 @@ static NSMutableArray *g_converterControllers;
 
     for (int n = 0; n < self.convert_items_count; n++) {
         deadbeef->pl_lock ();
-        NSString *text = [NSString stringWithUTF8String:deadbeef->pl_find_meta (_convert_items[n], ":URI")];
+        NSString *text = @(deadbeef->pl_find_meta (_convert_items[n], ":URI"));
         deadbeef->pl_unlock ();
         char outpath[PATH_MAX];
-        self.converter_plugin->get_output_path2 (_convert_items[n], self.convert_playlist, [self.outfolder UTF8String], [self.outfile UTF8String], self.encoder_preset, self.preserve_folder_structure, root, self.write_to_source_folder, outpath, sizeof (outpath));
-        NSString *nsoutpath = [NSString stringWithUTF8String:outpath];
+        self.converter_plugin->get_output_path2 (_convert_items[n], self.convert_playlist, (self.outfolder).UTF8String, (self.outfile).UTF8String, self.encoder_preset, self.preserve_folder_structure, root, self.write_to_source_folder, outpath, sizeof (outpath));
+        NSString *nsoutpath = @(outpath);
 
         dispatch_async(dispatch_get_main_queue(), ^{
             self.progressBar.doubleValue = n;
@@ -535,7 +533,7 @@ static NSMutableArray *g_converterControllers;
                 skip = 0;
             }
             else {
-                NSInteger result = [self overwritePrompt:[NSString stringWithUTF8String:outpath]];
+                NSInteger result = [self overwritePrompt:@(outpath)];
                 if (result == NSAlertSecondButtonReturn) {
                     unlink (outpath);
                     skip = 0;
@@ -606,29 +604,27 @@ static NSMutableArray *g_converterControllers;
 #pragma mark - ScriptableSelectDelegate
 
 - (void)scriptableSelectItemSelected:(nonnull scriptableItem_t *)item {
-    if (item->parent == scriptableEncoderRoot()) {
+    if (scriptableItemParent(item) == scriptableEncoderRoot(scriptableRootShared())) {
         const char *name = scriptableItemPropertyValueForKey(item, "name");
         deadbeef->conf_set_str ("converter.encoder_preset_name", name);
         [self updateFilenamesPreview];
     }
-    else if (item->parent == scriptableDspRoot()) {
+    else if (scriptableItemParent(item) == scriptableDspRoot(scriptableRootShared())) {
         const char *name = scriptableItemPropertyValueForKey(item, "name");
         deadbeef->conf_set_str ("converter.dsp_preset_name", name);
     }
 }
 
-#pragma mark - ScriptableItemDelegate
-
-- (void)scriptableItemChanged:(scriptableItem_t * _Nonnull)scriptable change:(ScriptableItemChange)change {
-    if (scriptable == scriptableEncoderRoot()) {
+- (void)scriptableItemDidChange:(scriptableItem_t * _Nonnull)scriptable change:(ScriptableItemChange)change {
+    if (scriptable == scriptableEncoderRoot(scriptableRootShared())) {
         NSInteger selectedEncPresetIndex = self.encoderSelectViewController.indexOfSelectedItem;
-        scriptableItem_t *selectedEncPreset = scriptableItemChildAtIndex(scriptableEncoderRoot(), (unsigned int)selectedEncPresetIndex);
+        scriptableItem_t *selectedEncPreset = scriptableItemChildAtIndex(scriptableEncoderRoot(scriptableRootShared()), (unsigned int)selectedEncPresetIndex);
         [self scriptableSelectItemSelected:selectedEncPreset];
         [self.encoderSelectViewController reloadData];
     }
-    else if (scriptable == scriptableDspRoot()) {
+    else if (scriptable == scriptableDspRoot(scriptableRootShared())) {
         NSInteger selectedDspPresetIndex = self.dspSelectViewController.indexOfSelectedItem;
-        scriptableItem_t *selectedDspPreset = scriptableItemChildAtIndex(scriptableDspRoot(), (unsigned int)selectedDspPresetIndex);
+        scriptableItem_t *selectedDspPreset = scriptableItemChildAtIndex(scriptableDspRoot(scriptableRootShared()), (unsigned int)selectedDspPresetIndex);
         [self scriptableSelectItemSelected:selectedDspPreset];
         [self.dspSelectViewController reloadData];
     }

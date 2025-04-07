@@ -1,6 +1,6 @@
 #!/bin/bash
 VERSION=`cat PORTABLE_VERSION | perl -ne 'chomp and print'`
-ORIGIN=`pwd | perl -ne 'chomp and print'`
+ORIGIN=$PWD
 STATIC_DEPS=static-deps
 AP=$ORIGIN/external/apbuild
 #ARCH=`uname -m | perl -ne 'chomp and print'`
@@ -32,6 +32,8 @@ elif [[ "$ARCH" == "x86_64" ]]; then
     export GTK2_216_CFLAGS="-I${GTK_ROOT_216}/include/gtk-2.0 -I${GTK_ROOT_216}/lib/gtk-2.0/include -I${GTK_ROOT_216}/include/atk-1.0 -I${GTK_ROOT_216}/include/cairo -I${GTK_ROOT_216}/include/pango-1.0 -I${GTK_ROOT_216}/include -I${GTK_ROOT_216}/include/glib-2.0 -I${GTK_ROOT_216}/lib/glib-2.0/include"
     export GTK2_216_LIBS="-L${GTK_ROOT_216}/lib -lgtk-x11-2.0 -lpango-1.0 -lcairo -lgdk-x11-2.0 -lgdk_pixbuf-2.0 -lgobject-2.0 -lgthread-2.0 -lglib-2.0"
 
+    export GDK_PIXBUF_LIBS="-L${GTK_ROOT_216}/lib -lgdk_pixbuf-2.0 -lgobject-2.0 -lgthread-2.0 -lglib-2.0"
+
     export GTK3_310_CFLAGS="-I${GTK_ROOT_310}/include/gtk-3.0 -I${GTK_ROOT_310}/include/at-spi2-atk/2.0 -I${GTK_ROOT_310}/include/at-spi-2.0 -I${GTK_ROOT_310}/include/dbus-1.0 -I${GTK_ROOT_310}/lib/dbus-1.0/include -I${GTK_ROOT_310}/include/gtk-3.0 -I${GTK_ROOT_310}/include/gio-unix-2.0/ -I${GTK_ROOT_310}/include/mirclient -I${GTK_ROOT_310}/include/mircore -I${GTK_ROOT_310}/include/mircookie -I${GTK_ROOT_310}/include/cairo -I${GTK_ROOT_310}/include/pango-1.0 -I${GTK_ROOT_310}/include/harfbuzz -I${GTK_ROOT_310}/include/pango-1.0 -I${GTK_ROOT_310}/include/atk-1.0 -I${GTK_ROOT_310}/include/cairo -I${GTK_ROOT_310}/include/pixman-1 -I${GTK_ROOT_310}/include/freetype2 -I${GTK_ROOT_310}/include/libpng12 -I${GTK_ROOT_310}/include/gdk-pixbuf-2.0 -I${GTK_ROOT_310}/include/libpng12 -I${GTK_ROOT_310}/include/glib-2.0 -I${GTK_ROOT_310}/lib/glib-2.0/include"
     export GTK3_310_LIBS="-L${GTK_ROOT_310}/lib -L${GTK_ROOT_310}/lib -L${GTK_ROOT_310}/lib/x86_64-linux-gnu -lgtk-3 -lgdk-3 -lpangocairo-1.0 -lpango-1.0 -latk-1.0 -lcairo-gobject -lcairo -lgdk_pixbuf-2.0 -lgio-2.0 -lgobject-2.0 -lgthread-2.0 -lglib-2.0"
 else
@@ -61,6 +63,8 @@ export OBJC=$AP/apgcc
     # store failed config.log in portable dir, which is mapped to
     # docker-artifacts when using docker.
     cp config.log ./portable/
+    cp config.h ./portable/
+    cp config.h.in ./portable/
     exit 1
 }
 sed -i 's/-lstdc++ -lm -lgcc_s -lc -lgcc_s/-lm -lc/g' libtool
@@ -71,7 +75,6 @@ export DESTDIR=`pwd`/static/$ARCH/deadbeef-$VERSION
 make DESTDIR=$DESTDIR install || exit 1
 mkdir -p $LIBRARY_PATH
 cp -r $LIBRARY_PATH/libBlocksRuntime.so* $DESTDIR/opt/deadbeef/lib/
-cp -r $LIBRARY_PATH/libkqueue.so* $DESTDIR/opt/deadbeef/lib/
 cp -r $LIBRARY_PATH/libdispatch.so* $DESTDIR/opt/deadbeef/lib/
 cp -r $LIBRARY_PATH/libcurl.so* $DESTDIR/opt/deadbeef/lib/
 cp -r $LIBRARY_PATH/libmbed*.so* $DESTDIR/opt/deadbeef/lib/

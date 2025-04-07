@@ -2,8 +2,8 @@
 //  DspPreferencesViewController.m
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/26/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/26/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "DspPreferencesViewController.h"
@@ -13,7 +13,7 @@
 #import "ScriptableNodeEditorViewController.h"
 #include "scriptable_dsp.h"
 #include "pluginsettings.h"
-#include "deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 extern DB_functions_t *deadbeef;
 
@@ -58,19 +58,18 @@ extern DB_functions_t *deadbeef;
     _currentDspChain = scriptableDspPresetFromDspChain (deadbeef->streamer_get_dsp_chain ());
     self.dspChainDataSource = [ScriptableTableDataSource dataSourceWithScriptable:_currentDspChain];
 
-    self.dspPresetsDataSource = [ScriptableTableDataSource dataSourceWithScriptable:scriptableDspRoot()];
+    self.dspPresetsDataSource = [ScriptableTableDataSource dataSourceWithScriptable:scriptableDspRoot(scriptableRootShared())];
 
     // preset list and browse button
-    self.dspSelectViewController = [[ScriptableSelectViewController alloc] initWithNibName:@"ScriptableSelectView" bundle:nil];
-    self.dspSelectViewController.scriptableItemDelegate = self;
+    self.dspSelectViewController = [ScriptableSelectViewController new];
+    self.dspSelectViewController.delegate = self;
     self.dspSelectViewController.view.frame = _dspPresetSelectorContainer.bounds;
     [_dspPresetSelectorContainer addSubview:self.dspSelectViewController.view];
-    self.dspSelectViewController.scriptableSelectDelegate = self;
     self.dspSelectViewController.errorViewer = ScriptableErrorViewer.sharedInstance;
     self.dspSelectViewController.dataSource = self.dspPresetsDataSource;
 
     // current dsp chain node list / editor
-    self.dspNodeEditorViewController = [[ScriptableNodeEditorViewController alloc] initWithNibName:@"ScriptableNodeEditorView" bundle:nil];
+    self.dspNodeEditorViewController = [ScriptableNodeEditorViewController new];
     self.dspNodeEditorViewController.scriptableNodeEditorDelegate = self;
     self.dspNodeEditorViewController.dataSource = self.dspChainDataSource;
     self.dspNodeEditorViewController.delegate = self;
@@ -102,7 +101,7 @@ extern DB_functions_t *deadbeef;
         if (returnCode == NSModalResponseOK) {
             const char *name = self.dspPresetNameTextField.stringValue.UTF8String;
             scriptableItem_t *preset = scriptableItemClone (self.dspChainDataSource.scriptable);
-            scriptableItem_t *presets = scriptableDspRoot();
+            scriptableItem_t *presets = scriptableDspRoot(scriptableRootShared());
             scriptableItemSetUniqueNameUsingPrefixAndRoot(preset, name, presets);
             scriptableItemAddSubItem(presets, preset);
             [self.dspSelectViewController reloadData];
@@ -112,11 +111,11 @@ extern DB_functions_t *deadbeef;
 
 - (IBAction)presetNameOK:(id)sender {
     const char *name = self.dspPresetNameTextField.stringValue.UTF8String;
-    if (scriptableItemContainsSubItemWithName(scriptableDspRoot(), name)) {
+    if (scriptableItemContainsSubItemWithName(scriptableDspRoot(scriptableRootShared()), name)) {
         [ScriptableErrorViewer.sharedInstance displayDuplicateNameError];
         return;
     }
-    if (!scriptableItemIsSubItemNameAllowed(scriptableDspRoot(), name)) {
+    if (!scriptableItemIsSubItemNameAllowed(scriptableDspRoot(scriptableRootShared()), name)) {
         [ScriptableErrorViewer.sharedInstance displayInvalidNameError];
         return;
     }
@@ -130,7 +129,8 @@ extern DB_functions_t *deadbeef;
 
 #pragma mark - ScriptableItemDelegate
 
-- (void)scriptableItemChanged:(scriptableItem_t *)scriptable change:(ScriptableItemChange)change {
+// NOTE this method is reused for 2 different delegates
+- (void)scriptableItemDidChange:(scriptableItem_t *)scriptable change:(ScriptableItemChange)change {
     if (scriptable == self.dspChainDataSource.scriptable
         || scriptableItemIndexOfChild(self.dspChainDataSource.scriptable, scriptable) >= 0) {
         // create dsp chain from the new state

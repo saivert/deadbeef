@@ -2,8 +2,8 @@
 //  aac_decoder_FDK.c
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 4/4/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 4/4/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #include <stdlib.h>
@@ -79,7 +79,7 @@ static aacDecoderCallbacks_t aacDecoderCallbacks_FDK = {
 
 aacDecoderHandle_t *
 aacDecoderOpenfdk (void) {
-    fdkDecoder_t *dec = calloc (sizeof (fdkDecoder_t), 1);
+    fdkDecoder_t *dec = calloc (1, sizeof (fdkDecoder_t));
     dec->base.callbacks = &aacDecoderCallbacks_FDK;
     dec->dec = aacDecoder_Open(TT_MP4_RAW, 1);
     return &dec->base;

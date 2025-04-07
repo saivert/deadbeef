@@ -2,8 +2,8 @@
 //  PlaylistContentView.h
 //  DeaDBeeF
 //
-//  Created by Alexey Yakovenko on 2/1/20.
-//  Copyright © 2020 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 2/1/20.
+//  Copyright © 2020 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import <Cocoa/Cocoa.h>
@@ -19,6 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)cleanup;
 
+- (void)coverManagerDidReset;
+
 - (void)drawRow:(int)idx;
 - (void)drawGroup:(nullable PlaylistGroup *)group;
 
@@ -27,7 +29,6 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)scrollToRowWithIndex:(int)idx;
 - (void)scrollVerticalPosition:(CGFloat)verticalPosition;
 
-- (void)updateContentFrame;
 - (void)reloadData;
 
 - (void)scrollChanged:(NSRect)visibleRect;
@@ -38,6 +39,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable PlaylistGroup *)groupForIndex:(NSInteger)index;
 
 - (void)invalidateArtworkCacheForRow:(DdbListviewRow_t)row;
+
+- (void)configChanged;
 
 @end
 

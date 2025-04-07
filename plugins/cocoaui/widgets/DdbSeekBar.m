@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2020 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2020 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -25,8 +25,6 @@
 #import "DdbSeekBar.h"
 #import "SeekbarOverlay.h"
 
-static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
-
 @interface DdbSeekBar() <CALayerDelegate> {
     float _position;
     NSFormatter *_formatter;
@@ -38,8 +36,10 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
 @property (nonatomic) CALayer *trackPos;
 @property (nonatomic) CALayer *thumb;
 
-@property (nonatomic,copy) NSColor *trackBackgroundColor;
-@property (nonatomic,copy) NSColor *trackInactiveBackgroundColor;
+@property (nonatomic) NSColor *trackFillColor;
+@property (nonatomic) NSColor *trackInactiveFillColor;
+@property (nonatomic) NSColor *trackBorderColor;
+@property (nonatomic) NSColor *trackBorderInactiveColor;
 @property (nonatomic,copy) NSColor *trackPosBackgroundColor;
 @property (nonatomic,copy) NSColor *trackPosInactiveBackgroundColor;
 @property (nonatomic,copy) NSColor *thumbBackgroundColor;
@@ -74,18 +74,12 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
     return self;
 }
 
-- (void)dealloc {
-    [self removeObserver:self forKeyPath:@"effectiveAppearance"];
-}
-
 - (void)setEnabled:(BOOL)enabled {
-    [super setEnabled:enabled];
+    super.enabled = enabled;
     [self updateThumbVisibility];
 }
 
 - (void)initColors {
-    self.trackBackgroundColor = [NSColor.whiteColor shadowWithLevel:0.42];
-    self.trackInactiveBackgroundColor = [NSColor.whiteColor shadowWithLevel:0.2];
 #ifdef MAC_OS_X_VERSION_10_14
     if (@available(macOS 10.14, *)) {
         self.trackPosBackgroundColor = NSColor.controlAccentColor;
@@ -100,14 +94,23 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
     self.thumbInactiveBackgroundColor = [NSColor.whiteColor shadowWithLevel:0.4];
     self.thumbBorderColor = NSColor.windowBackgroundColor;
     self.thumbInactiveBorderColor = NSColor.windowBackgroundColor;
+
+    if (NSApp.effectiveAppearance == [NSAppearance appearanceNamed:NSAppearanceNameAqua]) {
+        self.trackFillColor = [NSColor colorWithRed:0.874 green:0.878 blue:0.882 alpha:1];
+        self.trackBorderColor = [NSColor colorWithRed:0.824 green:0.827 blue:0.831 alpha:1];
+        self.trackInactiveFillColor = [NSColor colorWithRed:0.843 green:0.847 blue:0.847 alpha:1];
+        self.trackBorderInactiveColor = [NSColor colorWithRed:0.792 green:0.796 blue:0.8 alpha:1];
+    }
+    else {
+        self.trackFillColor = [NSColor colorWithRed:0.270 green:0.275 blue:0.278 alpha:1];
+        self.trackInactiveFillColor = [NSColor colorWithRed:0.216 green:0.220 blue:0.227 alpha:1];
+    }
 }
 
 - (void)setup {
     self.wantsLayer = YES;
 
     [self initColors];
-
-    [self addObserver:self forKeyPath:@"effectiveAppearance" options:0 context:kEffectiveAppearanceContext];
 
     _overlay = [SeekbarOverlay new];
     [self addSubview:_overlay];
@@ -124,8 +127,9 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
     self.trackPos = [CALayer new];
     self.thumb = [CALayer new];
 
-    self.track.cornerRadius = 2;
-    self.trackPos.cornerRadius = 2;
+    self.track.cornerRadius = 2.5;
+    self.trackPos.cornerRadius = 2.5;
+    self.track.borderWidth = 1;
 
     self.thumb.borderWidth = 1;
     self.thumb.cornerRadius = 3;
@@ -144,6 +148,18 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
 
     NSTrackingArea *trackingArea = [[NSTrackingArea alloc] initWithRect:NSZeroRect options:NSTrackingActiveInActiveApp|NSTrackingInVisibleRect|NSTrackingMouseEnteredAndExited owner:self userInfo:nil];
     [self addTrackingArea:trackingArea];
+
+
+    NSLayoutConstraint *minWidthConstraint = [self.widthAnchor constraintGreaterThanOrEqualToConstant:100];
+    minWidthConstraint.priority = NSLayoutPriorityDefaultHigh;
+    NSLayoutConstraint *maxWidthConstraint = [self.widthAnchor constraintLessThanOrEqualToConstant:10000];
+    maxWidthConstraint.priority = NSLayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[
+        minWidthConstraint,
+        maxWidthConstraint,
+    ]];
+
+    [self setContentCompressionResistancePriority:NSLayoutPriorityDefaultHigh forOrientation:NSLayoutConstraintOrientationHorizontal];
 }
 
 - (void)updateThumbVisibility {
@@ -170,24 +186,28 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
     [self updateThumbVisibility];
 }
 
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
-{
-    if (context == kEffectiveAppearanceContext) {
-        [self initColors];
-        [self updateTrackColors];
-        [self updateTrackPosColors];
-        [self updateThumbColors];
-    } else {
-        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
-    }
+- (void)layout {
+    [super layout];
+    [self initColors];
+    [self updateTrackColors];
+    [self updateTrackPosColors];
+    [self updateThumbColors];
 }
 
 - (void)updateTrackColors {
     if (self.isKey) {
-        self.track.backgroundColor = self.trackBackgroundColor.CGColor;
+        self.track.backgroundColor = self.trackFillColor.CGColor;
+        self.track.borderColor = self.trackBorderColor.CGColor;
     }
     else {
-        self.track.backgroundColor = self.trackInactiveBackgroundColor.CGColor;
+        self.track.backgroundColor = self.trackInactiveFillColor.CGColor;
+        self.track.borderColor = self.trackBorderInactiveColor.CGColor;
+    }
+    if (NSApp.effectiveAppearance == [NSAppearance appearanceNamed:NSAppearanceNameAqua]) {
+        self.track.borderWidth = 1;
+    }
+    else {
+        self.track.borderWidth = 0;
     }
 }
 
@@ -212,6 +232,9 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
 }
 
 - (void)becameKey:(NSNotification *)notification {
+    if (notification.object != self.window) {
+        return;
+    }
     [CATransaction begin];
     [CATransaction setValue:(id)kCFBooleanTrue forKey:kCATransactionDisableActions];
     self.isKey = YES;
@@ -222,6 +245,9 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
 }
 
 - (void)resignedKey:(NSNotification *)notification {
+    if (notification.object != self.window) {
+        return;
+    }
     [CATransaction begin];
     [CATransaction setValue:(id)kCFBooleanTrue forKey:kCATransactionDisableActions];
     self.isKey = NO;
@@ -236,7 +262,7 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
         [CATransaction begin];
         [CATransaction setValue:(id)kCFBooleanTrue forKey:kCATransactionDisableActions];
         CGFloat y = NSHeight(self.frame)/2;
-        self.track.frame = NSMakeRect(3, y-1.5, NSWidth(self.frame)-6, 3);
+        self.track.frame = NSMakeRect(3, y-2, NSWidth(self.frame)-6, 4);
         [self layoutThumbLayer];
         [CATransaction commit];
     }
@@ -248,7 +274,7 @@ static void *kEffectiveAppearanceContext = &kEffectiveAppearanceContext;
     if (!self.thumb.hidden) {
         self.thumb.frame = NSMakeRect(x, y-6, 6, 12);
     }
-    self.trackPos.frame = NSMakeRect(3, y-1.5, x, 3);
+    self.trackPos.frame = NSMakeRect(3, y-2, x, 4);
 }
 
 - (void)setPosition:(float)position {

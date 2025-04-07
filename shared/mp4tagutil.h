@@ -1,6 +1,6 @@
 /*
     DeaDBeeF -- the music player
-    Copyright (C) 2009-2016 Alexey Yakovenko and other contributors
+    Copyright (C) 2009-2016 Oleksiy Yakovenko and other contributors
 
     This software is provided 'as-is', without any express or implied
     warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,7 @@
 #ifndef mp4tagutil_h
 #define mp4tagutil_h
 
-#include "../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 #include <mp4p/mp4p.h>
 
 int

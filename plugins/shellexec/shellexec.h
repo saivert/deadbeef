@@ -2,7 +2,7 @@
     Shellexec plugin for DeaDBeeF
     Copyright (C) 2010-2012 Deadbeef team
     Original developer Viktor Semykin <thesame.ml@gmail.com>
-    Maintainance, minor improvements Alexey Yakovenko <waker@users.sf.net>
+    Maintainance, minor improvements Oleksiy Yakovenko <waker@users.sf.net>
     GUI support and bugfixing Azeem Arshad <kr00r4n@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
@@ -21,10 +21,14 @@
 #ifndef __SHELLEXEC_H
 #define __SHELLEXEC_H
 
-#include "../../deadbeef.h"
+#include <deadbeef/deadbeef.h>
 
 // Version history:
 // 1.2: changed configuration to JSON, use new title formatting
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 //Probably it's reasonable to move these flags to parent struct
 enum {
@@ -42,12 +46,16 @@ typedef struct Shx_action_s
 
 typedef struct Shx_plugin_s
 {
-	DB_misc_t misc;
-
-	void (*save_actions) (void);
-	Shx_action_t* (*action_add) (void);
-	void (*action_remove) (Shx_action_t *a);
-	void (*action_free) (Shx_action_t *a);
+    DB_misc_t misc;
+    
+    void (*save_actions) (void);
+    Shx_action_t* (*action_add) (void);
+    void (*action_remove) (Shx_action_t *a);
+    void (*action_free) (Shx_action_t *a);
 } Shx_plugin_t;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

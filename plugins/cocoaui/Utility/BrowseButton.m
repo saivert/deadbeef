@@ -2,8 +2,8 @@
 //  BrowseButton.m
 //  NesEdit
 //
-//  Created by Alexey Yakovenko on 3/19/19.
-//  Copyright © 2019 Alexey Yakovenko. All rights reserved.
+//  Created by Oleksiy Yakovenko on 3/19/19.
+//  Copyright © 2019 Oleksiy Yakovenko. All rights reserved.
 //
 
 #import "BrowseButton.h"
@@ -37,8 +37,8 @@
     // Display the panel attached to the document's window.
     [panel beginSheetModalForWindow:self.window completionHandler:^(NSInteger result){
         if (result == NSModalResponseOK && self.fileSelectedBlock) {
-            NSURL * url = [panel URL];
-            self.fileSelectedBlock([url path]);
+            NSURL * url = panel.URL;
+            self.fileSelectedBlock(url.path);
         }
     }];
 }
