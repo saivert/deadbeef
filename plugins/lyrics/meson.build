@@ -4,7 +4,7 @@ lyrics_sources = [
     'support.h'
 ]
 
-gtk3_dep = dependency('gtk+-3.0', version: '>=3.12.0', required: get_option('plugin-gtk3'))
+has_lyrics = not get_option('plugin-lyrics').disabled() and (has_gtk3_plugin or has_gtk2_plugin)
 
 if gtk3_dep.found()
 
@@ -18,9 +18,6 @@ if gtk3_dep.found()
 
 endif
 
-summary({'GTK3 GUI': gtk3_dep.found()}, bool_yn: true, section: 'Plugins')
-
-gtk2_dep = dependency('gtk+-2.0', required: get_option('plugin-gtk2'))
 
 if gtk2_dep.found()
 
@@ -34,4 +31,4 @@ if gtk2_dep.found()
 
 endif
 
-summary({'GTK2 GUI': gtk2_dep.found()}, bool_yn: true, section: 'Plugins')
+summary({'Lyrics': has_lyrics}, bool_yn: true, section: 'Plugins')

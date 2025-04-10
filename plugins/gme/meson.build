@@ -330,4 +330,4 @@ if has_gme
   )
 endif
 
-summary({'chiptune music player based on GME': has_gme}, bool_yn: true, section: 'Plugins')
+summary({'Chiptune music player based on GME': has_gme}, bool_yn: true, section: 'Plugins')

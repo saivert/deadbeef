@@ -44,7 +44,7 @@ executable('deadbeef',
   install: true,
   #c_args : cc_flags,
   include_directories : [deadbeef_inc],
-  link_with: [libctmap, libfilereader],
-  dependencies : [pthread_lib, m_dep, dl_lib, libparser_dep, libundo_dep, libdispatch_dep],
+  link_with: [libctmap, libfilereader, libparser],
+  dependencies : [pthread_lib, m_dep, dl_lib, libundo_dep, libdispatch_dep],
 )
 

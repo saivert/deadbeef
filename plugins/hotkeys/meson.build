@@ -18,7 +18,8 @@ if has_hotkeys
   install : true,
   install_dir: plugindir,
   include_directories: deadbeef_inc,
-  dependencies : [xlib_dep, libparser_dep],
+  link_with: libparser,
+  dependencies : [xlib_dep],
   )
 endif
 

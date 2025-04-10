@@ -47,5 +47,5 @@ plugin_artwork = shared_library('artwork', artwork_sources,
 )
 endif
 
-summary({'artwork': has_artwork}, bool_yn: true, section: 'Plugins')
+summary({'Artwork': has_artwork}, bool_yn: true, section: 'Plugins')
 

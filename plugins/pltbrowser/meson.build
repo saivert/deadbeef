@@ -8,7 +8,7 @@ pltbrowser_sources_gtk3 = [
   'pltbrowser.c'
 ]
 
-has_pltbrowser = not get_option('plugin-pltbrowser').disabled()
+has_pltbrowser = not get_option('plugin-pltbrowser').disabled() and (has_gtk3_plugin or has_gtk2_plugin)
 
 if has_pltbrowser and gtk2_dep.found()
   plugin_pltbrowser = shared_library('pltbrowser_gtk2', pltbrowser_sources_gtk2,
@@ -30,4 +30,4 @@ if has_pltbrowser and gtk3_dep.found()
   )
 endif
 
-summary({'playlist browser gui plugin': has_pltbrowser}, bool_yn: true, section: 'Plugins')
+summary({'Playlist browser gui': has_pltbrowser}, bool_yn: true, section: 'Plugins')

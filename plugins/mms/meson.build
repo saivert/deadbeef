@@ -25,4 +25,4 @@ if has_mms
   )
 endif
 
-summary({'mms streaming support': has_mms}, bool_yn: true, section: 'Plugins')
+summary({'MMS streaming support': has_mms}, bool_yn: true, section: 'Plugins')

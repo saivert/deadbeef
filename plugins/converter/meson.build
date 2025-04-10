@@ -43,6 +43,8 @@ if has_converter
     install_dir: join_paths(get_option('libdir'), 'deadbeef', 'convpresets'),
   )
 
+  install_headers('converter.h', subdir : 'deadbeef')
+
   plugin_converter = shared_library('converter', converter_sources,
   name_prefix: '',
   install : true,
@@ -72,4 +74,4 @@ if has_converter and gtk3_dep.found()
   )
 endif
 
-summary({'converter plugin': has_converter}, bool_yn: true, section: 'Plugins')
+summary({'Converter': has_converter}, bool_yn: true, section: 'Plugins')

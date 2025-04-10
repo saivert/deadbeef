@@ -8,7 +8,7 @@ shellexecui_sources = [
   'callbacks.h'
 ]
 
-has_shellexecui = not get_option('plugin-shellexecui').disabled()
+has_shellexecui = not get_option('plugin-shellexecui').disabled() and (has_gtk3_plugin or has_gtk2_plugin)
 
 if has_shellexecui and gtk2_dep.found()
   plugin_shellexecui_gtk2 = shared_library('shellexecui_gtk2', shellexecui_sources,
@@ -30,6 +30,4 @@ if has_shellexecui and gtk3_dep.found()
   )
 endif
 
-if gtk2_dep.found() or gtk3_dep.found()
-summary({'GTK user interface for shellexec plugin': has_shellexecui}, bool_yn: true, section: 'Plugins')
-endif
+summary({'GTK user interface for shell commands plugin': has_shellexecui}, bool_yn: true, section: 'Plugins')

@@ -5,8 +5,6 @@ notify_sources = [
 
 dbus_dep = dependency('dbus-1', required: get_option('plugin-notify'))
 
-#glib-2.0 >= 2.26 gio-2.0 gdk-pixbuf-2.0
-
 glib2_dep = dependency('glib-2.0', version: '>=2.26', required: get_option('plugin-notify'))
 gdk_pixbuf_dep = dependency('gdk-pixbuf-2.0', required: get_option('plugin-notify'))
 
@@ -22,4 +20,4 @@ if has_notify
   )
 endif
 
-summary({'notification-daemon support plugin': has_notify}, bool_yn: true, section: 'Plugins')
+summary({'Notification-daemon support plugin': has_notify}, bool_yn: true, section: 'Plugins')

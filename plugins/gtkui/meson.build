@@ -70,6 +70,8 @@ install_headers(['gtkui_api.h'], subdir : 'deadbeef')
 
 gtk3_dep = dependency('gtk+-3.0', version: '>=3.12.0', required: get_option('plugin-gtk3'))
 
+has_gtk3_plugin = not get_option('plugin-gtk3').disabled() and gtk3_dep.found()
+
 if gtk3_dep.found()
 
   gnome = import('gnome')
@@ -88,8 +90,8 @@ if gtk3_dep.found()
     install_dir: plugindir,
     include_directories: deadbeef_inc,
     c_args: '-DGLIB_DISABLE_DEPRECATION_WARNINGS -DGDK_DISABLE_DEPRECATION_WARNINGS -DGTK_DISABLE_DEPRECATION_WARNINGS -DDDB_WARN_DEPRECATED=1',
-    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset, libanalyzer, libscope],
-    dependencies : [m_dep, gtk3_dep, libparser_dep, jansson_dep, libscriptable_dep, libdispatch_dep],
+    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset, libanalyzer, libscope, libparser],
+    dependencies : [m_dep, gtk3_dep, jansson_dep, libscriptable_dep, libdispatch_dep],
   )
 
 endif
@@ -97,6 +99,8 @@ endif
 summary({'GTK3 GUI': gtk3_dep.found()}, bool_yn: true, section: 'Plugins')
 
 gtk2_dep = dependency('gtk+-2.0', required: get_option('plugin-gtk2'))
+
+has_gtk2_plugin = not get_option('plugin-gtk2').disabled() and gtk2_dep.found()
 
 if gtk2_dep.found()
 
@@ -106,8 +110,8 @@ if gtk2_dep.found()
     install_dir: plugindir,
     include_directories: deadbeef_inc,
     c_args: '-DGLIB_DISABLE_DEPRECATION_WARNINGS -DGDK_DISABLE_DEPRECATION_WARNINGS -DGTK_DISABLE_DEPRECATION_WARNINGS -DDDB_WARN_DEPRECATED=1',
-    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset, libanalyzer, libscope],
-    dependencies : [m_dep, gtk2_dep, libparser_dep, jansson_dep, libscriptable_dep, libdispatch_dep],
+    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset, libanalyzer, libscope, libparser],
+    dependencies : [m_dep, gtk2_dep, jansson_dep, libscriptable_dep, libdispatch_dep],
   )
 
 endif

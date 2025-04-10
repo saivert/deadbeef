@@ -19,4 +19,4 @@ if has_vtx
   )
 endif
 
-summary({'vtx file player (ay8910/12 emulation)': has_vtx}, bool_yn: true, section: 'Plugins')
+summary({'VTX file player (ay8910/12 emulation)': has_vtx}, bool_yn: true, section: 'Plugins')

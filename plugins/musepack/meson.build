@@ -34,4 +34,4 @@ if has_musepack
   )
 endif
 
-summary({'musepack player plugin': has_musepack}, bool_yn: true, section: 'Plugins')
+summary({'Musepack player plugin': has_musepack}, bool_yn: true, section: 'Plugins')

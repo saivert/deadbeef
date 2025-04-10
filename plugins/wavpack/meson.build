@@ -16,4 +16,4 @@ if has_wavpack
   )
 endif
 
-summary({'wavpack player': has_wavpack}, bool_yn: true, section: 'Plugins')
+summary({'Wavpack player': has_wavpack}, bool_yn: true, section: 'Plugins')

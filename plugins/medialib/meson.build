@@ -31,6 +31,8 @@ if has_medialib
         include_directories: deadbeef_inc,
         dependencies: [libscriptable_dep, jansson_dep, libdispatch_dep],
     )
+
+    install_headers('medialib.h', subdir : 'deadbeef')
 endif
 
 summary(

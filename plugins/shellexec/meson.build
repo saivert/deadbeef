@@ -16,4 +16,4 @@ if has_shellexec
   )
 endif
 
-summary({'shell commands plugin': has_shellexec}, bool_yn: true, section: 'Plugins')
+summary({'Shell commands plugin': has_shellexec}, bool_yn: true, section: 'Plugins')
