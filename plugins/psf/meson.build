@@ -87,12 +87,21 @@ zlib_dep = dependency('zlib', required: get_option('plugin-psf'))
 has_psf = zlib_dep.found()
 
 if has_psf
+
+  psf_include_dirs = include_directories(
+    'aosdk/eng_ssf',
+    'aosdk/eng_qsf',
+    'aosdk/eng_dsf',
+    'aosdk/eng_psf',
+    'aosdk'
+  )
+
   shared_library('psf', psf_sources + psf_headers,
     name_prefix: '',
     install : true,
     install_dir: plugindir,
     c_args: ['-Wall', '-DHAS_PSXCPU=1'],
-    include_directories: [deadbeef_inc, 'eng_ssf', 'eng_qsf', 'eng_dsf', 'aosdk'],
+    include_directories: [deadbeef_inc, psf_include_dirs],
     dependencies : [m_dep, zlib_dep],
   )
 endif
