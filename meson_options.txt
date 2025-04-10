@@ -178,11 +178,19 @@ option('plugin-artwork',
        type : 'feature',
        value: 'auto',
        description : 'album art loader plugin')
-option('plugin-artwork-imlib2',
-       type : 'feature',
-       value: 'auto',
-       description : 'use imlib2 in artwork plugin')
 option('plugin-converter',
        type : 'feature',
        value: 'auto',
        description : 'plugin for converting files to any formats')
+option('plugin-statusnotifier',
+       type : 'feature',
+       value: 'auto',
+       description : 'plugin for showing icon in taskbar')
+option('plugin-lyrics',
+       type : 'feature',
+       value: 'auto',
+       description : 'plugin for showing lyrics')
+option('plugin-medialib',
+       type : 'feature',
+       value: 'auto',
+       description : 'plugin for media library')

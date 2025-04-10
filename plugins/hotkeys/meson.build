@@ -1,8 +1,6 @@
 hotkeys_sources = [
   'hotkeys.c',
-  'hotkeys.h',
-  'actionhandlers.c',
-  'actionhandlers.h'
+  'hotkeys.h'
 ]
 
 

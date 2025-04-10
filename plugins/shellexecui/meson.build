@@ -11,7 +11,7 @@ shellexecui_sources = [
 has_shellexecui = not get_option('plugin-shellexecui').disabled()
 
 if has_shellexecui and gtk2_dep.found()
-  plugin_shellexecui = shared_library('shellexecui_gtk2', shellexecui_sources,
+  plugin_shellexecui_gtk2 = shared_library('shellexecui_gtk2', shellexecui_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,
@@ -21,7 +21,7 @@ if has_shellexecui and gtk2_dep.found()
 endif
 
 if has_shellexecui and gtk3_dep.found()
-  plugin_shellexecui = shared_library('shellexecui_gtk3', shellexecui_sources,
+  plugin_shellexecui_gtk3 = shared_library('shellexecui_gtk3', shellexecui_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,

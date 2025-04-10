@@ -1,8 +1,8 @@
 tta_sources = [
   'ttaplug.c',
-  'filter.h',
-  'ttadec.c',
-  'ttadec.h'
+  'libtta/filter.h',
+  'libtta/ttadec.c',
+  'libtta/ttadec.h'
 ]
 
 has_tta = not get_option('plugin-tta').disabled()
@@ -11,7 +11,7 @@ if has_tta
   name_prefix: '',
   install : true,
   install_dir: plugindir,
-  include_directories: [deadbeef_inc],
+  include_directories: [deadbeef_inc, 'libtta'],
   )
 endif
 

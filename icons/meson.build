@@ -5,5 +5,5 @@ foreach s: [16, 22, 24, 32, 36, 48, 64, 72, 96, 128, 192, 256]
 endforeach
 
 
-install_data('scalable/deadbeef.svg'.format(subdir),
+install_data('scalable/deadbeef.svg',
   install_dir: join_paths(get_option('datadir'), 'icons', 'hicolor', 'scalable', 'apps'))

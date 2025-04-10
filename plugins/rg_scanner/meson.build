@@ -20,7 +20,7 @@ if has_rg_scanner
   c_args: rg_scanner_cargs,
   install_dir: plugindir,
   include_directories: deadbeef_inc,
-  dependencies: [m_dep]
+  dependencies: [m_dep, libdispatch_dep]
   )
 endif
 

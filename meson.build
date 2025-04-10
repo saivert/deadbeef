@@ -139,14 +139,20 @@ configure_file(output : 'config.h',
 deadbeef_inc = include_directories(
   'external/mp4p/include',
   'plugins/libparser',
-  'scope',
-  'analyzer',
+  'shared/scope',
+  'shared/analyzer',
+  'include',
   '.'
 )
+
+deadbeef_header_inc = include_directories('include')
 
 sse2_args = '-msse2'
 have_sse2 = cc.has_argument(sse2_args)
 
+# Libdispatch dependency
+
+libdispatch_dep = [dependency('blocks'), cc.find_library('dispatch')]
 
 # Shared static libraries
 subdir('shared')
@@ -215,62 +221,25 @@ subdir('plugins/notify')
 subdir('plugins/pltbrowser')
 subdir('plugins/shellexec')
 subdir('plugins/shellexecui')
-subdir('plugins/artwork-legacy')
+subdir('plugins/artwork')
 subdir('plugins/converter')
+subdir('plugins/medialib')
+subdir('plugins/statusnotifier')
 
 ## Main binary
 
-deadbeef_sources = [
-  'main.c',
-  'plugins.c',
-  'cueutil.c',
-  'playlist.c',
-  'plmeta.c',
-  'pltmeta.c',
-  'streamer.c',
-  'dsp.c',
-  'streamreader.c',
-  'premix.c',
-  'messagepump.c',
-  'conf.c',
-  'threading_pthread.c',
-  'volume.c',
-  'junklib.c',
-  'utf8.c',
-  'vfs.c',
-  'vfs_stdio.c',
-  'md5/md5.c',
-  'metacache.c',
-  'ringbuf.c',
-  'dsppreset.c',
-  'replaygain.c',
-  'fft.c',
-  'handler.c',
-  'escape.c',
-  'tf.c',
-  'playqueue.c',
-  'sort.c',
-  'logger.c',
-  'external/wcwidth/wcwidth.c',
-  'playmodes.c',
-  'viz.c',
-  'decodedblock.c',
-  'scope/scope.c',
-  'analyzer/analyzer.c',
-  'plugins/libparser/parser.c',
-  'shared/ctmap.c'
-]
+subdir('src')
 
 
 deadbeef_headers = [
-    'deadbeef.h'
+    'include/deadbeef/deadbeef.h'
 ]
 
 install_headers(deadbeef_headers, subdir : 'deadbeef')
 
 install_data(
   'README', 'help.txt', 'about.txt', 'translators.txt', 'ChangeLog',
-  'COPYING.GPLv2', 'COPYING.LGPLv2.1', 'translation/help.ru.txt',
+  'COPYING.GPLv2', 'COPYING.LGPLv2.1', 
   install_dir: join_paths(get_option('datadir'), 'doc', meson.project_name()),
 )
 
@@ -285,12 +254,4 @@ i18n.merge_file(
   po_dir: 'po',
   install: true,
   install_dir: get_option('datadir') / 'applications'
-)
-
-deadbeef_exec = executable('deadbeef',
-  deadbeef_sources,
-  install: true,
-  #c_args : cc_flags,
-  include_directories : [deadbeef_inc],
-  dependencies : [pthread_lib, m_dep, dl_lib, dependency('blocks'), cc.find_library('dispatch')],
 )

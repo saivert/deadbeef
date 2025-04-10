@@ -1,17 +1,14 @@
 shn_sources = [
-  'array.c',
-  'convert.c',
-  'misc.c',
-  'output.c',
-  'seek.c',
-  'shn.c',
-  'shn.h',
-  'shorten.c',
-  'shorten.h',
-  'sulawalaw.c',
-  'vario.c',
-  'wave.c',
-  'bitshift.h'
+  'shnplugin.c',
+  'libshn/array.c',
+  'libshn/convert.c',
+  'libshn/misc.c',
+  'libshn/output.c',
+  'libshn/seek.c',
+  'libshn/shorten.c',
+  'libshn/sulawalaw.c',
+  'libshn/vario.c',
+  'libshn/wave.c'
 ]
 
 has_shn = not get_option('plugin-shn').disabled()
@@ -20,7 +17,7 @@ if has_shn
   name_prefix: '',
   install : true,
   install_dir: plugindir,
-  include_directories: [deadbeef_inc],
+  include_directories: [deadbeef_inc, 'libshn'],
   dependencies: [m_dep]
   )
 endif

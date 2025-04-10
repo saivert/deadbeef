@@ -1,11 +1,11 @@
 vtx_sources = [
   'vtx.c',
-  'ay8912.c',
-  'ayemu_8912.h',
-  'ayemu.h',
-  'ayemu_vtxfile.h',
-  'lh5dec.c',
-  'vtxfile.c'
+  'libayemu/ay8912.c',
+  'libayemu/ayemu_8912.h',
+  'libayemu/ayemu.h',
+  'libayemu/ayemu_vtxfile.h',
+  'libayemu/lh5dec.c',
+  'libayemu/vtxfile.c'
 ]
 
 has_vtx = not get_option('plugin-vtx').disabled()
@@ -15,7 +15,7 @@ if has_vtx
   name_prefix: '',
   install : true,
   install_dir: plugindir,
-  include_directories: [deadbeef_inc],
+  include_directories: [deadbeef_inc, 'libayemu'],
   )
 endif
 

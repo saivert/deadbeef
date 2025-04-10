@@ -13,6 +13,7 @@ if has_opus
   name_prefix: '',
   install : true,
   install_dir: plugindir,
+  include_directories: deadbeef_header_inc,
   dependencies : [m_dep, opus_dep, opusfile_dep, liboggedit_dep],
   )
 endif

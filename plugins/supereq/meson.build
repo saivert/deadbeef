@@ -14,7 +14,7 @@ if has_supereq
   c_args: ['-DUSE_OOURA'],
   cpp_args: ['-fno-exceptions', '-fno-rtti', '-fno-unwind-tables', '-DUSE_OOURA'],
   install_dir: plugindir,
-  include_directories: [deadbeef_inc],
+  include_directories: [deadbeef_inc, 'libsupereq'],
   dependencies: [m_dep]
   )
 endif
