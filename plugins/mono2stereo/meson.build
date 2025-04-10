@@ -13,4 +13,4 @@ if has_mono2stereo
   )
 endif
 
-summary({'mono2stereo DSP plugin': has_mono2stereo}, bool_yn: true, section: 'Plugins')
+summary({'Mono2stereo DSP plugin': has_mono2stereo}, bool_yn: true, section: 'Plugins')
