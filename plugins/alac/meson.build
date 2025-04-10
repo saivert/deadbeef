@@ -6,7 +6,7 @@ alac_sources = [
 has_alac = not get_option('plugin-alac').disabled()
 
 if has_alac
-  plugin_alac = shared_library('alac', alac_sources,
+  shared_library('alac', alac_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,

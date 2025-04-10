@@ -14,13 +14,13 @@ endif
 has_rg_scanner = not get_option('plugin-rg_scanner').disabled()
 
 if has_rg_scanner
-  plugin_rg_scanner = shared_library('rg_scanner', rg_scanner_sources,
-  name_prefix: '',
-  install : true,
-  c_args: rg_scanner_cargs,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [m_dep, libdispatch_dep]
+  shared_library('rg_scanner', rg_scanner_sources,
+    name_prefix: '',
+    install : true,
+    c_args: rg_scanner_cargs,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [m_dep, libdispatch_dep]
   )
 endif
 

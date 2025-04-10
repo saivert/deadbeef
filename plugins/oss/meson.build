@@ -12,12 +12,12 @@ endif
 has_oss = not get_option('plugin-oss').disabled() and has_oss_header
 
 if has_oss
-  plugin_oss = shared_library('oss', oss_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  c_args: oss_cargs,
-  include_directories: deadbeef_inc,
+  shared_library('oss', oss_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    c_args: oss_cargs,
+    include_directories: deadbeef_inc,
   )
 endif
 

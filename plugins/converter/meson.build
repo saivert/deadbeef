@@ -45,32 +45,32 @@ if has_converter
 
   install_headers('converter.h', subdir : 'deadbeef')
 
-  plugin_converter = shared_library('converter', converter_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [libmp4tagutil_dep, libmp4p_dep]
+  shared_library('converter', converter_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [libmp4tagutil_dep, libmp4p_dep]
   )
 endif
 
 if has_converter and gtk2_dep.found()
-  plugin_converterui_gtk2 = shared_library('converter_gtk2', convertergui_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [gtk2_dep]
+  shared_library('converter_gtk2', convertergui_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [gtk2_dep]
   )
 endif
 
 if has_converter and gtk3_dep.found()
-  plugin_converterui_gtk3 = shared_library('converter_gtk3', convertergui_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [gtk3_dep]
+  shared_library('converter_gtk3', convertergui_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [gtk3_dep]
   )
 endif
 

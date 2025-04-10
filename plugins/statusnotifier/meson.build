@@ -11,12 +11,12 @@ glib2_dep = dependency('glib-2.0', version: '>=2.26', required: get_option('plug
 gdk_pixbuf_dep = dependency('gdk-pixbuf-2.0', required: get_option('plugin-statusnotifier'))
 
 if has_statusnotifier
-  plugin_statusnotifier = shared_library('ddb_statusnotifier', statusnotifier_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_header_inc,
-  dependencies: [glib2_dep, gdk_pixbuf_dep]
+  shared_library('ddb_statusnotifier', statusnotifier_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_header_inc,
+    dependencies: [glib2_dep, gdk_pixbuf_dep]
   )
 endif
 

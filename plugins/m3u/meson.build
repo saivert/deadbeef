@@ -6,12 +6,12 @@ m3u_sources = [
 has_m3u = not get_option('plugin-m3u').disabled()
 
 if has_m3u
-  plugin_m3u = shared_library('m3u', m3u_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies : [m_dep],
+  shared_library('m3u', m3u_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies : [m_dep],
   )
 endif
 

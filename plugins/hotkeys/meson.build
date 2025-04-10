@@ -13,13 +13,13 @@ else
 endif
 
 if has_hotkeys
-  plugin_hotkeys = shared_library('hotkeys', hotkeys_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  link_with: libparser,
-  dependencies : [xlib_dep],
+  shared_library('hotkeys', hotkeys_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    link_with: libparser,
+    dependencies : [xlib_dep],
   )
 endif
 

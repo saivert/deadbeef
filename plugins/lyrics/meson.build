@@ -8,7 +8,7 @@ has_lyrics = not get_option('plugin-lyrics').disabled() and (has_gtk3_plugin or 
 
 if gtk3_dep.found()
 
-  plugin_gtk3_lyrics = shared_library('lyrics_gtk3', lyrics_sources,
+  shared_library('lyrics_gtk3', lyrics_sources,
     name_prefix: '',
     install : true,
     install_dir: plugindir,
@@ -21,7 +21,7 @@ endif
 
 if gtk2_dep.found()
 
-  plugin_gtk2_lyrics = shared_library('lyrics_gtk2', lyrics_sources,
+  shared_library('lyrics_gtk2', lyrics_sources,
     name_prefix: '',
     install : true,
     install_dir: plugindir,

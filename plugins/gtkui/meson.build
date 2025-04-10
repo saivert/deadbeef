@@ -84,7 +84,7 @@ if gtk3_dep.found()
 
   gtk3ui_sources = ['deadbeefapp.c', 'deadbeefapp.h']
 
-  plugin_gtk3ui = shared_library('ddb_gui_GTK3', gtk23ui_sources + gtk3ui_resources + gtk3ui_sources,
+  shared_library('ddb_gui_GTK3', gtk23ui_sources + gtk3ui_resources + gtk3ui_sources,
     name_prefix: '',
     install : true,
     install_dir: plugindir,
@@ -104,7 +104,7 @@ has_gtk2_plugin = not get_option('plugin-gtk2').disabled() and gtk2_dep.found()
 
 if gtk2_dep.found()
 
-  plugin_gtk2ui = shared_library('ddb_gui_GTK2', gtk23ui_sources,
+  shared_library('ddb_gui_GTK2', gtk23ui_sources,
     name_prefix: '',
     install : true,
     install_dir: plugindir,

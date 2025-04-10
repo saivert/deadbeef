@@ -128,14 +128,14 @@ if have_sse2
 endif
 
 if has_dumb
-  plugin_dumb = shared_library('ddb_dumb', dumb_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  c_args: dumb_cargs,
-  cpp_args: dumb_cppargs,
-  include_directories: [deadbeef_inc, include_directories('dumb-kode54/include')],
-  dependencies : [m_dep],
+  shared_library('ddb_dumb', dumb_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    c_args: dumb_cargs,
+    cpp_args: dumb_cppargs,
+    include_directories: [deadbeef_inc, include_directories('dumb-kode54/include')],
+    dependencies : [m_dep],
   )
 endif
 

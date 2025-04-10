@@ -22,13 +22,13 @@ endif
 has_ffap = not get_option('plugin-ffap').disabled()
 
 if has_ffap
-  plugin_ffap = shared_library('ffap', ffap_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  c_args: ffap_cargs,
-  include_directories: deadbeef_inc,
-  dependencies : [m_dep],
+  shared_library('ffap', ffap_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    c_args: ffap_cargs,
+    include_directories: deadbeef_inc,
+    dependencies : [m_dep],
   )
 endif
 

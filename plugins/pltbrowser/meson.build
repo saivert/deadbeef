@@ -11,22 +11,22 @@ pltbrowser_sources_gtk3 = [
 has_pltbrowser = not get_option('plugin-pltbrowser').disabled() and (has_gtk3_plugin or has_gtk2_plugin)
 
 if has_pltbrowser and gtk2_dep.found()
-  plugin_pltbrowser = shared_library('pltbrowser_gtk2', pltbrowser_sources_gtk2,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [gtk2_dep]
+  shared_library('pltbrowser_gtk2', pltbrowser_sources_gtk2,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [gtk2_dep]
   )
 endif
 
 if has_pltbrowser and gtk3_dep.found()
-  plugin_pltbrowser = shared_library('pltbrowser_gtk3', pltbrowser_sources_gtk3,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [gtk3_dep]
+  shared_library('pltbrowser_gtk3', pltbrowser_sources_gtk3,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [gtk3_dep]
   )
 endif
 

@@ -253,16 +253,16 @@ if has_sc68
     'libsc68/libsc68/emu68', 
   )
 
-  plugin_sc68 = shared_library('in_sc68', in_sc68_sources,
-  name_prefix: '',
-  install : true,
-  c_args: ['-DSC68_SHARED_DATA_PATH="."', '-DHAVE_GETENV=1', '-DHAVE_CONFIG_CONFIG68_H=1', '-DHAVE_STRING_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_ASSERT_H',
-    '-DHAVE_LIMITS_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_BASENAME=1', '-DEMU68_MONOLITIC=1', '-DPACKAGE_VERNUM=300', '-DEMU68_EXPORT', '-DNDEBUG=1', '-DNDEBUG_LIBSC68=1',
-    '-DUSE_FILE68=1', '-DUSE_UNICE68=1', '-DHAVE_INTMAX_T', '-DHAVE_GETENV=1', '-DHAVE_STDIO_H=1', '-DHAVE_MEMORY_H=1', '-DHAVE_MALLOC=1', '-DHAVE_FREE=1',
-    '-DHAVE_LONG_LONG_INT=1', '-DHAVE_LONG_FILE_NAMES=1', '-DHAVE_LIMITS_H=1', '-DHAVE_LIBGEN_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_DLFCN_H=1'],
-  install_dir: plugindir,
-  include_directories: [deadbeef_inc, in_sc68_include_dirs],
-  dependencies: [m_dep]
+  shared_library('in_sc68', in_sc68_sources,
+    name_prefix: '',
+    install : true,
+    c_args: ['-DSC68_SHARED_DATA_PATH="."', '-DHAVE_GETENV=1', '-DHAVE_CONFIG_CONFIG68_H=1', '-DHAVE_STRING_H=1', '-DHAVE_STDLIB_H=1', '-DHAVE_STDINT_H=1', '-DHAVE_ASSERT_H',
+      '-DHAVE_LIMITS_H=1', '-DHAVE_SYS_TYPES_H=1', '-DHAVE_BASENAME=1', '-DEMU68_MONOLITIC=1', '-DPACKAGE_VERNUM=300', '-DEMU68_EXPORT', '-DNDEBUG=1', '-DNDEBUG_LIBSC68=1',
+      '-DUSE_FILE68=1', '-DUSE_UNICE68=1', '-DHAVE_INTMAX_T', '-DHAVE_GETENV=1', '-DHAVE_STDIO_H=1', '-DHAVE_MEMORY_H=1', '-DHAVE_MALLOC=1', '-DHAVE_FREE=1',
+      '-DHAVE_LONG_LONG_INT=1', '-DHAVE_LONG_FILE_NAMES=1', '-DHAVE_LIMITS_H=1', '-DHAVE_LIBGEN_H=1', '-DHAVE_INTTYPES_H=1', '-DHAVE_DLFCN_H=1'],
+    install_dir: plugindir,
+    include_directories: [deadbeef_inc, in_sc68_include_dirs],
+    dependencies: [m_dep]
   )
 endif
 

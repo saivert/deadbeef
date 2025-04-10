@@ -11,11 +11,11 @@ vtx_sources = [
 has_vtx = not get_option('plugin-vtx').disabled()
 
 if has_vtx
-  plugin_vtx = shared_library('vtx', vtx_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: [deadbeef_inc, 'libayemu'],
+  shared_library('vtx', vtx_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: [deadbeef_inc, 'libayemu'],
   )
 endif
 

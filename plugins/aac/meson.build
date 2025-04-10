@@ -13,7 +13,7 @@ endif
 has_aac = faad2_dep.found()
 
 if has_aac
-  plugin_aac = shared_library('aac', aac_sources,
+  shared_library('aac', aac_sources,
   name_prefix: '',
   install : true,
   install_dir: plugindir,

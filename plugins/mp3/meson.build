@@ -44,13 +44,13 @@ endif
 mp3_summary = {'MP3': has_mp3}
 
 if has_mp3
-  plugin_mp3 = shared_library('mp3', mp3_sources,
-  name_prefix: '',
-  install : true,
-  c_args: mp3_cargs,
-  install_dir: plugindir,
-  include_directories: deadbeef_header_inc,
-  dependencies : [m_dep, mad_dep, mpg123_dep],
+  shared_library('mp3', mp3_sources,
+    name_prefix: '',
+    install : true,
+    c_args: mp3_cargs,
+    install_dir: plugindir,
+    include_directories: deadbeef_header_inc,
+    dependencies : [m_dep, mad_dep, mpg123_dep],
   )
   mp3_summary += {'MP3 libraries': mp3_libs_list}
 endif

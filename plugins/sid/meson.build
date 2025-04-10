@@ -95,19 +95,20 @@ sid_sources = [
 has_sid = not get_option('plugin-sid').disabled()
 
 if has_sid
-  plugin_sid = shared_library('sid', sid_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  cpp_args: ['-DHAVE_STRCASECMP', '-DHAVE_STRNCASECMP', '-fno-exceptions', '-fno-rtti', '-fno-unwind-tables'],
-  include_directories: [deadbeef_inc,
-    'sidplay-libs',
-    'sidplay-libs/libsidplay/include',
-    'sidplay-libs/builders/resid-builder/include',
-    'sidplay-libs/libsidplay/include/sidplay',
-    'sidplay-libs/libsidutils/include/sidplay/utils',
-    'sidplay-libs/builders/resid-builder/include/sidplay/builders'],
-  dependencies: [m_dep]
+  shared_library('sid', sid_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    cpp_args: ['-DHAVE_STRCASECMP', '-DHAVE_STRNCASECMP', '-fno-exceptions', '-fno-rtti', '-fno-unwind-tables'],
+    include_directories: [
+      deadbeef_inc,
+      'sidplay-libs',
+      'sidplay-libs/libsidplay/include',
+      'sidplay-libs/builders/resid-builder/include',
+      'sidplay-libs/libsidplay/include/sidplay',
+      'sidplay-libs/libsidutils/include/sidplay/utils',
+      'sidplay-libs/builders/resid-builder/include/sidplay/builders'],
+    dependencies: [m_dep]
   )
 endif
 

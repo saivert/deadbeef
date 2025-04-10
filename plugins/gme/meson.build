@@ -319,14 +319,14 @@ zlib_dep = dependency('zlib', required: get_option('plugin-gme'))
 has_gme = zlib_dep.found()
 
 if has_gme
-  plugin_gme = shared_library('gme', gme_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  c_args: ['-DHAVE_SSE2', '-DGME_VERSION_055'],
-  cpp_args: ['-DHAVE_SSE2', '-DGME_VERSION_055', '-fno-exceptions', '-fno-rtti', '-fno-unwind-tables'],
-  include_directories: [deadbeef_inc, 'game-music-emu-0.6pre', 'game-music-emu-0.6pre/gme'],
-  dependencies : [m_dep, zlib_dep],
+  shared_library('gme', gme_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    c_args: ['-DHAVE_SSE2', '-DGME_VERSION_055'],
+    cpp_args: ['-DHAVE_SSE2', '-DGME_VERSION_055', '-fno-exceptions', '-fno-rtti', '-fno-unwind-tables'],
+    include_directories: [deadbeef_inc, 'game-music-emu-0.6pre', 'game-music-emu-0.6pre/gme'],
+    dependencies : [m_dep, zlib_dep],
   )
 endif
 

@@ -25,12 +25,12 @@ musepack_sources = [
 has_musepack = not get_option('plugin-musepack').disabled()
 
 if has_musepack
-  plugin_musepack = shared_library('musepack', musepack_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
-  dependencies: [m_dep]
+  shared_library('musepack', musepack_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
+    dependencies: [m_dep]
   )
 endif
 

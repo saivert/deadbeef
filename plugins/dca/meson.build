@@ -23,12 +23,12 @@ dca_sources = [
 has_dca = not get_option('plugin-dca').disabled()
 
 if has_dca
-  plugin_dca = shared_library('dca', dca_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: [deadbeef_inc, 'libdca'],
-  dependencies : [m_dep],
+  shared_library('dca', dca_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: [deadbeef_inc, 'libdca'],
+    dependencies : [m_dep],
   )
 endif
 

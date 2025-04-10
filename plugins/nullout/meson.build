@@ -5,11 +5,11 @@ nullout_sources = [
 has_nullout = not get_option('plugin-nullout').disabled()
 
 if has_nullout
-  plugin_nullout = shared_library('nullout', nullout_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: deadbeef_inc,
+  shared_library('nullout', nullout_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: deadbeef_inc,
   )
 endif
 

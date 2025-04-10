@@ -11,13 +11,13 @@ flac_args = [
 ]
 
 if has_flac
-  plugin_flac = shared_library('flac', flac_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  c_args: flac_args,
-  include_directories: deadbeef_inc,
-  dependencies : [m_dep, libflac_dep, liboggedit_dep],
+  shared_library('flac', flac_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    c_args: flac_args,
+    include_directories: deadbeef_inc,
+    dependencies : [m_dep, libflac_dep, liboggedit_dep],
   )
 endif
 

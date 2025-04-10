@@ -11,12 +11,12 @@ gdk_pixbuf_dep = dependency('gdk-pixbuf-2.0', required: get_option('plugin-notif
 has_notify = dbus_dep.found() and glib2_dep.found() and gdk_pixbuf_dep.found()
 
 if has_notify
-  plugin_notify = shared_library('notify', notify_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: [deadbeef_inc],
-  dependencies: [dbus_dep, glib2_dep, gdk_pixbuf_dep, dependency('blocks'), cc.find_library('dispatch')]
+  shared_library('notify', notify_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    include_directories: [deadbeef_inc],
+    dependencies: [dbus_dep, glib2_dep, gdk_pixbuf_dep, dependency('blocks'), cc.find_library('dispatch')]
   )
 endif
 

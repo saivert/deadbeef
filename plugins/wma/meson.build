@@ -26,12 +26,12 @@ wma_sources = [
 has_wma = not get_option('plugin-wma').disabled()
 
 if has_wma
-  plugin_wma = shared_library('wma', wma_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  include_directories: [deadbeef_inc],
-  dependencies: [m_dep]
+  shared_library('wma', wma_sources,
+	name_prefix: '',
+	install : true,
+	install_dir: plugindir,
+	include_directories: [deadbeef_inc],
+	dependencies: [m_dep]
   )
 endif
 

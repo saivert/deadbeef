@@ -37,14 +37,14 @@ artwork_include_dirs = include_directories(
 )
 
 if has_artwork
-plugin_artwork = shared_library('artwork', artwork_sources,
-  name_prefix: '',
-  install : true,
-  install_dir: plugindir,
-  c_args: artwork_cargs,
-  include_directories: [deadbeef_inc, artwork_include_dirs],
-  dependencies : [m_dep, pthread_lib, libflac_dep, vorbis_dep, vorbisfile_dep, liboggedit_dep, libmp4tagutil_dep, libmp4p_dep, libdispatch_dep],
-)
+  shared_library('artwork', artwork_sources,
+    name_prefix: '',
+    install : true,
+    install_dir: plugindir,
+    c_args: artwork_cargs,
+    include_directories: [deadbeef_inc, artwork_include_dirs],
+    dependencies : [m_dep, pthread_lib, libflac_dep, vorbis_dep, vorbisfile_dep, liboggedit_dep, libmp4tagutil_dep, libmp4p_dep, libdispatch_dep],
+  )
 endif
 
 summary({'Artwork': has_artwork}, bool_yn: true, section: 'Plugins')
