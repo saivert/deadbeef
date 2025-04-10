@@ -184,7 +184,7 @@ option('plugin-converter',
        description : 'plugin for converting files to any formats')
 option('plugin-statusnotifier',
        type : 'feature',
-       value: 'auto',
+       value: 'disabled',
        description : 'plugin for showing icon in taskbar')
 option('plugin-lyrics',
        type : 'feature',
@@ -194,3 +194,11 @@ option('plugin-medialib',
        type : 'feature',
        value: 'auto',
        description : 'plugin for media library')
+option('plugin-pipewire',
+       type : 'feature',
+       value: 'auto',
+       description : 'plugin for pipewire output')
+option('plugin-dsplibretro',
+       type : 'feature',
+       value: 'auto',
+       description : 'plugin for libretro dsp')

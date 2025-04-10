@@ -137,7 +137,6 @@ configure_file(output : 'config.h',
                configuration : cdata)
 
 deadbeef_inc = include_directories(
-  'external/mp4p/include',
   'plugins/libparser',
   'shared/scope',
   'shared/analyzer',
