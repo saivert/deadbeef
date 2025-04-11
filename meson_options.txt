@@ -182,10 +182,6 @@ option('plugin-converter',
        type : 'feature',
        value: 'auto',
        description : 'plugin for converting files to any formats')
-option('plugin-statusnotifier',
-       type : 'feature',
-       value: 'disabled',
-       description : 'plugin for showing icon in taskbar')
 option('plugin-lyrics',
        type : 'feature',
        value: 'auto',
