@@ -112,9 +112,7 @@ if host_machine.cpu() == 'x86_64'
     YASM_FLAGS=['-f', 'macho64', '-D', 'ARCH_X86_64', '-m', 'amd64', '-DPIC', '-DPREFIX']
     APE_USE_YASM=true
     OS_OSX=true
-  endif
-
-  if host_machine.system() == 'linux'
+  else
     LIB='static-deps/lib-x86-64'
     YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_64', '-m', 'amd64']
     APE_USE_YASM=true
@@ -129,9 +127,7 @@ if host_machine.cpu() == 'x86'
     YASM_FLAGS=['-f', 'macho64', '-D', 'ARCH_X86_32', '-m', 'x86', '-DPREFIX']
     APE_USE_YASM=true
     OS_OSX=true
-  endif
-
-  if host_machine.system() == 'linux'
+  else
     LIB='static-deps/lib-x86-32'
     YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_32', '-m', 'x86']
     APE_USE_YASM=true
