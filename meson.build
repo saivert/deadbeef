@@ -257,7 +257,6 @@ subdir('plugins/shellexecui')
 subdir('plugins/artwork')
 subdir('plugins/converter')
 subdir('plugins/medialib')
-subdir('plugins/statusnotifier')
 subdir('plugins/lyrics')
 
 ## Main binary
