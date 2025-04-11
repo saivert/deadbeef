@@ -104,14 +104,48 @@ if cc.has_function('log2', dependencies: [m_dep])
   cdata.set('HAVE_LOG2', 1)
 endif
 
-APE_USE_YASM=false
-
-if host_machine.cpu() == 'x86_64' and host_machine.system() == 'linux'
+if host_machine.cpu() == 'x86_64'
   cdata.set('ARCH_X86_64', '1')
-  YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_64', '-m', 'amd64']
-  APE_USE_YASM=true
-else
-  error('Unsupported platform!')
+
+  if host_machine.system() == 'darwin'
+    LIB='static-deps/lib-x86-64-apple'
+    YASM_FLAGS=['-f', 'macho64', '-D', 'ARCH_X86_64', '-m', 'amd64', '-DPIC', '-DPREFIX']
+    APE_USE_YASM=true
+    OS_OSX=true
+  endif
+
+  if host_machine.system() == 'linux'
+    LIB='static-deps/lib-x86-64'
+    YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_64', '-m', 'amd64']
+    APE_USE_YASM=true
+  endif
+endif
+
+if host_machine.cpu() == 'x86'
+  cdata.set('ARCH_X86_32', '1')
+
+  if host_machine.system() == 'darwin'
+    LIB='static-deps/lib-x86-32-apple'
+    YASM_FLAGS=['-f', 'macho64', '-D', 'ARCH_X86_32', '-m', 'x86', '-DPREFIX']
+    APE_USE_YASM=true
+    OS_OSX=true
+  endif
+
+  if host_machine.system() == 'linux'
+    LIB='static-deps/lib-x86-32'
+    YASM_FLAGS=['-f', 'elf', '-D', 'ARCH_X86_32', '-m', 'x86']
+    APE_USE_YASM=true
+  endif
+endif
+
+if host_machine.cpu() == 'ppc'
+  cdata.set('ARCH_PPC_32', '1')
+  LIB='static-deps/lib-ppc-32'
+endif
+
+if host_machine.cpu() == 'ppc64'
+  cdata.set('ARCH_PPC_64', '1')
+  LIB='static-deps/lib-ppc-64'
 endif
 
 if cc.has_header_symbol('string.h', 'strndupa', args : [ '-D_GNU_SOURCE' ])
