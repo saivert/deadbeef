@@ -202,3 +202,8 @@ option('plugin-dsplibretro',
        type : 'feature',
        value: 'auto',
        description : 'plugin for libretro dsp')
+
+option('enable-static',
+       type : 'boolean',
+       value: false,
+       description : 'static build')
