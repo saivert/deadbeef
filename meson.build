@@ -167,7 +167,6 @@ configure_file(output : 'config.h',
                configuration : cdata)
 
 deadbeef_inc = include_directories(
-  'plugins/libparser',
   'shared/scope',
   'shared/analyzer',
   'include',
@@ -185,7 +184,6 @@ libdispatch_dep = [dependency('blocks'), cc.find_library('dispatch')]
 
 # Shared static libraries
 subdir('shared')
-subdir('plugins/libparser')
 
 # Plugins
 plugindir = 'lib/deadbeef'

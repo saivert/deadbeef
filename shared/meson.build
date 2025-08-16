@@ -6,6 +6,9 @@ libdeletefromdisk = static_library('deletefromdisk', 'deletefromdisk.c')
 libtftintutil = static_library('tftintutil', 'tftintutil.c')
 
 libmp4tagutil_dep = declare_dependency(link_with: libmp4tagutil, include_directories: [include_directories('../external/mp4p/include'), deadbeef_header_inc])
+libgrowablebuffer = static_library('growablebuffer', 'growableBuffer.c')
+libparser = static_library('parser', 'parser.c')
+libpluginsettings = static_library('pluginsettings', 'pluginsettings.c')
 
 subdir('scriptable')
 subdir('analyzer')

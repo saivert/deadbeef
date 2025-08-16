@@ -2,12 +2,16 @@ scriptable_sources = [
     'scriptable_model.c',
     'scriptable_model.h',
     'scriptable.c',
-    'scriptable.h'
+    'scriptable.h',
+    'scriptable_dsp.c',
+    'scriptable_dsp.h',
+    'scriptable_encoder.c',
+    'scriptable_encoder.h'
 ]
 
 
 scriptable_include_dirs = include_directories(
-  '../../shared'
+  '../../src/scriptable','../../shared'
 )
 
 libscriptable = static_library('scriptable', scriptable_sources, include_directories: [scriptable_include_dirs, deadbeef_header_inc])

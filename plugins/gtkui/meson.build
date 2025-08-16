@@ -62,6 +62,10 @@ gtk23ui_sources = [
   'scriptable/gtkScriptableListEditWindowController.h',
   'scriptable/gtkScriptableSelectViewController.c',
   'scriptable/gtkScriptableSelectViewController.h',
+  'scriptable/gtkScriptablePropertySheetEditViewController.c',
+  'scriptable/gtkScriptablePropertySheetEditViewController.h',
+  'scriptable/gtkScriptablePropertySheetEditWindowController.c',
+  'scriptable/gtkScriptablePropertySheetEditWindowController.h',
   'undostack.c', 'undostack.h',
   'undointegration.c', 'undointegration.h'
 ]
@@ -90,7 +94,7 @@ if gtk3_dep.found()
     install_dir: plugindir,
     include_directories: deadbeef_inc,
     c_args: '-DGLIB_DISABLE_DEPRECATION_WARNINGS -DGDK_DISABLE_DEPRECATION_WARNINGS -DGTK_DISABLE_DEPRECATION_WARNINGS -DDDB_WARN_DEPRECATED=1',
-    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset, libanalyzer, libscope, libparser],
+    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libgrowablebuffer, libpluginsettings, libeqpreset, libanalyzer, libscope, libparser],
     dependencies : [m_dep, gtk3_dep, jansson_dep, libscriptable_dep, libdispatch_dep],
   )
 
@@ -110,7 +114,7 @@ if gtk2_dep.found()
     install_dir: plugindir,
     include_directories: deadbeef_inc,
     c_args: '-DGLIB_DISABLE_DEPRECATION_WARNINGS -DGDK_DISABLE_DEPRECATION_WARNINGS -DGTK_DISABLE_DEPRECATION_WARNINGS -DDDB_WARN_DEPRECATED=1',
-    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libeqpreset, libanalyzer, libscope, libparser],
+    link_with: [libtrkpropertiesutil, libtftintutil, libdeletefromdisk, libgrowablebuffer, libpluginsettings, libeqpreset, libanalyzer, libscope, libparser],
     dependencies : [m_dep, gtk2_dep, jansson_dep, libscriptable_dep, libdispatch_dep],
   )
 

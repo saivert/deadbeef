@@ -36,7 +36,8 @@ deadbeef_sources = [
   'vfs.c', 'vfs.h', 'vfs_stdio.c',
   'volume.c', 'volume.h',
   'viz.c', 'viz.h',
-  'undo/undo_playlist.c', 'undo/undo_playlist.h'
+  'undo/undo_playlist.c', 'undo/undo_playlist.h',
+  'scriptable/scriptable_shared.c', 'scriptable/scriptable_shared.h'
 ]
 
 executable('deadbeef',
@@ -44,7 +45,7 @@ executable('deadbeef',
   install: true,
   #c_args : cc_flags,
   include_directories : [deadbeef_inc],
-  link_with: [libctmap, libfilereader, libparser],
+  link_with: [libctmap, libfilereader, libparser, libscriptable, libgrowablebuffer, libpluginsettings],
   dependencies : [pthread_lib, m_dep, dl_lib, libundo_dep, libdispatch_dep],
 )
 
