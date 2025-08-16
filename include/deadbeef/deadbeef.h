@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 struct scriptableItem_s;
 typedef struct scriptableItem_s ddb_scriptable_item_t;
@@ -1806,8 +1807,12 @@ typedef struct {
 #endif
 
 #if (DDB_API_LEVEL >= 18)
-    // sort using title formatting v2, with more direct control over tf evaluation
+    /// sort using title formatting v2, with more direct control over tf evaluation
     void (*plt_sort_v3) (ddb_tf_context_t *tf_ctx, const char *tf_bytecode, int iter, int id, int order);
+
+    /// Get the root of scriptable tree, which contains dsp and encoder presets.
+    /// This is used by GUI plugins for preset editing.
+    ddb_scriptable_item_t * (*get_shared_scriptable_root)(void);
 #endif
 } DB_functions_t;
 

@@ -1,5 +1,15 @@
 #!/bin/bash
 set -e
+
+DEBUG=false
+
+for arg in "$@"; do
+    if [[ "$arg" == "--debug" ]]; then
+        DEBUG=true
+        break
+    fi
+done
+
 case "$TRAVIS_OS_NAME" in
     linux)
         ls -l .
@@ -7,17 +17,16 @@ case "$TRAVIS_OS_NAME" in
 #        ARCH=i686 ./scripts/static_build.sh
 #        ARCH=i686 ./scripts/portable_package_static.sh
         echo "Building for x86_64"
-        if [[ "$1" == "--clang" ]] ; then
-            CLANG_FLAG="--clang"
+        ARCH=x86_64 ./scripts/static_build.sh $@
+        ARCH=x86_64 ./scripts/portable_package_static.sh $@
+        if ! $DEBUG; then
+            echo "Making deb package"
+            ARCH=x86_64 ./tools/packages/debian.sh
+            echo "Making arch package"
+            ARCH=x86_64 ./tools/packages/arch.sh
+            echo "Running make dist"
+            make dist
         fi
-        ARCH=x86_64 ./scripts/static_build.sh $CLANG_FLAG
-        ARCH=x86_64 ./scripts/portable_package_static.sh
-        echo "Making deb package"
-        ARCH=x86_64 ./tools/packages/debian.sh
-        echo "Making arch package"
-        ARCH=x86_64 ./tools/packages/arch.sh
-        echo "Running make dist"
-        make dist
     ;;
     osx)
         echo "Install xcbeautify ..."
@@ -35,10 +44,11 @@ case "$TRAVIS_OS_NAME" in
         xcodebuild "MACOSX_DEPLOYMENT_TARGET=10.13" -project osx/deadbeef.xcodeproj -target DeaDBeeF -configuration Release | tee osx/build/Release/build.log | xcbeautify ; test ${PIPESTATUS[0]} -eq 0
         cd osx/build/Release
         zip -r deadbeef-$VERSION-macos-universal.zip DeaDBeeF.app
+        zip -r deadbeef-$VERSION-macos-dSYM.zip *.dSYM
         cd ../../..
     ;;
     windows)
-        DISPATCH_URL="https://github.com/DeaDBeeF-for-Windows/swift-corelibs-libdispatch/releases/download/release%2F6.0.3/ddb-xdispatch-win-latest.zip"
+        DISPATCH_URL="https://github.com/DeaDBeeF-for-Windows/swift-corelibs-libdispatch/releases/download/release%2F6.1.1/ddb-xdispatch-win-latest.zip"
         PREMAKE_URL="https://github.com/premake/premake-core/releases/download/v5.0.0-beta2/premake-5.0.0-beta2-windows.zip"
         DEPS_URL="https://github.com/kuba160/deadbeef-windows-deps.git"
         echo "Downloading xdispatch_ddb..."

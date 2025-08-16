@@ -1,6 +1,15 @@
 #!/bin/bash
 
-./scripts/portable_postbuild.sh
+./scripts/portable_postbuild.sh $@
+
+DEBUG=false
+
+for arg in "$@"; do
+    if [[ "$arg" == "--debug" ]]; then
+        DEBUG=true
+        break
+    fi
+done
 
 # package for distribution
 VERSION=`cat PORTABLE_VERSION | perl -ne 'chomp and print'`
@@ -20,7 +29,11 @@ PLUGDIR=$SRCDIR/plugins
 LIBDIR=$SRCDIR/lib
 DOCDIR=$SRCDIR/doc
 PIXMAPDIR=$SRCDIR/pixmaps
-OUTNAME=deadbeef-static_${VERSION}-${BUILD}_${ARCH}.tar.bz2
+if ! $DEBUG; then
+    OUTNAME=deadbeef-static_${VERSION}-${BUILD}_${ARCH}.tar.bz2
+else
+    OUTNAME=deadbeef-static-debug_${VERSION}-${BUILD}_${ARCH}.tar.bz2
+fi
 
 mkdir -p portable_out/build
 rm portable_out/build/$OUTNAME
