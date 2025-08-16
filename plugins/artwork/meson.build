@@ -4,6 +4,7 @@ artwork_sources = [
   'artwork_internal.c',
   'artwork_flac.c',
   'coverinfo.c',
+  'ogg_shared.c'
 ]
 
 artwork_cargs = []
@@ -28,6 +29,13 @@ if ogg_dep.found() and vorbis_dep.found() and vorbisfile_dep.found()
   artwork_sources += ['base64.c', 'artwork_ogg.c']
 endif
 
+opus_dep = dependency('opus', required: false)
+opusfile_dep = dependency('opusfile', required: false)
+
+if opus_dep.found() and opusfile_dep.found()
+  artwork_cargs += ['-DUSE_OPUS=1']
+  artwork_sources += ['artwork_opus.c']
+endif
 
 has_artwork = not get_option('plugin-artwork').disabled() and curl_dep.found()
 
@@ -43,7 +51,7 @@ if has_artwork
     install_dir: plugindir,
     c_args: artwork_cargs,
     include_directories: [deadbeef_inc, artwork_include_dirs],
-    dependencies : [m_dep, pthread_lib, libflac_dep, vorbis_dep, vorbisfile_dep, liboggedit_dep, libmp4tagutil_dep, libmp4p_dep, libdispatch_dep],
+    dependencies : [m_dep, pthread_lib, libflac_dep, vorbis_dep, vorbisfile_dep, opus_dep, opusfile_dep, liboggedit_dep, libmp4tagutil_dep, libmp4p_dep, libdispatch_dep],
   )
 endif
 
