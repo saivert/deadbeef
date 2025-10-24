@@ -66,10 +66,23 @@ extern DB_functions_t *deadbeef;
     self = [super initWithTitle:@""];
     self.view = view;
     self.font = [NSFont systemFontOfSize:NSFont.smallSystemFontSize];
+
+    // A bit of a hack: we can't control view/menu lifecycle,
+    // but here we hold references to some low level objects which we'd like to cleanup before quitting.
+    [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(applicationWillQuit:) name:@"ApplicationWillQuit" object:nil];
+
     return self;
 }
 
+- (void)applicationWillQuit:(NSNotification *)notification {
+    [self cleanup];
+}
+
 - (void)dealloc {
+    [self cleanup];
+}
+
+- (void)cleanup {
     if (_deleteFromDiskController) {
         ddbDeleteFromDiskControllerFree(_deleteFromDiskController);
         _deleteFromDiskController = NULL;
@@ -98,6 +111,10 @@ extern DB_functions_t *deadbeef;
 }
 
 - (void)update:(ddb_playlist_t *)playlist actionContext:(ddb_action_context_t)actionContext {
+    [self update:playlist actionContext:actionContext isMediaLib:NO];
+}
+
+- (void)update:(ddb_playlist_t *)playlist actionContext:(ddb_action_context_t)actionContext isMediaLib:(BOOL)isMediaLib {
     [self removeAllItems];
 
     if (actionContext == DDB_ACTION_CTX_PLAYLIST && playlist == NULL) {
@@ -131,18 +148,20 @@ extern DB_functions_t *deadbeef;
     self.rgMenuItem.submenu = rgMenu;
     [self addItem:self.rgMenuItem];
 
-    self.addToFrontOfQueueItem = [self addItemWithTitle:@"Play Next" action:@selector(addToFrontOfPlaybackQueue) keyEquivalent:@""];
-    self.addToFrontOfQueueItem.target = self;
+    if (!isMediaLib) {
+        self.addToFrontOfQueueItem = [self addItemWithTitle:@"Play Next" action:@selector(addToFrontOfPlaybackQueue) keyEquivalent:@""];
+        self.addToFrontOfQueueItem.target = self;
 
-    self.addToQueueItem = [self addItemWithTitle:@"Play Later" action:@selector(addToPlaybackQueue) keyEquivalent:@""];
-    self.addToQueueItem.target = self;
+        self.addToQueueItem = [self addItemWithTitle:@"Play Later" action:@selector(addToPlaybackQueue) keyEquivalent:@""];
+        self.addToQueueItem.target = self;
 
-    self.removeFromQueueItem = [self addItemWithTitle:@"Remove from Playback Queue" action:@selector(removeFromPlaybackQueue) keyEquivalent:@""];
-    self.removeFromQueueItem.target = self;
+        self.removeFromQueueItem = [self addItemWithTitle:@"Remove from Playback Queue" action:@selector(removeFromPlaybackQueue) keyEquivalent:@""];
+        self.removeFromQueueItem.target = self;
 
-    self.removeFromPlaylistItem = [self addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@"\b"];
-    self.removeFromPlaylistItem.target = self;
-    self.removeFromPlaylistItem.keyEquivalentModifierMask = 0;
+        self.removeFromPlaylistItem = [self addItemWithTitle:@"Delete" action:@selector(delete:) keyEquivalent:@"\b"];
+        self.removeFromPlaylistItem.target = self;
+        self.removeFromPlaylistItem.keyEquivalentModifierMask = 0;
+    }
 
     [self addItem:NSMenuItem.separatorItem];
 
