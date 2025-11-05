@@ -97,6 +97,7 @@ static float conf_playback_buffer_size = 0.3f;
 static int trace_bufferfill = 0;
 
 static int stop_after_current = 0;
+static int stop_after_queue = 0;
 static int stop_after_album = 0;
 
 static int streaming_terminate;
@@ -1536,6 +1537,15 @@ update_stop_after_current (void) {
 }
 
 static void
+update_stop_after_queue (void) {
+    if (conf_get_int ("playlist.stop_after_queue_reset", 0)) {
+        conf_set_int ("playlist.stop_after_queue", 0);
+        stop_after_queue = 0;
+        messagepump_push (DB_EV_CONFIGCHANGED, 0, 0, 0);
+    }
+}
+
+static void
 streamer_next (ddb_shuffle_t shuffle, ddb_repeat_t repeat, playItem_t *next) {
     if (playing_track) {
         if (repeat == DDB_REPEAT_SINGLE) { // song finished, loop mode is "loop 1 track"
@@ -1940,6 +1950,10 @@ streamer_thread (void *unused) {
             if (block->last) {
                 if (stop_after_current) {
                     stop = 1;
+                }
+                else if (stop_after_queue && playqueue_getcount () == 0) {
+                    stop = 1;
+                    update_stop_after_queue ();
                 }
                 else {
                     next = get_next_track (streaming_track, shuffle, repeat);
@@ -2577,6 +2591,7 @@ streamer_configchanged (void) {
     trace_bufferfill = conf_get_int ("streamer.trace_buffer_fill", 0);
 
     stop_after_current = conf_get_int ("playlist.stop_after_current", 0);
+    stop_after_queue = conf_get_int ("playlist.stop_after_queue", 0);
     stop_after_album = conf_get_int ("playlist.stop_after_album", 0);
 
     char mapstr[2048];
@@ -3151,7 +3166,7 @@ _streamer_mark_album_played_up_to (playItem_t *item) {
 
     ddb_tf_context_t ctx = {
         ._size = sizeof (ddb_tf_context_t),
-        .flags = DDB_TF_CONTEXT_NO_MUTEX_LOCK | DDB_TF_CONTEXT_NO_DYNAMIC,
+        .flags = DDB_TF_CONTEXT_NO_MUTEX_LOCK | DDB_TF_CONTEXT_NO_DYNAMIC | DDB_TF_CONTEXT_FAST_LOOKUP,
     };
 
     char album[100];

@@ -115,24 +115,24 @@ static plugin_t *plugins_lowprio_tail;
 #define MAX_PLUGINS 100
 static DB_plugin_t *g_plugins[MAX_PLUGINS+1];
 
-#define MAX_GUI_PLUGINS 10
+#define MAX_GUI_PLUGINS 50
 static char *g_gui_names[MAX_GUI_PLUGINS+1];
 static int g_num_gui_names;
 
 #define MAX_DECODER_PLUGINS 50
 static DB_decoder_t *g_decoder_plugins[MAX_DECODER_PLUGINS+1];
 
-#define MAX_VFS_PLUGINS 10
+#define MAX_VFS_PLUGINS 50
 static DB_vfs_t *g_vfs_plugins[MAX_VFS_PLUGINS+1];
 
-#define MAX_DSP_PLUGINS 10
+#define MAX_DSP_PLUGINS 50
 static DB_dsp_t *g_dsp_plugins[MAX_DSP_PLUGINS+1];
 
-#define MAX_OUTPUT_PLUGINS 10
+#define MAX_OUTPUT_PLUGINS 50
 static DB_output_t *g_output_plugins[MAX_OUTPUT_PLUGINS+1];
 static DB_output_t *output_plugin = NULL;
 
-#define MAX_PLAYLIST_PLUGINS 10
+#define MAX_PLAYLIST_PLUGINS 50
 static DB_playlist_t *g_playlist_plugins[MAX_PLAYLIST_PLUGINS+1];
 
 static uintptr_t background_jobs_mutex;
@@ -948,7 +948,7 @@ load_gui_plugin (const char **plugdirs) {
 #else
 
     char conf_gui_plug[100];
-    conf_get_str ("gui_plugin", "GTK2", conf_gui_plug, sizeof (conf_gui_plug));
+    conf_get_str ("gui_plugin", "GTK3", conf_gui_plug, sizeof (conf_gui_plug));
     char name[100];
 
     // try to load selected plugin
@@ -1264,34 +1264,39 @@ plug_load_all (void) {
         if (plug->plugin->type == DB_PLUGIN_DECODER) {
 //            trace ("found decoder plugin %s\n", plug->plugin->name);
             if (numdecoders >= MAX_DECODER_PLUGINS) {
-                break;
+                trace_err ("too many decoder plugins. plugin %s will not function correctly.\n", plug->plugin->name);
+                continue;
             }
             g_decoder_plugins[numdecoders++] = (DB_decoder_t *)plug->plugin;
         }
         else if (plug->plugin->type == DB_PLUGIN_VFS) {
 //            trace ("found vfs plugin %s\n", plug->plugin->name);
             if (numvfs >= MAX_VFS_PLUGINS) {
-                break;
+                trace_err ("too many vfs plugins. plugin %s will not function correctly.\n", plug->plugin->name);
+                continue;
             }
             g_vfs_plugins[numvfs++] = (DB_vfs_t *)plug->plugin;
         }
         else if (plug->plugin->type == DB_PLUGIN_OUTPUT) {
 //            trace ("found output plugin %s\n", plug->plugin->name);
             if (numoutput >= MAX_OUTPUT_PLUGINS) {
-                break;
+                trace_err ("too many output plugins. plugin %s will not function correctly.\n", plug->plugin->name);
+                continue;
             }
             g_output_plugins[numoutput++] = (DB_output_t *)plug->plugin;
         }
         else if (plug->plugin->type == DB_PLUGIN_DSP) {
 //            trace ("found dsp plugin %s\n", plug->plugin->name);
             if (numdsp >= MAX_DSP_PLUGINS) {
-                break;
+                trace_err ("too many dsp plugins. plugin %s will not function correctly.\n", plug->plugin->name);
+                continue;
             }
             g_dsp_plugins[numdsp++] = (DB_dsp_t *)plug->plugin;
         }
         else if (plug->plugin->type == DB_PLUGIN_PLAYLIST) {
             if (numplaylist >= MAX_PLAYLIST_PLUGINS) {
-                break;
+                trace_err ("too many playlist plugins. plugin %s will not function correctly.\n", plug->plugin->name);
+                continue;
             }
             g_playlist_plugins[numplaylist++] = (DB_playlist_t *)plug->plugin;
         }
@@ -1416,22 +1421,7 @@ _handle_async_stop (DB_plugin_t *plugin) {
 }
 
 static void
-_plug_unload_stop_complete (void) {
-    trace ("All async plugins have stopped.\n");
-    // Stop the normal plugins with synchronous stop
-    for (plugin_t *p = plugins; p; p = p->next) {
-        if (p->plugin->stop && p->async_deinit == NULL) {
-            trace ("Stopping %s...\n", p->plugin->name);
-            fflush (stderr);
-#if HAVE_COCOAUI
-            if (p->plugin->type == DB_PLUGIN_GUI) {
-                continue;
-            }
-#endif
-            p->plugin->stop ();
-        }
-    }
-
+_unload_plugins(void) {
     while (plugins) {
         plugin_t *next = plugins->next;
         if (plugins->handle) {
@@ -1456,8 +1446,25 @@ _plug_unload_stop_complete (void) {
     memset (g_output_plugins, 0, sizeof (g_output_plugins));
     output_plugin = NULL;
     memset (g_playlist_plugins, 0, sizeof (g_playlist_plugins));
+}
 
-    trace ("All plugins had been unloaded\n");
+static void
+_plug_unload_stop_complete (void) {
+    trace ("All async plugins have stopped.\n");
+    // Stop the normal plugins with synchronous stop
+    for (plugin_t *p = plugins; p; p = p->next) {
+        if (p->plugin->stop && p->async_deinit == NULL) {
+            trace ("Stopping %s...\n", p->plugin->name);
+            fflush (stderr);
+#if HAVE_COCOAUI
+            if (p->plugin->type == DB_PLUGIN_GUI) {
+                continue;
+            }
+#endif
+            p->plugin->stop ();
+        }
+    }
+
     if (background_jobs_mutex) {
         mutex_free (background_jobs_mutex);
         background_jobs_mutex = 0;
@@ -1466,6 +1473,15 @@ _plug_unload_stop_complete (void) {
         _async_stop_completion_handler();
         _async_stop_completion_handler = NULL;
     }
+
+    // NOTE: This has to be done last, after async handler,
+    // otherwise a crash may occur if some cleanup/deinitializer calls some plugin api.
+    // Example problematic scenario:
+    // Create DSP preset: this will setup a scriptable with callback residing in plugin memory,
+    // and if scriptableDeinitShared is called after dlclose,
+    // it would result in an attempt to call scriptable method which is no longer a valid pointer.
+    _unload_plugins();
+    trace ("All plugins had been unloaded\n");
 }
 
 void

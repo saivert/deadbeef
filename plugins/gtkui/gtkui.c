@@ -717,6 +717,12 @@ gtkui_on_configchanged (void *data) {
         GTK_CHECK_MENU_ITEM (lookup_widget (mainwin, "stop_after_current")),
         stop_after_current ? TRUE : FALSE);
 
+    // stop after queue
+    int stop_after_queue = deadbeef->conf_get_int ("playlist.stop_after_queue", 0);
+    gtk_check_menu_item_set_active (
+        GTK_CHECK_MENU_ITEM (lookup_widget (mainwin, "stop_after_queue")),
+        stop_after_queue ? TRUE : FALSE);
+
     // stop after current album
     int stop_after_album = deadbeef->conf_get_int ("playlist.stop_after_album", 0);
     gtk_check_menu_item_set_active (
@@ -2119,11 +2125,17 @@ static DB_plugin_action_t action_preferences = { .title = "Edit/Preferences",
                                                  .callback2 = action_preferences_handler,
                                                  .next = &action_toggle_designmode };
 
+static DB_plugin_action_t action_dsp_preferences = { .title = "Edit/DSP Preferences",
+                                                     .name = "dsp_preferences",
+                                                     .flags = DB_ACTION_COMMON,
+                                                     .callback2 = action_dsp_preferences_handler,
+                                                     .next = &action_preferences };
+
 static DB_plugin_action_t action_sort_custom = { .title = "Edit/Sort Custom",
                                                  .name = "sort_custom",
                                                  .flags = DB_ACTION_COMMON,
                                                  .callback2 = action_sort_custom_handler,
-                                                 .next = &action_preferences };
+                                                 .next = &action_dsp_preferences };
 
 static DB_plugin_action_t action_crop_selected = { .title = "Edit/Crop Selected",
                                                    .name = "crop_selected",
@@ -2404,4 +2416,7 @@ ddb_gtkui_t plugin = {
     .cut_selection = clipboard_cut_selection,
     .paste_selection = clipboard_paste_selection,
     .w_get_type_flags = w_get_type_flags,
+    .w_load_layout_from_conf_key = w_create_from_conf,
+    .w_save_layout_to_conf_key = w_save_to_conf,
+    .w_send_message = send_messages_to_widgets,
 };

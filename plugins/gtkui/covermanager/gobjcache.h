@@ -26,8 +26,8 @@
 
 #include <gtk/gtk.h>
 
-typedef void *gobj_cache_t;
-
+struct gobj_cache_impl_s;
+typedef struct gobj_cache_impl_s *gobj_cache_t;
 guint
 gobj_get_refc (gpointer ptr);
 
@@ -48,12 +48,6 @@ gobj_cache_set (gobj_cache_t cache, const char *key, GObject *obj);
 
 GObject *
 gobj_cache_get (gobj_cache_t cache, const char *key);
-
-void
-gobj_cache_set_should_wait (gobj_cache_t cache, const char *key, gboolean should_wait);
-
-gboolean
-gobj_cache_get_should_wait (gobj_cache_t cache, const char *key);
 
 void
 gobj_cache_remove (gobj_cache_t cache, const char *key);
