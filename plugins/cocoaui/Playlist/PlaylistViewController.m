@@ -178,7 +178,9 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
     if (it != NULL) {
         deadbeef->pl_item_ref (it);
     }
+    weakify(self);
     dispatch_async(dispatch_get_main_queue(), ^{
+        strongify(self);
         PlaylistView *listview = (PlaylistView *)self.view;
         [listview.contentView invalidateArtworkCacheForRow:(DdbListviewRow_t)it];
         if (it != NULL) {
@@ -1010,26 +1012,24 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
             [lv.contentView drawGroup:grp];
         }];
     }
-    if (!image) {
+    if (image == nil) {
         // FIXME: the problem here is that if the cover is not found (yet) -- it won't draw anything, but the rect is already invalidated, and will come out as background color
         return;
     }
 
     NSRect drawRect;
 
-    int art_x = x + ART_PADDING_HORZ;
-    CGFloat min_y = (pinned ? viewportY+lv.contentView.grouptitle_height : y) + ART_PADDING_VERT;
-    CGFloat max_y = grp_next_y;
-
-    CGFloat ypos = min_y;
-    if (min_y + art_width + ART_PADDING_VERT >= max_y) {
-        ypos = max_y - art_width - ART_PADDING_VERT;
-    }
-
     NSSize size = image.size;
     NSSize desiredSize = [CoverManager.shared desiredSizeForImageSize:size availableSize:availableSize];
     CGSize drawSize = [self.view convertSizeFromBacking:desiredSize];
     
+    CGFloat art_x = x + ART_PADDING_HORZ;
+    CGFloat ypos = (pinned ? viewportY + lv.contentView.grouptitle_height : y) + ART_PADDING_VERT;
+
+    if (pinned && ypos + drawSize.height + ART_PADDING_VERT >= grp_next_y) {
+        ypos = grp_next_y - drawSize.height - ART_PADDING_VERT;
+    }
+
     if (size.width < size.height) {
         plt_col_info_t *c = &self.columns[(int)col];
         if (c->alignment == ColumnAlignmentCenter) {
@@ -1171,7 +1171,9 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
             DB_playItem_t *track = ev->track;
             if (track) {
                 deadbeef->pl_item_ref (track);
+                weakify(self);
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    strongify(self);
                     PlaylistView *listview = (PlaylistView *)self.view;
                     BOOL draw = NO;
                     ddb_playlist_t *plt = deadbeef->plt_get_curr ();
@@ -1205,13 +1207,17 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
         case DB_EV_PLAYLISTCHANGED: {
             if (p1 == 0) {
                 // a change requiring full reload -- such as adding/removing a track
+                weakify(self);
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    strongify(self);
                     PlaylistView *listview = (PlaylistView *)self.view;
                     [listview.contentView reloadData];
                 });
             }
             else if (p1 == DDB_PLAYLIST_CHANGE_SEARCHRESULT) {
+                weakify(self);
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    strongify(self);
                     PlaylistView *listview = (PlaylistView *)self.view;
                     if ([self playlistIter] == PL_SEARCH) {
                         [listview.contentView reloadData];
@@ -1219,7 +1225,9 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
                 });
             }
             else if (p1 == DDB_PLAYLIST_CHANGE_SELECTION) {
+                weakify(self);
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    strongify(self);
                     PlaylistView *listview = (PlaylistView *)self.view;
                     if (ctx != (uintptr_t)listview) {
                         listview.contentView.needsDisplay = YES;
@@ -1227,7 +1235,9 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
                 });
             }
             else if (p1 == DDB_PLAYLIST_CHANGE_PLAYQUEUE) {
+                weakify(self);
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    strongify(self);
                     PlaylistView *listview = (PlaylistView *)self.view;
                     if (ctx != (uintptr_t)listview) {
                         listview.contentView.needsDisplay = YES;
@@ -1237,14 +1247,18 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
         }
             break;
         case DB_EV_PLAYLISTSWITCHED: {
+            weakify(self);
             dispatch_async(dispatch_get_main_queue(), ^{
+                strongify(self);
                 PlaylistView *listview = (PlaylistView *)self.view;
                 [self setupPlaylist:listview];
             });
         }
             break;
         case DB_EV_TRACKFOCUSCURRENT: {
+            weakify(self);
             dispatch_async(dispatch_get_main_queue(), ^{
+                strongify(self);
                 PlaylistView *listview = (PlaylistView *)self.view;
                 DB_playItem_t *it = deadbeef->streamer_get_playing_track_safe ();
                 if (it) {
@@ -1262,13 +1276,12 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
                     if (prev_plt != plt) {
                         // force group rebuild
                         deadbeef->plt_set_curr (plt);
-                        [listview.contentView reloadData];
                     }
 
-                    int idx = deadbeef->pl_get_idx_of_iter (it, [self playlistIter]);
+                    int idx = deadbeef->plt_get_item_idx (plt, it, [self playlistIter]);
                     if (idx != -1) {
                         // there's a delay in scrollview layout
-                        dispatch_after((dispatch_time_t)(0.01 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.01 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
                             [listview.contentView setCursor:idx noscroll:YES];
                             [listview.contentView scrollToRowWithIndex:idx];
                         });
@@ -1282,7 +1295,9 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
         }
             break;
         case DB_EV_CONFIGCHANGED: {
+            weakify(self);
             dispatch_async(dispatch_get_main_queue(), ^{
+                strongify(self);
                 [self configChanged];
             });
         }
@@ -1292,7 +1307,9 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
                 break;
             }
 
+            weakify(self);
             dispatch_async(dispatch_get_main_queue(), ^{
+                strongify(self);
                 PlaylistView *listview = (PlaylistView *)self.view;
                 deadbeef->pl_lock ();
                 ddb_playlist_t *plt = deadbeef->plt_get_curr ();
@@ -1600,17 +1617,8 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
         }
         ddb_playItem_t *before = deadbeef->plt_get_item_for_idx (plt, cursor, PL_MAIN);
 
-        ssize_t count = 0;
-        if (holder.plt != NULL) {
-            ddb_playItem_t **items;
-            count = deadbeef->plt_get_items(holder.plt, &items);
-
-            [self dropPlayItems:(DdbListviewRow_t *)items before:(DdbListviewRow_t)before count:(int)count];
-
-            for (ssize_t i = 0; i < count; i++) {
-                deadbeef->pl_item_unref(items[i]);
-            }
-            free (items);
+        if (holder.count != 0) {
+            [self dropPlayItems:(DdbListviewRow_t *)holder.items before:(DdbListviewRow_t)before count:(int)holder.count];
         }
 
         if (before != NULL) {
@@ -1618,7 +1626,7 @@ artwork_listener (ddb_artwork_listener_event_t event, void *user_data, int64_t p
         }
 
         deadbeef->plt_deselect_all (plt);
-        deadbeef->plt_set_cursor (plt, PL_MAIN, (int)(cursor + count));
+        deadbeef->plt_set_cursor (plt, PL_MAIN, (int)(cursor + holder.count));
         deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, (uintptr_t)self.view, DDB_PLAYLIST_CHANGE_SELECTION, 0);
 
         // TODO: scroll to cursor

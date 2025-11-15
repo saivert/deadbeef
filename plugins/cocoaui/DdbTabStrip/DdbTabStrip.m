@@ -90,6 +90,7 @@ static const int tab_close_btn_size = 12;
 - (void)dealloc {
     [self.trkProperties close];
     self.trkProperties = nil;
+    [NSNotificationCenter.defaultCenter removeObserver:self];
 }
 
 - (NSColor *)accentColor {
@@ -914,7 +915,9 @@ static const int tab_close_btn_size = 12;
 - (int)widgetMessage:(uint32_t)_id ctx:(uintptr_t)ctx p1:(uint32_t)p1 p2:(uint32_t)p2 {
     // redraw if playlist switches, recalculate tabs when title changes
     if (_id == DB_EV_PLAYLISTSWITCHED || _id == DB_EV_PLAYLISTCHANGED) {
+        weakify(self);
         dispatch_async(dispatch_get_main_queue(), ^{
+            strongify(self);
             switch (_id) {
             case DB_EV_PLAYLISTSWITCHED:
                 [self frameDidChange];
@@ -967,11 +970,10 @@ static const int tab_close_btn_size = 12;
 - (void)trackContextMenuShowTrackProperties:(nonnull TrackContextMenu *)trackContextMenu {
     if (!self.trkProperties) {
         self.trkProperties = [[TrackPropertiesWindowController alloc] initWithWindowNibName:@"TrackProperties"];
-        self.trkProperties.context = DDB_ACTION_CTX_PLAYLIST;
         self.trkProperties.delegate = self;
     }
     ddb_playlist_t *plt = deadbeef->plt_get_for_idx ((int)self.clickedTabIndex);
-    self.trkProperties.playlist =  plt;
+    [self.trkProperties setPlaylist:plt context:DDB_ACTION_CTX_PLAYLIST];
     deadbeef->plt_unref (plt);
     [self.trkProperties showWindow:self];
 }

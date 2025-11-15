@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="22505" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24412" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="22505"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24412"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -18,7 +18,7 @@
                 <menuItem title="deadbeef" id="56">
                     <menu key="submenu" title="deadbeef" systemMenu="apple" id="57">
                         <items>
-                            <menuItem title="About deadbeef" id="58">
+                            <menuItem title="About DeaDBeeF" id="58">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="orderFrontStandardAboutPanel:" target="-2" id="142"/>
@@ -32,6 +32,24 @@
                                     <action selector="openPrefWindow:" target="494" id="crX-0Z-Tia"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Media Library Settings…" id="HK1-Mb-PhC">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="openMedialibPrefs:" target="494" id="R1o-Z1-H2s"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Hotkey Settings…" id="5uo-Ut-ipS">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="openHotkeysPrefs:" target="494" id="de0-ut-Gi5"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="DSP Settings…" id="de7-Xv-TmK">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="openDSPSettings:" target="494" id="7Zu-0d-jri"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="143">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
@@ -41,7 +59,7 @@
                             <menuItem isSeparatorItem="YES" id="144">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Hide deadbeef" keyEquivalent="h" id="134">
+                            <menuItem title="Hide DeaDBeeF" keyEquivalent="h" id="134">
                                 <connections>
                                     <action selector="hide:" target="-1" id="367"/>
                                 </connections>
@@ -60,7 +78,7 @@
                             <menuItem isSeparatorItem="YES" id="149">
                                 <modifierMask key="keyEquivalentModifierMask" command="YES"/>
                             </menuItem>
-                            <menuItem title="Quit deadbeef" keyEquivalent="q" id="136">
+                            <menuItem title="Quit DeaDBeeF" keyEquivalent="q" id="136">
                                 <connections>
                                     <action selector="terminate:" target="-3" id="449"/>
                                 </connections>
@@ -574,10 +592,10 @@ CA
                                     <action selector="scrollFollowsPlaybackAction:" target="494" id="uVm-Lh-feS"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Stop After Current" id="edx-c0-VoM">
+                            <menuItem title="Stop After Current Track" id="edx-c0-VoM">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
-                                    <action selector="stopAfterCurrentAction:" target="494" id="0E9-6y-qkj"/>
+                                    <action selector="stopAfterCurrentTrackAction:" target="494" id="0E9-6y-qkj"/>
                                 </connections>
                             </menuItem>
                             <menuItem title="Stop After Current Album" id="6AV-SN-Cm9">
@@ -586,7 +604,16 @@ CA
                                     <action selector="stopAfterCurrentAlbumAction:" target="494" id="fSM-ZT-Ds9"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Stop After Playback Queue" id="WIb-Yd-Zx2">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="stopAfterPlaybackQueueAction:" target="494" id="LrS-F6-S2D"/>
+                                </connections>
+                            </menuItem>
                         </items>
+                        <connections>
+                            <outlet property="delegate" destination="494" id="6gj-rU-Rf0"/>
+                        </connections>
                     </menu>
                 </menuItem>
                 <menuItem title="Window" id="FtX-jB-U5D">
@@ -637,12 +664,12 @@ CA
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Help" id="3qw-u3-kCU">
                         <items>
-                            <menuItem title="Deadbeef Help" keyEquivalent="?" id="BqJ-ib-iBJ">
+                            <menuItem title="DeaDBeeF Help" keyEquivalent="?" id="BqJ-ib-iBJ">
                                 <connections>
                                     <action selector="showHelp:" target="494" id="sxX-T5-mOw"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Changelog" id="nFw-NP-SSj">
+                            <menuItem title="ChangeLog" id="nFw-NP-SSj">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
                                     <action selector="showChangelog:" target="494" id="HM1-Mc-ary"/>
@@ -693,15 +720,16 @@ CA
                 <outlet property="orderShuffle" destination="15S-fQ-PaL" id="wGt-mg-WMg"/>
                 <outlet property="orderShuffleAlbums" destination="bea-Bv-Vnd" id="1sx-zb-fcn"/>
                 <outlet property="scrollFollowsPlayback" destination="xnA-bz-jxF" id="GX4-WF-zFx"/>
-                <outlet property="stopAfterCurrent" destination="edx-c0-VoM" id="Rig-DR-mKE"/>
                 <outlet property="stopAfterCurrentAlbum" destination="6AV-SN-Cm9" id="wVK-jy-HK2"/>
+                <outlet property="stopAfterCurrentTrack" destination="edx-c0-VoM" id="Rig-DR-mKE"/>
+                <outlet property="stopAfterPlaybackQueue" destination="WIb-Yd-Zx2" id="2fv-30-QHi"/>
             </connections>
         </customObject>
         <window title="Add Location" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" hidesOnDeactivate="YES" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="0MP-Eo-f3S" customClass="NSPanel">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES" utility="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="167" y="107" width="364" height="93"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1680" height="920"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2048" height="1121"/>
             <view key="contentView" id="KVu-0k-T7v">
                 <rect key="frame" x="0.0" y="0.0" width="364" height="93"/>
                 <autoresizingMask key="autoresizingMask"/>
@@ -760,7 +788,7 @@ Gw
             <windowStyleMask key="styleMask" titled="YES" miniaturizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="163" y="199" width="368" height="68"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1680" height="920"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2048" height="1121"/>
             <view key="contentView" id="UsQ-WG-CU4">
                 <rect key="frame" x="0.0" y="0.0" width="368" height="68"/>
                 <autoresizingMask key="autoresizingMask"/>
@@ -796,7 +824,7 @@ Gw
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES" utility="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="167" y="107" width="327" height="120"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1680" height="920"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="2048" height="1121"/>
             <value key="minSize" type="size" width="327" height="120"/>
             <view key="contentView" id="30A-nz-a9e">
                 <rect key="frame" x="0.0" y="0.0" width="327" height="120"/>

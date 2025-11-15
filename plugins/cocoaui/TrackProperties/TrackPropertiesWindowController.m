@@ -20,130 +20,98 @@
 
     3. This notice may not be removed or altered from any source distribution.
 */
+
+#import "AddNewFieldWindowController.h"
+#import "EditSingleValueWindowController.h"
+#import "EditMultipleValuesWindowController.h"
 #import "MediaLibraryItem.h"
+#import "TrackPropertiesListViewController.h"
+#import "TrackPropertiesMultipleFieldsTableData.h"
+#import "TrackPropertiesNullFormatter.h"
+#import "TrackPropertiesSingleLineFormatter.h"
 #import "TrackPropertiesWindowController.h"
 #include <deadbeef/deadbeef.h>
 #include "utf8.h"
 #include "trkproperties_shared.h"
 
-// Max length of a string displayed in the TableView
-// If a string is longer -- it gets clipped, and appended with " (…)", like with linebreaks
-#define MAX_GUI_FIELD_LEN 500
-
-
 extern DB_functions_t *deadbeef;
-
-@interface SingleLineFormatter : NSFormatter
-@end
-
-@implementation SingleLineFormatter
-- (NSString *)stringForObjectValue:(id)anObject {
-    if ([anObject isKindOfClass:[NSString class]]) {
-        NSString *str = anObject;
-        NSRange range = [str rangeOfString:@"\n"];
-        if (str.length >= MAX_GUI_FIELD_LEN && (range.location == NSNotFound || range.location >= MAX_GUI_FIELD_LEN)) {
-            range.location = MAX_GUI_FIELD_LEN;
-        }
-        if (range.location != NSNotFound ) {
-            return [[str substringToIndex:range.location-1] stringByAppendingString:@" (…)"];
-        }
-        else {
-            return str;
-        }
-    }
-    return @"";
-}
-
-- (NSString *)editingStringForObjectValue:(id)anObject {
-    return anObject;
-}
-
-- (BOOL)getObjectValue:(out id *)anObject
-             forString:(NSString *)string
-      errorDescription:(out NSString **)error {
-    *anObject = string;
-    return YES;
-}
-@end
-
-@interface NullFormatter : NSFormatter
-@end
-
-@implementation NullFormatter
-
-- (NSString *)stringForObjectValue:(id)anObject {
-    return anObject;
-}
-
-- (NSString *)editingStringForObjectValue:(id)anObject {
-    return @"";
-}
-
-- (BOOL)getObjectValue:(out id *)anObject
-             forString:(NSString *)string
-      errorDescription:(out NSString **)error {
-    *anObject = string;
-    return YES;
-}
-@end
-
-@interface MultipleFieldsTableData : NSObject<NSTableViewDataSource, NSTableViewDelegate>
-
-@property (nonatomic) NSArray<NSString *> *items;
-@property (nonatomic) NSMutableArray<NSString *> *fields;
-
-@end
-
-@implementation MultipleFieldsTableData
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {
-    return self.fields.count;
-}
-
-- (NSView *)tableView:(NSTableView *)tableView viewForTableColumn:(NSTableColumn *)tableColumn row:(NSInteger)row {
-    NSUserInterfaceItemIdentifier ident = tableColumn.identifier;
-    NSTableCellView *view = [tableView makeViewWithIdentifier:ident owner:self];
-    NSTextField *textView = view.textField;
-    if ([ident isEqualToString:@"Index"]) {
-        textView.stringValue = [NSString stringWithFormat:@"%d", (int)row+1];
-    }
-    else if ([ident isEqualToString:@"Item"]) {
-        textView.stringValue = self.items[row];
-    }
-    else if ([ident isEqualToString:@"Field"]) {
-        textView.formatter = [SingleLineFormatter new];
-        textView.stringValue = self.fields[row];
-        textView.target = self;
-        textView.action = @selector(fieldEditedAction:);
-        textView.identifier = [NSString stringWithFormat:@"%d", (int)row];
-    }
-    return view;
-}
-
-- (void)fieldEditedAction:(NSTextField *)sender {
-    NSString *value = sender.stringValue;
-    int row = sender.identifier.intValue;
-    self.fields[row] = value;
-    // FIXME: add modified flag
-}
-@end
-
 
 @interface TrackPropertiesWindowController ()
 
-@property (nonatomic) int iter;
-@property (nonatomic) DB_playItem_t **tracks;
-@property (nonatomic) int numtracks;
-@property (nonatomic) NSMutableArray *store;
-@property (nonatomic) NSMutableArray *propstore;
 @property (nonatomic) BOOL progress_aborted;
 @property (nonatomic) BOOL close_after_writing;
-@property (nonatomic) MultipleFieldsTableData *multipleFieldsTableData;
+
+@property (nonatomic) TrackPropertiesListViewController *metadataListViewController;
+@property (nonatomic) TrackPropertiesListViewController *propertiesListViewController;
+
+@property (weak) IBOutlet NSView *metadataTableContainerView;
+@property (weak) IBOutlet NSView *propertiesTableContainerView;
+
+@property (nonatomic) ddb_playlist_t *playlist;
+@property (nonatomic) ddb_action_context_t context;
+@property (nonatomic) NSArray<MediaLibraryItem *> *mediaLibraryItems;
+
+// trkproperties window
+@property (unsafe_unretained) IBOutlet NSTextField *filename;
+- (IBAction)applyTrackPropertiesAction:(id)sender;
+- (IBAction)configureTagWritingAction:(id)sender;
+- (IBAction)reloadTrackPropertiesAction:(id)sender;
+- (IBAction)cancelTrackPropertiesAction:(id)sender;
+- (IBAction)okTrackPropertiesAction:(id)sender;
+
+// metadata writing progress dialog
+@property (strong) IBOutlet NSPanel *progressPanel;
+@property (unsafe_unretained) IBOutlet NSTextField *currentTrackPath;
+- (IBAction)cancelWritingAction:(id)sender;
+
+// tag writer settings
+@property (strong) IBOutlet NSPanel *tagWriterSettingsPanel;
+- (IBAction)tagWriterSettingsCloseAction:(id)sender;
+
+@property (unsafe_unretained) IBOutlet NSButton *mp3WriteID3v2;
+@property (unsafe_unretained) IBOutlet NSButton *mp3WriteID3v1;
+@property (unsafe_unretained) IBOutlet NSButton *mp3WriteAPEv2;
+@property (unsafe_unretained) IBOutlet NSButton *mp3StripID3v2;
+@property (unsafe_unretained) IBOutlet NSButton *mp3StripID3v1;
+@property (unsafe_unretained) IBOutlet NSButton *mp3StripAPEv2;
+@property (unsafe_unretained) IBOutlet NSPopUpButton *mp3ID3v2Version;
+@property (unsafe_unretained) IBOutlet NSTextField *mp3ID3v1Charset;
+
+- (IBAction)mp3WriteID3v2Action:(id)sender;
+- (IBAction)mp3WriteID3v1Action:(id)sender;
+- (IBAction)mp3WriteAPEv2Action:(id)sender;
+- (IBAction)mp3StripID3v2Action:(id)sender;
+- (IBAction)mp3StripID3v1Action:(id)sender;
+- (IBAction)mp3StripAPEv2Action:(id)sender;
+- (IBAction)mp3ID3v2VersionChangeAction:(id)sender;
+- (IBAction)mp3ID3v1CharsetChangeAction:(id)sender;
+
+
+@property (unsafe_unretained) IBOutlet NSButton *apeWriteID3v2;
+@property (unsafe_unretained) IBOutlet NSButton *apeWriteAPEv2;
+@property (unsafe_unretained) IBOutlet NSButton *apeStripID3v2;
+@property (unsafe_unretained) IBOutlet NSButton *apeStripAPEv2;
+
+- (IBAction)apeWriteID3v2Action:(id)sender;
+- (IBAction)apeWriteAPEv2Action:(id)sender;
+- (IBAction)apeStripID3v2Action:(id)sender;
+- (IBAction)apeStripAPEv2Action:(id)sender;
+
+@property (unsafe_unretained) IBOutlet NSButton *wvWriteAPEv2;
+@property (unsafe_unretained) IBOutlet NSButton *wvWriteID3v1;
+@property (unsafe_unretained) IBOutlet NSButton *wvStripAPEv2;
+@property (unsafe_unretained) IBOutlet NSButton *wvStripID3v1;
+
+- (IBAction)wvWriteAPEv2Action:(id)sender;
+- (IBAction)wvWriteID3v1Action:(id)sender;
+- (IBAction)wvStripAPEv2Action:(id)sender;
+- (IBAction)wvStripID3v1Action:(id)sender;
 
 @end
 
 @implementation TrackPropertiesWindowController
 
-- (void)setPlaylist:(ddb_playlist_t *)plt {
+- (void)setPlaylist:(ddb_playlist_t *)plt context:(ddb_action_context_t)context{
     if (_playlist) {
         deadbeef->plt_unref (_playlist);
     }
@@ -151,6 +119,7 @@ extern DB_functions_t *deadbeef;
     if (_playlist) {
         deadbeef->plt_ref (_playlist);
     }
+    _context = context;
 
     [self reloadContent];
 }
@@ -160,170 +129,30 @@ extern DB_functions_t *deadbeef;
     [self reloadContent];
 }
 
-- (void)freeTrackList {
-    trkproperties_free_track_list (&_tracks, &_numtracks);
-}
-
-- (void)dealloc {
-    [self freeTrackList];
-    if (_playlist) {
-        deadbeef->plt_unref (_playlist);
-        _playlist = NULL;
-    }
-}
 
 - (void)windowDidLoad {
     [super windowDidLoad];
     self.window.delegate = self;
 
-    self.store = [NSMutableArray new];
-    self.propstore = [NSMutableArray new];
-    [self reloadContent];
-    self.metadataTableView.dataSource = self;
-    self.propertiesTableView.dataSource = self;
-    self.metadataTableView.delegate = self;
-    [self.metadataTableView reloadData];
-    [self.propertiesTableView reloadData];
-}
+    self.metadataListViewController = [TrackPropertiesListViewController new];
+    self.propertiesListViewController = [TrackPropertiesListViewController new];
 
-- (void)tableViewSelectionDidChange:(NSNotification *)aNotification {
-    self.singleValueSelected = self.metadataTableView.selectedRowIndexes.count == 1;
-}
+    self.metadataListViewController.view.translatesAutoresizingMaskIntoConstraints = NO;
+    self.propertiesListViewController.view.translatesAutoresizingMaskIntoConstraints = NO;
 
+    [self.metadataTableContainerView addSubview:self.metadataListViewController.view];
+    [self.propertiesTableContainerView addSubview:self.propertiesListViewController.view];
 
-- (void)buildTrackListForCtx:(int)ctx forPlaylist:(ddb_playlist_t *)plt {
-    trkproperties_build_track_list_for_ctx (plt, ctx, &_tracks, &_numtracks);
-}
-
-
-// NOTE: add_field gets called once for each unique key (e.g. Artist or Album),
-// which means it will usually contain 10-20 fields
-static void
-add_field (NSMutableArray *store, const char *key, const char *title, int is_prop, DB_playItem_t **tracks, int numtracks) {
-
-    // get all values for each key, convert from 0-separated to '; '-separated, and put into NSArray
-    NSMutableArray<NSString *> *values = [NSMutableArray new];
-    deadbeef->pl_lock ();
-    for (int i = 0; i < numtracks; i++) {
-        NSString *value = @"";
-        DB_metaInfo_t *meta = deadbeef->pl_meta_for_key (tracks[i], key);
-        if (meta && meta->valuesize == 1) {
-            meta = NULL;
-        }
-
-        if (meta) {
-            const char *p = meta->value;
-            const char *end = p + meta->valuesize;
-
-            while (p < end) {
-                value = [value stringByAppendingString:@(p)];
-                p += strlen (p) + 1;
-                if (p < end) {
-                    value = [value stringByAppendingString:p < end-1 ? @"; " : @";"];
-                }
-            }
-        }
-        [values addObject:value];
-    }
-    deadbeef->pl_unlock ();
-
-    [store addObject:@{
-        @"title": @(title),
-        @"key": @(key),
-        @"values": values
-    }.mutableCopy];
-}
-
-static char *
-_formatted_title_for_unknown_key(const char *key) {
-    size_t l = strlen (key);
-    char *title = malloc(l*4);
-    title[0] = '<';
-    char *t = title + 1;
-    const char *p = key;
-    while (*p) {
-        int32_t size = 0;
-        u8_nextchar (p, &size);
-        int outsize = u8_toupper((const signed char *)p, size, t);
-        t += outsize;
-        p += size;
-    }
-    *t++ = '>';
-    *t++ = 0;
-    return title;
-}
-
-- (void)fillMeta {
-    [self.store removeAllObjects];
-    if (!self.tracks) {
-        return;
-    }
-
-    const char **keys = NULL;
-    int nkeys = trkproperties_build_key_list (&keys, 0, self.tracks, self.numtracks);
-
-    // add "standard" fields
-    for (int i = 0; trkproperties_types[i]; i += 2) {
-        add_field (self.store, trkproperties_types[i], trkproperties_types[i+1], 0, self.tracks, self.numtracks);
-    }
-
-    // add all other fields
-    for (int k = 0; k < nkeys; k++) {
-        int i;
-        for (i = 0; trkproperties_types[i]; i += 2) {
-            if (!strcasecmp (keys[k], trkproperties_types[i])) {
-                break;
-            }
-        }
-        if (trkproperties_types[i]) {
-            continue;
-        }
-
-        char *title = _formatted_title_for_unknown_key(keys[k]);
-        add_field (self.store, keys[k], title, 0, self.tracks, self.numtracks);
-        free (title);
-        title = NULL;
-    }
-    if (keys) {
-        free (keys);
-    }
-}
-
-- (void)fillMetadata {
-    self.modified = NO;
-
-    deadbeef->pl_lock ();
-
-    [self fillMeta];
-    [self.propstore removeAllObjects];
-
-    // hardcoded properties
-    for (int i = 0; trkproperties_hc_props[i]; i += 2) {
-        add_field (self.propstore, trkproperties_hc_props[i], trkproperties_hc_props[i+1], 1, self.tracks, self.numtracks);
-    }
-    // properties
-    const char **keys = NULL;
-    int nkeys = trkproperties_build_key_list (&keys, 1, self.tracks, self.numtracks);
-    for (int k = 0; k < nkeys; k++) {
-        int i;
-        for (i = 0; trkproperties_hc_props[i]; i += 2) {
-            if (!strcasecmp (keys[k], trkproperties_hc_props[i])) {
-                break;
-            }
-        }
-        if (trkproperties_hc_props[i]) {
-            continue;
-        }
-        char *title = _formatted_title_for_unknown_key(keys[k] + 1);
-        add_field (self.propstore, keys[k], title, 1, self.tracks, self.numtracks);
-        free (title);
-        title = NULL;
-    }
-    if (keys) {
-        free (keys);
-    }
-
-    deadbeef->pl_unlock ();
+    [NSLayoutConstraint activateConstraints:@[
+        [self.metadataListViewController.view.leadingAnchor constraintEqualToAnchor:self.metadataTableContainerView.leadingAnchor],
+        [self.metadataListViewController.view.trailingAnchor constraintEqualToAnchor:self.metadataTableContainerView.trailingAnchor],
+        [self.metadataListViewController.view.topAnchor constraintEqualToAnchor:self.metadataTableContainerView.topAnchor],
+        [self.metadataListViewController.view.bottomAnchor constraintEqualToAnchor:self.metadataTableContainerView.bottomAnchor],
+        [self.propertiesListViewController.view.leadingAnchor constraintEqualToAnchor:self.propertiesTableContainerView.leadingAnchor],
+        [self.propertiesListViewController.view.trailingAnchor constraintEqualToAnchor:self.propertiesTableContainerView.trailingAnchor],
+        [self.propertiesListViewController.view.topAnchor constraintEqualToAnchor:self.propertiesTableContainerView.topAnchor],
+        [self.propertiesListViewController.view.bottomAnchor constraintEqualToAnchor:self.propertiesTableContainerView.bottomAnchor],
+    ]];
 }
 
 - (void)reloadContent {
@@ -332,136 +161,32 @@ _formatted_title_for_unknown_key(const char *key) {
     }
     self.close_after_writing = NO;
 
-    [self freeTrackList];
-
     if (self.playlist) {
-        [self buildTrackListForCtx:self.context forPlaylist:self.playlist];
+        [self.metadataListViewController loadFromPlaylist:self.playlist context:self.context flags:TrackPropertiesListFlagMetadata|TrackPropertiesListFlagEditable];
+        [self.propertiesListViewController loadFromPlaylist:self.playlist context:self.context flags:TrackPropertiesListFlagProperties];
     }
     else if (self.mediaLibraryItems) {
-        NSInteger count = self.mediaLibraryItems.count;
-        _tracks = calloc (count, sizeof (DB_playItem_t *));
-        _numtracks = 0;
-
-        for (NSInteger i = 0; i < count; i++) {
-            ddb_playItem_t *it = self.mediaLibraryItems[i].playItem;
-            if (it) {
-                deadbeef->pl_item_ref (it);
-                _tracks[_numtracks++] = it;
-            }
-        }
+        [self.metadataListViewController loadFromMediaLibraryItems:self.mediaLibraryItems flags:TrackPropertiesListFlagMetadata|TrackPropertiesListFlagEditable];
+        [self.propertiesListViewController loadFromMediaLibraryItems:self.mediaLibraryItems flags:TrackPropertiesListFlagProperties];
     }
 
     NSString *fname;
 
-    if (self.numtracks == 1) {
+    if (self.metadataListViewController.numtracks == 1) {
         deadbeef->pl_lock ();
-        fname = @(deadbeef->pl_find_meta_raw (self.tracks[0], ":URI"));
+        fname = @(deadbeef->pl_find_meta_raw (self.metadataListViewController.tracks[0], ":URI"));
 
         deadbeef->pl_unlock ();
     }
-    else if (self.numtracks != 0) {
+    else if (self.metadataListViewController.numtracks != 0) {
         fname = @"[Multiple values]";
     }
     else {
         fname = @"[Nothing selected]";
     }
 
-    [self fillMetadata];
-
     if (self.filename) {
         self.filename.stringValue = fname;
-        [self.metadataTableView reloadData];
-        [self.propertiesTableView reloadData];
-    }
-}
-
-// NSTableView delegate
-- (NSMutableArray *)storeForTableView:(NSTableView *)aTableView {
-    if (aTableView == self.metadataTableView) {
-        return self.store;
-    }
-    else if (aTableView == self.propertiesTableView) {
-        return self.propstore;
-    }
-
-    return nil;
-}
-
-- (NSInteger)numberOfRowsInTableView:(NSTableView *)aTableView
-{
-    NSMutableArray *store = [self storeForTableView:aTableView];
-    if (!store) {
-        return 0;
-    }
-
-    return (NSInteger)store.count;
-}
-
-// when editing the "multiple values" cells, turn them into ""
-// this, unfortunately, is not undoable, so as soon as the user starts editing -- no way back
-- (void)tableView:(NSTableView *)aTableView willDisplayCell:(id)aCell forTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex
-{
-    NSMutableArray *store = [self storeForTableView:aTableView];
-    if (!store) {
-        return;
-    }
-
-    if([aTableColumn.identifier isEqualToString:@"value"]){
-        ((NSTextFieldCell *)aCell).formatter = [SingleLineFormatter new];
-    }
-}
-
-- (NSString *)fieldValueForIndex:(NSInteger)rowIndex store:(NSMutableArray *)store isMult:(nullable BOOL *)isMult {
-    NSMutableArray<NSString *> *values = store[rowIndex][@"values"];
-    // get uniq values
-    NSArray *uniq = [NSOrderedSet orderedSetWithArray:values].array;
-    NSInteger n = uniq.count;
-
-    NSString *val = n > 1 ? @"[Multiple Values] " : @"";
-    for (NSUInteger i = 0; i < uniq.count; i++) {
-        val = [val stringByAppendingString:uniq[i]];
-        if (i < uniq.count - 1) {
-            val = [val stringByAppendingString:@"; "];
-        }
-    }
-
-    if (isMult != NULL) {
-        *isMult = n > 1;
-    }
-
-    return val;
-}
-
-- (id)tableView:(NSTableView *)aTableView objectValueForTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
-    NSMutableArray *store = [self storeForTableView:aTableView];
-    if (!store) {
-        return nil;
-    }
-
-    if ([aTableColumn.identifier isEqualToString:@"name"]) {
-        NSString *title = store[rowIndex][@"title"];
-        return title;
-    }
-    else if ([aTableColumn.identifier isEqualToString:@"value"]) {
-        return [self fieldValueForIndex:rowIndex store:store isMult:NULL];
-    }
-    return nil;
-}
-
-- (void)tableView:(NSTableView *)aTableView setObjectValue:(id)anObject forTableColumn:(NSTableColumn *)aTableColumn row:(NSInteger)rowIndex {
-    NSMutableArray *store = [self storeForTableView:aTableView];
-    if (!store) {
-        return;
-    }
-
-    NSMutableDictionary *dict = store[rowIndex];
-
-    NSMutableArray<NSString *> *values = dict[@"values"];
-    for (NSUInteger i = 0; i < values.count; i++) {
-        if ([values[i] isNotEqualTo:anObject]) {
-            values[i] = anObject;
-            self.modified = YES;
-        }
     }
 }
 
@@ -478,12 +203,12 @@ _formatted_title_for_unknown_key(const char *key) {
     return specialFields;
 }
 
-- (void)setMetadataForSelectedTracks:(NSDictionary *)dict {
-    NSString *key = dict[@"key"];
+- (void)setMetadataForSelectedTracks:(TrackPropertiesListItem *)dict {
+    NSString *key = dict.key;
     const char *skey = key.UTF8String;
-    NSMutableArray<NSString *> *values = dict[@"values"];
+    NSMutableArray<NSString *> *values = dict.values;
 
-    for (int i = 0; i < self.numtracks; i++) {
+    for (int i = 0; i < self.metadataListViewController.numtracks; i++) {
         NSString *value = values[i];
         NSArray *components;
 
@@ -509,10 +234,10 @@ _formatted_title_for_unknown_key(const char *key) {
             [transformedValues addObject: (j == 0 ? val : [val substringFromIndex:j])];
         }
 
-        deadbeef->pl_delete_meta (self.tracks[i], skey);
+        deadbeef->pl_delete_meta (self.metadataListViewController.tracks[i], skey);
         for (NSString *val in transformedValues) {
             if (val.length) {
-                deadbeef->pl_append_meta (self.tracks[i], skey, val.UTF8String);
+                deadbeef->pl_append_meta (self.metadataListViewController.tracks[i], skey, val.UTF8String);
             }
         }
     }
@@ -520,11 +245,11 @@ _formatted_title_for_unknown_key(const char *key) {
 
 - (void)writeMetaWorker {
     NSMutableSet *fileset = [NSMutableSet new];
-    for (int t = 0; t < self.numtracks; t++) {
+    for (int t = 0; t < self.metadataListViewController.numtracks; t++) {
         if (self.progress_aborted) {
             break;
         }
-        DB_playItem_t *track = self.tracks[t];
+        DB_playItem_t *track = self.metadataListViewController.tracks[t];
         deadbeef->pl_lock ();
         const char *dec = deadbeef->pl_find_meta_raw (track, ":DECODER");
         char decoder_id[100];
@@ -568,7 +293,7 @@ _formatted_title_for_unknown_key(const char *key) {
             deadbeef->plt_modified (plt);
             deadbeef->plt_unref (plt);
         }
-        self.modified = NO;
+        self.metadataListViewController.isModified = NO;
         if (self.close_after_writing) {
             [self.window close];
         }
@@ -578,40 +303,40 @@ _formatted_title_for_unknown_key(const char *key) {
 }
 
 - (IBAction)applyTrackPropertiesAction:(id)sender {
-    if (!self.modified) {
+    if (!self.metadataListViewController.isModified) {
         if (self.close_after_writing) {
             [self close];
         }
         return;
     }
     deadbeef->pl_lock ();
-    NSMutableArray *store = [self storeForTableView:self.metadataTableView];
+    NSMutableArray<TrackPropertiesListItem *> *store = self.metadataListViewController.store;
 
     // delete all metadata properties that are not in the listview
-    for (int i = 0; i < self.numtracks; i++) {
-        DB_metaInfo_t *meta = deadbeef->pl_get_metadata_head (self.tracks[i]);
+    for (int i = 0; i < self.metadataListViewController.numtracks; i++) {
+        DB_metaInfo_t *meta = deadbeef->pl_get_metadata_head (self.metadataListViewController.tracks[i]);
         while (meta) {
             DB_metaInfo_t *next = meta->next;
             if (meta->key[0] != ':' && meta->key[0] != '!' && meta->key[0] != '_') {
-                NSDictionary *dict;
-                for (dict in store) {
-                    if (!strcasecmp (((NSString *)dict[@"key"]).UTF8String, meta->key)) {
+                TrackPropertiesListItem *item;
+                for (item in store) {
+                    if (!strcasecmp (item.key.UTF8String, meta->key)) {
                         // field found, don't delete
                         break;
                     }
                 }
 
-                if (!dict) {
+                if (item == NULL) {
                     // field not found, delete
-                    deadbeef->pl_delete_metadata (self.tracks[i], meta);
+                    deadbeef->pl_delete_metadata (self.metadataListViewController.tracks[i], meta);
                 }
             }
             meta = next;
         }
     }
     // put all metainfo into track
-    for (NSDictionary *dict in store) {
-        self.metadataForSelectedTracks = dict;
+    for (TrackPropertiesListItem *item in store) {
+        [self setMetadataForSelectedTracks:item];
     }
     deadbeef->pl_unlock ();
 
@@ -633,7 +358,7 @@ _formatted_title_for_unknown_key(const char *key) {
 }
 
 - (BOOL)windowShouldClose:(id)sender {
-    if (self.modified) {
+    if (self.metadataListViewController.isModified) {
         NSAlert *alert = [NSAlert new];
         [alert addButtonWithTitle:@"Yes"];
         [alert addButtonWithTitle:@"No"];
@@ -647,7 +372,7 @@ _formatted_title_for_unknown_key(const char *key) {
                 [self applyTrackPropertiesAction:alert];
             }
             else if (returnCode == NSAlertSecondButtonReturn){
-                self.modified = NO;
+                self.metadataListViewController.isModified = NO;
                 [self.window close];
             }
         }];
@@ -704,7 +429,7 @@ _formatted_title_for_unknown_key(const char *key) {
 }
 
 - (IBAction)reloadTrackPropertiesAction:(id)sender {
-    trkproperties_reload_tags (self.tracks, self.numtracks);
+    trkproperties_reload_tags (self.metadataListViewController.tracks, self.metadataListViewController.numtracks);
 
     deadbeef->pl_save_current();
     deadbeef->sendmessage (DB_EV_PLAYLISTCHANGED, 0, DDB_PLAYLIST_CHANGE_CONTENT, 0);
@@ -806,213 +531,6 @@ _formatted_title_for_unknown_key(const char *key) {
 - (IBAction)wvStripID3v1Action:(NSButton *)sender {
     deadbeef->conf_set_int ("wv.strip_id3v1", sender.state == NSControlStateValueOn);
     deadbeef->conf_save ();
-}
-
-- (IBAction)editValueAction:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-    if (ind.count != 1) {
-        return; // multiple fields can't be edited at the same time
-    }
-
-    NSInteger idx = ind.firstIndex;
-
-    if (self.numtracks != 1) {
-        // Allow editing the previous value, if all tracks have the same
-        BOOL isMult;
-        NSString *value = [self fieldValueForIndex:idx store:self.store isMult:&isMult];
-        if (!isMult) {
-            self.multiValueSingle.string = value;
-        }
-        else {
-            self.multiValueSingle.string = @"";
-        }
-
-        NSString *key = self.store[idx][@"key"];
-        self.multiValueFieldName.stringValue =  key.uppercaseString;
-
-        NSMutableArray<NSString *> *fields = [NSMutableArray new];
-        NSMutableArray<NSString *> *items = [NSMutableArray new];
-
-        deadbeef->pl_lock ();
-
-        char *item_tf = deadbeef->tf_compile ("%title%[ // %track artist%]");
-
-        ddb_tf_context_t ctx;
-        memset (&ctx, 0, sizeof (ctx));
-
-        ctx._size = sizeof (ctx);
-        ctx.plt = NULL;
-        ctx.idx = -1;
-        ctx.id = -1;
-
-        fields = self.store[idx][@"values"];
-
-        for (int i = 0; i < self.numtracks; i++) {
-            char item[1000];
-            ctx.it = self.tracks[i];
-            deadbeef->tf_eval(&ctx, item_tf, item, sizeof (item));
-            [items addObject:@(item)];
-        }
-        deadbeef->pl_unlock ();
-        deadbeef->tf_free (item_tf);
-
-        self.multipleFieldsTableData = [MultipleFieldsTableData new];
-        self.multipleFieldsTableData.fields = [[NSMutableArray alloc] initWithArray:fields copyItems:NO];
-        self.multipleFieldsTableData.items = items;
-        self.multiValueTableView.delegate = self.multipleFieldsTableData;
-        self.multiValueTableView.dataSource = self.multipleFieldsTableData;
-        [self.window beginSheet:self.editMultipleValuesPanel completionHandler:^(NSModalResponse returnCode) {
-            if (returnCode == NSModalResponseOK) {
-                if ([(self.multiValueTabView).selectedTabViewItem.identifier isEqualToString:@"singleValue"]) {
-                    [self setSameValuesForIndex:(int)idx value:(self.multiValueSingle).textStorage.string];
-                }
-                else {
-                    for (int i = 0; i < self.numtracks; i++) {
-                        self.store[idx][@"values"] = [[NSMutableArray alloc] initWithArray:self.multipleFieldsTableData.fields copyItems:NO];
-                    }
-                }
-                self.modified = YES;
-            }
-        }];
-        return;
-    }
-
-    self.fieldName.stringValue =  ((NSString *)self.store[idx][@"key"]).uppercaseString;
-    self.fieldValue.string =  self.store[idx][@"values"][0];
-
-    [self.window beginSheet:self.editValuePanel completionHandler:^(NSModalResponse returnCode) {
-        self.modified = YES;
-    }];
-}
-
-- (IBAction)editInPlaceAction:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-    if (ind.count != 1) {
-        return; // multiple fields can't be edited at the same time
-    }
-
-    NSInteger idx = ind.firstIndex;
-
-    [self.metadataTableView editColumn:1 row:idx withEvent:nil select:YES];
-}
-
-- (IBAction)cancelEditValuePanelAction:(id)sender {
-    [NSApp endSheet:self.editValuePanel];
-}
-
-- (IBAction)okEditValuePanelAction:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-    NSInteger idx = ind.firstIndex;
-    if (![self.store[idx][@"values"][0] isEqualToString:(self.fieldValue).string]) {
-        self.store[idx][@"values"][0] = (self.fieldValue).string;
-        [self.metadataTableView reloadData];
-        self.modified = YES;
-    }
-
-    [NSApp endSheet:self.editValuePanel];
-}
-
-- (void)setSameValuesForIndex:(NSUInteger)idx value:(NSString *)value {
-    NSMutableArray<NSString *> *values = self.store[idx][@"values"];
-    for (NSUInteger i = 0; i < values.count; i++) {
-        values[i] = value;
-    }
-}
-
-- (IBAction)delete:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-
-    [ind enumerateIndexesUsingBlock:^(NSUInteger idx, BOOL *stop) {
-        [self setSameValuesForIndex:(int)idx value:@""];
-        self.modified = YES;
-    }];
-
-    if (self.modified) {
-        [self.metadataTableView reloadData];
-    }
-}
-
-- (IBAction)editCropAction:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-
-    for (NSUInteger i = 0; i < self.store.count; i++) {
-        if (![ind containsIndex:i]) {
-            [self setSameValuesForIndex:i value:@""];
-            self.modified = YES;
-        }
-    }
-
-    if (self.modified) {
-        [self.metadataTableView reloadData];
-    }
-}
-
-- (IBAction)editCapitalizeAction:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-
-    for (NSUInteger i = 0; i < self.store.count; i++) {
-        if ([ind containsIndex:i]) {
-            NSMutableArray<NSString *> *values = self.store[i][@"values"];
-            for (NSUInteger n = 0; n < values.count; n++) {
-                values[n] =  values[n].uppercaseString;
-            }
-            self.modified = YES;
-        }
-    }
-
-    if (self.modified) {
-        [self.metadataTableView reloadData];
-    }
-}
-
-- (IBAction)addNewField:(id)sender {
-    self.addFieldName.stringValue =  @"";
-    self.addFieldAlreadyExists.hidden =  YES;
-
-    [self.window beginSheet:self.addFieldPanel completionHandler:^(NSModalResponse returnCode) {
-        if (returnCode != NSModalResponseOK) {
-            return;
-        }
-        NSString *key = self.addFieldName.stringValue;
-        for (NSUInteger i = 0; i < self.store.count; i++) {
-            if (NSOrderedSame == [key caseInsensitiveCompare:self.store[i][@"key"]]) {
-                self.addFieldAlreadyExists.hidden =  NO;
-                return;
-            }
-        }
-
-        char *title = _formatted_title_for_unknown_key(key.UTF8String);
-        add_field (self.store, key.UTF8String, title, 0, self.tracks, self.numtracks);
-        free (title);
-        title = NULL;
-        self.modified = YES;
-        [self.metadataTableView reloadData];
-    }];
-}
-
-- (IBAction)cancelAddFieldPanelAction:(id)sender {
-    [self.window endSheet:self.addFieldPanel returnCode:NSModalResponseCancel];
-}
-
-- (IBAction)okAddFieldPanelAction:(id)sender {
-    [self.window endSheet:self.addFieldPanel returnCode:NSModalResponseOK];
-}
-
-- (IBAction)cancelEditMultipleValuesPanel:(id)sender {
-    [self.window endSheet:self.editMultipleValuesPanel returnCode:NSModalResponseCancel];
-}
-
-- (IBAction)okEditMultipleValuesAction:(id)sender {
-    NSIndexSet *ind = self.metadataTableView.selectedRowIndexes;
-    NSInteger idx = ind.firstIndex;
-
-    self.modified = YES;
-
-    self.store[idx][@"values"] = [[NSMutableArray alloc] initWithArray: self.multipleFieldsTableData.fields copyItems:NO];
-
-    [self.metadataTableView reloadData];
-
-    [self.window endSheet:self.editMultipleValuesPanel returnCode:NSModalResponseOK];
 }
 
 @end
