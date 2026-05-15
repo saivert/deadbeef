@@ -102,6 +102,10 @@ option('plugin-musepack',
        type : 'feature',
        value: 'auto',
        description : 'musepack player plugin')
+option('plugin-mpris',
+       type : 'feature',
+       value: 'auto',
+       description : 'MPRIS plugin')
 option('plugin-notify',
        type : 'feature',
        value: 'auto',

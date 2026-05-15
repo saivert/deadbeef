@@ -1,5 +1,5 @@
 project('deadbeef', ['c', 'cpp'],
-  version : 'devel',
+  version : '1.10.3-alpha',
   license : [ 'GPL-2.0-only' ],
   meson_version : '>= 0.53.0',
   default_options : [ 'warning_level=0',
@@ -30,7 +30,7 @@ cpp_flags = [
   '-DDDB_WARN_DEPRECATED=1',
   '-DHAVE_CONFIG_H=1'
 ]
-add_project_arguments(cc.get_supported_arguments(cc_flags), language: 'cpp')
+add_project_arguments(cpp.get_supported_arguments(cpp_flags), language: 'cpp')
 
 i18n = import('i18n')
 
@@ -244,6 +244,7 @@ subdir('plugins/rg_scanner')
 subdir('plugins/hotkeys')
 subdir('plugins/lastfm')
 subdir('plugins/m3u')
+subdir('plugins/mpris')
 subdir('plugins/notify')
 subdir('plugins/pltbrowser')
 subdir('plugins/shellexec')
