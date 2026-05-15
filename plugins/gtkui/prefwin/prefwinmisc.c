@@ -28,8 +28,12 @@
 #include "prefwin.h"
 #include "prefwinmisc.h"
 
+static int _initializing_prefwin = 0;
+
 void
 prefwin_init_gui_misc_tab (GtkWidget *_prefwin) {
+    _initializing_prefwin = 1;
+
     GtkWidget *w = _prefwin;
     prefwin_set_toggle_button("minimize_on_startup", deadbeef->conf_get_int ("gtkui.start_hidden", 0));
 
@@ -91,15 +95,21 @@ prefwin_init_gui_misc_tab (GtkWidget *_prefwin) {
 
     gtk_spin_button_set_value(GTK_SPIN_BUTTON (lookup_widget (w, "listview_group_spacing")), deadbeef->conf_get_int ("playlist.groups.spacing", 0));
 
-    // fill gui plugin list
-    GtkComboBox *combobox = GTK_COMBO_BOX (lookup_widget (w, "gui_plugin"));
-    const char **names = deadbeef->plug_get_gui_names ();
-    for (int i = 0; names[i]; i++) {
-        gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combobox), names[i]);
-        if (!strcmp (names[i], deadbeef->conf_get_str_fast ("gui_plugin", "GTK3"))) {
-            prefwin_set_combobox (combobox, i);
+    {
+        char gui_plugin[100];
+        deadbeef->conf_get_str ("gui_plugin", "GTK3", gui_plugin, sizeof (gui_plugin));
+        // fill gui plugin list
+        GtkComboBox *combobox = GTK_COMBO_BOX (lookup_widget (w, "gui_plugin"));
+        const char **names = deadbeef->plug_get_gui_names ();
+        for (int i = 0; names[i]; i++) {
+            gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combobox), names[i]);
+            if (!strcmp (names[i], gui_plugin)) {
+                prefwin_set_combobox (combobox, i);
+            }
         }
     }
+
+    _initializing_prefwin = 0;
 }
 
 void
@@ -173,6 +183,9 @@ void
 on_titlebar_format_playing_changed     (GtkEditable     *editable,
                                         gpointer         user_data)
 {
+    if (_initializing_prefwin) {
+        return;
+    }
     const char *text = gtk_entry_get_text (GTK_ENTRY (editable));
     if (*text == 0) {
         text = NULL;
@@ -187,6 +200,9 @@ void
 on_titlebar_format_stopped_changed     (GtkEditable     *editable,
                                         gpointer         user_data)
 {
+    if (_initializing_prefwin) {
+        return;
+    }
     const char *text = gtk_entry_get_text (GTK_ENTRY (editable));
     if (*text == 0) {
         text = NULL;

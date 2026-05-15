@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./scripts/portable_postbuild.sh $@
+./scripts/portable_postbuild.sh $@ || exit 1
 
 DEBUG=false
 
@@ -17,6 +17,8 @@ BUILD=$(<"build_data/VERSION_SUFFIX")
 if [[ "$ARCH" == "i686" ]]; then
     echo arch: $ARCH
 elif [[ "$ARCH" == "x86_64" ]]; then
+    echo arch: $ARCH
+elif [[ "$ARCH" == "aarch64" ]]; then
     echo arch: $ARCH
 else
     echo unknown arch $ARCH
@@ -102,6 +104,7 @@ tar jcvf ../../portable_out/build/$OUTNAME\
     $PLUGDIR/medialib.so\
     $PLUGDIR/lyrics_gtk2.so\
     $PLUGDIR/lyrics_gtk3.so\
+    $PLUGDIR/mpris.so\
     $PIXMAPDIR\
     $SRCDIR/locale\
     || exit 1

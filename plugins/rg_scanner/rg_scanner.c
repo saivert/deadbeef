@@ -210,6 +210,9 @@ rg_calc_track(track_state_t *st) {
                 st->settings->results[st->track_index].track_gain = -23 - loudness + st->settings->ref_loudness - 84;
             }
         }
+
+        ebur128_destroy_temp(&st->gain_state[st->track_index]);
+        ebur128_destroy_temp(&st->peak_state[st->track_index]);
     }
 
 error:
@@ -362,7 +365,7 @@ rg_scan (ddb_rg_scanner_settings_t *settings) {
         }
     }
 
-    if (settings->mode == DDB_RG_SOURCE_MODE_ALBUM) {
+    if (settings->mode == DDB_RG_SCAN_MODE_SINGLE_ALBUM) {
         float album_peak = 0;
 
         for (int i = 0; i < settings->num_tracks; ++i) {
